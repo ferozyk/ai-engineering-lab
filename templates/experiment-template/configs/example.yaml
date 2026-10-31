@@ -1,0 +1,8 @@
+# Experiment configuration skeleton. Copy and adapt per experiment.
+experiment: <experiment-name>
+version: 0.1.0
+dataset_version: <dataset-version>
+iterations: <int>
+warmup: <int>
+timeout_seconds: <int>
+# Model provider and model id come from LLM_PROVIDER / LLM_MODEL env vars - never set them here.
