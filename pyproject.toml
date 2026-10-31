@@ -1,0 +1,71 @@
+[project]
+name = "ai-engineering-lab"
+version = "0.1.0"
+description = "Small, reproducible experiments exploring the engineering trade-offs of modern AI systems."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Feroz Khatri" }]
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["shared/src/ai_lab"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["shared/src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not live"]
+markers = [
+    "unit: fast, isolated tests with no I/O",
+    "integration: tests across components using mocked providers",
+    "evaluation: model-quality evaluations (mocked unless marked live)",
+    "live: calls real external model providers; opt-in via `pytest -m live`",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["shared/src", "tests"]
+mypy_path = "shared/src"
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
