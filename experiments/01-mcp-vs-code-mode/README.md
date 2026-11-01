@@ -1,28 +1,38 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Not started — scaffolding only
+> **Status:** Phase 1 — design complete, not implemented
 > **Experiment version:** 0.1.0
-> **Last updated:** 2026-10-31
+> **Last updated:** 2026-11-01
 
 ## 1. Overview
 
-This experiment compares Model Context Protocol (MCP) tool calling with programmatic tool orchestration ("Code Mode": the model writes code that calls tools via an API inside a sandbox) for the same workflow.
+This experiment compares Model Context Protocol (MCP) tool calling with programmatic tool orchestration ("Code Mode": the model writes code that calls tools via an API inside a sandbox) for the same workflow. It uses a synthetic banking workflow, the same model, the same tools and the same security controls in both modes. The goal is to show when each approach is the better engineering choice, measured on tokens, latency, estimated cost and answer accuracy.
+
+Terminology used throughout:
+
+- **MCP mode:** the model calls tools exposed by an MCP server; every tool result enters the model context.
+- **Code Mode:** the model gets one tool, `run_python`, and writes a script that calls the same tools inside a sandbox; only the script's return value enters the model context.
+- **Scenario A (simple lookup)** and **Scenario B (chained aggregation)**.
+- **Volume:** transactions per account in Scenario B: 10, 50, 200.
+- **Cell:** one (scenario, volume, mode) combination. There are 8 cells.
+- **Task:** one execution of one cell.
 
 ## 2. Research Question
 
-For an equivalent multi-step tool workflow, how do MCP-based tool calling and Code Mode differ in context overhead, token consumption, latency, reliability and security posture?
+For an equivalent multi-step tool workflow, how do MCP-based tool calling and Code Mode differ in context overhead, token consumption, latency, reliability and security posture, and at what workflow shape and data volume does the difference become material?
 
 ## 3. Why This Matters
 
-As the number of tools grows, so does the context a model must carry. The choice of approach affects cost, latency and attack surface.
+As the number of tools grows, so does the context a model must carry. The choice of approach affects cost, latency and attack surface. Every intermediate tool result in MCP mode is re-sent to the model on each later turn, so cost and latency can grow with both step count and payload size.
 
-## 4. Hypothesis
+## 4. Hypotheses
 
-All hypotheses below are unverified and will be tested.
+Pre-registered. All hypotheses are unverified. The 25% threshold in H1 was fixed before any run, and results will be reported whether or not they support the hypotheses.
 
-- **H1 (unverified):** Code Mode uses fewer tokens on multi-step workflows because intermediate results need not pass through the model context.
-- **H2 (unverified):** Code Mode adds latency and complexity from sandbox startup.
-- **H3 (unverified):** MCP offers simpler tool discovery and a more standardised auth model.
+- **H1 (parity on simple lookups):** For Scenario A, mean total tokens and p50 latency differ by less than 25% between modes.
+- **H2 (token savings on chaining):** For Scenario B, Code Mode uses fewer total tokens than MCP mode at every volume, and the gap widens as volume increases.
+- **H3 (latency):** For Scenario B, Code Mode has lower p50 latency at volume 50 and 200. At volume 10 the difference may be small.
+- **H4 (accuracy):** MCP mode accuracy decreases as volume increases, because the model aggregates large tool outputs in-context; Code Mode accuracy remains stable, with failures dominated by code errors rather than arithmetic errors.
 
 ## 5. Objectives
 
@@ -39,6 +49,8 @@ Compare the two approaches across these dimensions:
 9. Reliability
 10. Security
 11. Scalability
+
+Tokens, latency, estimated cost, accuracy and reliability are measured quantitatively. Discovery, authentication, security and scalability are assessed qualitatively from the implementation.
 
 ## 6. Scope
 
@@ -64,40 +76,103 @@ Both approaches must eventually run equivalent workflows under equal security as
 
 For Code Mode, generated code runs only in a sandbox with filesystem restrictions, network restrictions, resource limits, execution timeouts, restricted credentials and explicit tool allowlists. Authorization is enforced by the banking simulation, never by the LLM.
 
+Two scenarios (details in [benchmarks/methodology.md](benchmarks/methodology.md)):
+
+- **Scenario A — Simple lookup:** retrieve the available balance of one account.
+- **Scenario B — Chained aggregation:** for one customer and a fixed 90-day window, retrieve balances and transactions across 4 accounts and compute per-account spend by category, large debits and the total balance, at 10, 50 and 200 transactions per account.
+
 ### Out of scope
 
 - Real banking data or systems
 - Production deployment
+- Remote MCP transports and OAuth (stdio only)
+- Multi-model comparison
+- Production hardening
 
 ## 7. Architecture
 
-See [architecture/overview.md](architecture/overview.md) for the planned (draft) architecture.
+Both modes share one agent loop, one tool registry, one banking service (which enforces authorization and writes the audit log) and one LLM client. Only the toolset differs. The full design is in [architecture/overview.md](architecture/overview.md).
+
+```mermaid
+flowchart TB
+    subgraph Harness["Benchmark harness"]
+        Runner["Runner<br/>(plan, preflight, rate limit, checkpoint)"]
+        Loop["Agent loop (shared)"]
+        LLM["LLM client<br/>(OpenAI-compatible, usage + timing)"]
+    end
+    subgraph MCPMode["MCP mode"]
+        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["FastMCP server"]
+    end
+    subgraph CodeMode["Code Mode"]
+        RunPy["run_python tool"] --> Monty["Monty sandbox<br/>(no fs / net / env)"]
+    end
+    Registry["Tool registry<br/>(4 tools, Pydantic I/O)"]
+    Bank["Banking service<br/>(authorization + audit log)"]
+    Data[("Synthetic dataset<br/>(seeded)")]
+    Runner --> Loop --> LLM
+    Loop --> MCPClient
+    Loop --> RunPy
+    MCPServer --> Registry
+    Monty -->|external function calls| Registry
+    Registry --> Bank --> Data
+```
 
 ## 8. Implementation Approaches
 
-To be decided in the design phase. Open questions:
+### MCP mode
 
-- Which MCP SDK?
-- Which sandbox technology?
-- Which model?
+A FastMCP server exposes the 4 registry tools over stdio and is started once per run. The client lists tools once and passes their schemas to the model. Multiple tool calls per turn are allowed. Every tool result is serialised as compact JSON and appended to the conversation.
+
+### Code Mode
+
+The model receives one tool, `run_python(code)`, and Python function stubs generated from the registry. Code runs in a warm Monty sandbox with the 4 tools exposed as host-bound external functions. Only the script's return value is sent back to the model. Script errors are returned to the model, which may retry within the turn limit.
+
+### Shared by both
+
+- Agent loop
+- Tool registry
+- Banking service
+- Security controls
+- LLM client
 
 ## 9. Technology Stack
 
-To be decided in the design phase. No choices have been made.
+| Component | Choice | Reason |
+|---|---|---|
+| Language | Python 3.12 | Repository standard |
+| LLM access | `openai` SDK against OpenRouter's OpenAI-compatible API | Model-agnostic; provider-reported token usage |
+| Model | OpenRouter free model with tool-calling support, set via `LLM_MODEL` | Chosen at Phase 4 from the live model list |
+| Agent loop | Hand-written (~150 lines), shared by both modes | Full visibility of every token ([ADR-0004](../../docs/decisions/0004-hand-rolled-agent-loop.md)) |
+| MCP | Official `mcp` Python SDK, FastMCP server, stdio transport | Reference implementation |
+| Code Mode sandbox | `pydantic-monty` | In-process isolated interpreter; no filesystem, network or env access ([ADR-0005](../../docs/decisions/0005-monty-code-mode-sandbox.md)) |
+| Analysis | `pandas` | Aggregation and percentiles |
+| Charts | `matplotlib` | Static PNG/SVG |
+| Packaging | uv workspace member | [ADR-0003](../../docs/decisions/0003-experiment-as-uv-workspace-member.md) |
 
 ## 10. Experimental Methodology
 
-Detailed methodology to be defined. Iterations, warm-up and concurrency will be decided during methodology design and stated here.
+- 8 cells: Scenario A x {MCP, Code Mode} and Scenario B x {10, 50, 200} x {MCP, Code Mode}.
+- 15 iterations per cell (120 measured tasks), plus one unmeasured warm-up task per mode.
+- Same model, temperature 0, same turn limit, same dataset and principal in both modes.
+- Cells run interleaved in a seed-shuffled order per iteration, so provider drift affects both modes equally.
+- Ground truth is computed by plain Python, never by an LLM; a task is correct only if every value matches.
+- A first-run reliability protocol (offline dry run, preflight, canary, checkpointing, budget guard) protects the limited free-tier request budget.
+
+Full details: [benchmarks/methodology.md](benchmarks/methodology.md).
 
 ## 11. Evaluation Metrics
 
-Planned metrics (estimated values will be labelled as estimated):
-
-- Average, p50 and p95 latency
-- Success and failure rate
-- Input, output and total tokens
-- Estimated cost
-- Context overhead
+| Metric | Measured / estimated | Source |
+|---|---|---|
+| Input, output, reasoning, total tokens per task | Measured | Provider-reported usage |
+| Model calls and tool calls per task | Measured | Agent loop |
+| End-to-end latency (mean, p50, p95) | Measured | Wall clock |
+| Latency breakdown (model, tool/sandbox, overhead) | Measured | Step timers |
+| Accuracy and partial score | Measured | Scoring vs ground truth |
+| Success / failure rate by outcome | Measured | Outcome counts |
+| Code-error retries (Code Mode) | Measured | Agent loop |
+| Estimated cost per task and per 1,000 tasks | **Estimated** | Tokens x paid-tier price snapshot (or labelled reference price) |
+| Peak prompt size per task | Measured | Max prompt tokens over calls |
 
 See [benchmarking standards](../../docs/standards/benchmarking-standards.md).
 
@@ -111,7 +186,15 @@ See [benchmarking standards](../../docs/standards/benchmarking-standards.md).
 
 ## 14. Limitations
 
-To be documented once the methodology is defined.
+Known in advance:
+
+- Single model.
+- Free-tier provider routing adds latency variance.
+- stdio MCP transport only (no network hop).
+- n=15 per cell makes p95 close to the sample maximum.
+- Monty runs a Python subset.
+- Synthetic data.
+- Cost is estimated, not billed.
 
 ## 15. Conclusion
 
@@ -119,7 +202,17 @@ To be documented once the methodology is defined.
 
 ## 16. How to Run
 
-Not yet implemented.
+Not yet implemented. Planned commands:
+
+- `dry-run`: run the whole pipeline offline against a scripted fake LLM (zero model requests).
+- `preflight`: validate configuration, model, pricing, MCP server, sandbox and ground truth.
+- `plan`: print the planned and worst-case request counts.
+- `canary`: run one task per cell for Scenario A and Scenario B volume 10.
+- `run [--resume]`: execute the full benchmark, resuming from the checkpoint if requested.
+- `analyze`: compute processed summaries from raw data.
+- `charts`: generate charts from processed data.
+- `report`: generate the Markdown report.
+- `linkedin-assets`: generate LinkedIn-ready visuals from processed data.
 
 ## 17. References
 

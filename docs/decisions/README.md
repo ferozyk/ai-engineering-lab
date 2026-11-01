@@ -8,3 +8,6 @@ To add one, copy [0000-template.md](0000-template.md) to the next free number (f
 |---|---|---|
 | [0001](0001-uv-hatchling-src-layout.md) | uv, hatchling and a src layout | Accepted |
 | [0002](0002-pydantic-settings-lazy-credentials.md) | pydantic-settings with lazy credential checks | Accepted |
+| [0003](0003-experiment-as-uv-workspace-member.md) | Experiment as uv workspace member | Accepted |
+| [0004](0004-hand-rolled-agent-loop.md) | Hand-rolled agent loop | Accepted |
+| [0005](0005-monty-code-mode-sandbox.md) | Monty as Code Mode sandbox | Accepted |

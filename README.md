@@ -15,7 +15,7 @@ A learning journey and engineering portfolio. This repository holds small, repro
 
 | # | Experiment | Status |
 |---|---|---|
-| 01 | [MCP vs Code Mode](experiments/01-mcp-vs-code-mode/) | Planned |
+| 01 | [MCP vs Code Mode](experiments/01-mcp-vs-code-mode/) | Design |
 
 ## Repository layout
 

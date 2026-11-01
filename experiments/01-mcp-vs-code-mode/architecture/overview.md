@@ -1,28 +1,157 @@
-# Planned architecture (draft, not implemented)
+# Architecture — MCP vs Code Mode
 
-These diagrams are conceptual and will be refined in the design phase. No MCP server, sandbox or banking simulation exists yet.
+Design approved; implementation pending (Phase 2+).
 
-## A. MCP
-
-```mermaid
-flowchart LR
-    App["App / LLM"] <--> Client["MCP client"]
-    Client <--> Server["MCP server"]
-    Server --> Bank["Banking simulation<br/>(authorization layer)"]
-```
-
-## B. Code Mode
+## 1. High-level diagram
 
 ```mermaid
-flowchart LR
-    LLM["LLM generates code"] --> Sandbox["Sandbox<br/>(allowlisted tool API bindings)"]
-    Sandbox --> Bank["Banking simulation<br/>(authorization layer)"]
+flowchart TB
+    subgraph Harness["Benchmark harness"]
+        Runner["Runner<br/>(plan, preflight, rate limit, checkpoint)"]
+        Loop["Agent loop (shared)"]
+        LLM["LLM client<br/>(OpenAI-compatible, usage + timing)"]
+    end
+    subgraph MCPMode["MCP mode"]
+        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["FastMCP server"]
+    end
+    subgraph CodeMode["Code Mode"]
+        RunPy["run_python tool"] --> Monty["Monty sandbox<br/>(no fs / net / env)"]
+    end
+    Registry["Tool registry<br/>(4 tools, Pydantic I/O)"]
+    Bank["Banking service<br/>(authorization + audit log)"]
+    Data[("Synthetic dataset<br/>(seeded)")]
+    Runner --> Loop --> LLM
+    Loop --> MCPClient
+    Loop --> RunPy
+    MCPServer --> Registry
+    Monty -->|external function calls| Registry
+    Registry --> Bank --> Data
 ```
 
-## Open design questions
+## 2. Shared components
 
-- Which MCP SDK and transport?
-- Which sandbox technology provides the required isolation?
-- How are the two approaches kept equivalent in security assumptions?
-- Which model, selected through configuration?
-- How are tool definitions shared so both approaches expose the same capabilities?
+### Synthetic dataset
+Deterministic generator with a fixed seed. Reference date `2026-10-01`.
+- One customer per volume level (volume 10, 50, 200), each with 4 accounts (for example current, savings, credit card, joint current).
+- Each account has exactly *volume* transactions dated within the analysis window `2026-07-03` to `2026-10-01` (90 days inclusive).
+- Transaction fields: `transaction_id, date, amount (negative = debit), currency, merchant, category, description`.
+- A fixed set of 6 categories.
+- A small number of debits above 1,000 per account, placed deterministically.
+- At least one customer the principal is NOT authorised for (used in authorization tests).
+
+### Banking service
+The only component that reads data. Every method takes a `Principal` and enforces that the principal may access the requested customer or account, independent of the LLM. It raises a typed `AuthorizationError`. For every call, allowed or denied, it writes an audit record to JSONL: timestamp, principal, channel (`mcp` or `code_mode`), tool, arguments, outcome, duration_ms.
+
+### Tool registry
+Single source of truth for 4 tools. Each tool has a name, description, Pydantic input model, Pydantic output model and handler.
+
+| Tool | Input | Output |
+|---|---|---|
+| `get_customer` | `customer_id` | id, name, segment |
+| `list_accounts` | `customer_id` | list of account_id, type, currency |
+| `get_balance` | `account_id` | account_id, available_balance, ledger_balance, currency, as_of |
+| `get_transactions` | `account_id, start_date, end_date` | list of transactions |
+
+Both modes derive their tool interface from the registry: MCP tool schemas and Code Mode function stubs are generated from the same names, descriptions and models. This guarantees parity. The fifth business capability, "generate customer account summary", is the agent's final answer, not a tool.
+
+### LLM client
+Thin wrapper over the `openai` SDK. Records per call: latency, prompt and completion tokens as reported by the provider, reasoning tokens if reported, the serving provider name if returned, finish reason, request id and retry count. Retries only transport errors (HTTP 429/5xx/timeouts) with exponential backoff, max 3 attempts; retries are recorded.
+
+### Agent loop (shared)
+Identical for both modes; only the toolset differs.
+1. `messages = [system, user]`.
+2. For turn in 1..`MAX_TURNS` (8): call the LLM with the toolset and record it. If there are tool calls, execute each and append the results; otherwise parse the final answer and stop.
+3. The final answer must be a JSON object matching the scenario's answer schema (inside a json code fence, or raw). Parse failure gives outcome `invalid_answer`.
+4. Outcomes: `correct`, `incorrect`, `invalid_answer`, `max_turns`, `infra_error` (provider failure after retries).
+
+### Configuration
+`LLM_MODEL`, `LLM_TEMPERATURE` (0), key and base URL from `ai_lab` settings; benchmark parameters from `configs/benchmark.yaml`.
+
+## 3. MCP mode
+
+- A FastMCP server exposes the 4 registry tools over stdio. It is started once per benchmark run (warm), not per task; a cold start is measured separately once and reported.
+- The server resolves its principal at startup from a scoped session token passed via environment variable; the token never appears in prompts or tool results.
+- The client calls `list_tools` once per run and converts MCP tool schemas into the LLM `tools` parameter.
+- Multiple tool calls in one model turn are allowed and executed in order (current best practice; avoids a strawman baseline).
+- Every tool result is serialised as compact JSON and appended to the conversation.
+
+```mermaid
+sequenceDiagram
+    participant L as LLM
+    participant A as Agent loop
+    participant S as MCP server
+    participant B as Banking service
+    A->>L: system + task + tool schemas
+    L-->>A: tool_calls (e.g. list_accounts)
+    A->>S: tools/call
+    S->>B: authorised call
+    B-->>S: data
+    S-->>A: result
+    A->>L: full history + result (grows each turn)
+    L-->>A: more tool_calls ... final JSON answer
+```
+
+## 4. Code Mode
+
+- The model receives one tool: `run_python(code: str)`. The system prompt contains Python function stubs (signature and docstring) generated from the registry, plus a short statement of the supported Python subset (derived from tests in Phase 3).
+- Code runs in a warm Monty pool. The 4 registry tools are exposed as Monty external functions bound host-side to the principal; the sandbox never sees credentials.
+- The script's final expression value is returned to the model as the tool result (compact JSON). Output above a size cap is rejected with an error (not silently truncated).
+- Script errors (syntax, runtime, authorization, limit exceeded) are returned to the model as the tool result; the model may correct and retry within `MAX_TURNS`. Error retries are counted.
+- Limits: max execution time per run, max host calls per run, and memory limits if supported by Monty (verified in Phase 3; if not supported, documented as a limitation).
+
+```mermaid
+sequenceDiagram
+    participant L as LLM
+    participant A as Agent loop
+    participant M as Monty sandbox
+    participant B as Banking service
+    A->>L: system (+ stubs) + task + run_python schema
+    L-->>A: run_python(code)
+    A->>M: execute code
+    loop inside sandbox
+        M->>B: external call (authorised host-side)
+        B-->>M: data
+    end
+    M-->>A: return value only
+    A->>L: history + small result
+    L-->>A: final JSON answer
+```
+
+## 5. Security controls (equal in both modes)
+
+| Control | MCP mode | Code Mode |
+|---|---|---|
+| Authentication | Scoped session token resolved at server start | Host-side principal binding |
+| Authorization | Banking service checks principal on every call | Banking service checks principal on every call |
+| Tool allowlist | Only the 4 registry tools exist on the server | Only 4 external functions are exposed to Monty |
+| Input validation | Pydantic input models | Same Pydantic input models |
+| Timeouts | Per tool call | Per tool call, plus sandbox execution limit |
+| Error handling | Typed errors returned to the model as tool errors | Typed errors returned to the model as tool errors |
+| Audit logging | Same JSONL audit log, `channel = mcp` | Same JSONL audit log, `channel = code_mode` |
+| Credential exposure | Never in prompts or tool results | Never in prompts, tool results or sandbox |
+| Code execution isolation | N/A (no model-generated code) | Monty: no filesystem, network or environment |
+
+## 6. Planned code layout
+
+```text
+experiments/01-mcp-vs-code-mode/
+├── pyproject.toml                  # workspace member: mcp, openai, pydantic-monty, pandas, matplotlib
+├── configs/benchmark.yaml
+├── src/mcp_vs_code_mode/
+│   ├── banking/      # dataset generator, models, service (authZ + audit)
+│   ├── tools/        # registry
+│   ├── mcp_server/   # FastMCP server
+│   ├── code_mode/    # Monty runner + stub generation
+│   ├── agent/        # shared loop, toolsets (mcp, code), LLM client
+│   ├── scenarios/    # prompts, answer schemas, ground truth, scoring
+│   ├── bench/        # plan, preflight, runner, analysis, charts, report, linkedin assets
+│   └── cli.py
+└── tests/            # unit + integration with a scripted fake LLM
+```
+
+## 7. Open design questions (to resolve in Phase 3)
+
+- Exact Monty API for external functions, and whether memory limits are configurable.
+- The Python subset the system prompt advertises (derived from tests).
+
+Related decisions: [ADR-0003](../../../docs/decisions/0003-experiment-as-uv-workspace-member.md), [ADR-0004](../../../docs/decisions/0004-hand-rolled-agent-loop.md), [ADR-0005](../../../docs/decisions/0005-monty-code-mode-sandbox.md).
