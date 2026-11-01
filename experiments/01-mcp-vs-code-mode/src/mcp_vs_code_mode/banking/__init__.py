@@ -1,0 +1,70 @@
+"""Synthetic banking domain: models, dataset, authentication, audit and service."""
+
+from mcp_vs_code_mode.banking.audit import AuditLog, AuditOutcome, AuditRecord, Channel
+from mcp_vs_code_mode.banking.auth import Principal, SessionStore, benchmark_principal
+from mcp_vs_code_mode.banking.dataset import (
+    ACCOUNT_TYPES,
+    DATASET_VERSION,
+    DEFAULT_SEED,
+    REFERENCE_DATE,
+    UNAUTHORIZED_CUSTOMER_ID,
+    VOLUMES,
+    WINDOW_END,
+    WINDOW_START,
+    account_ids_for,
+    customer_id_for,
+    generate_dataset,
+)
+from mcp_vs_code_mode.banking.errors import (
+    AuthenticationError,
+    AuthorizationError,
+    BankingError,
+    InvalidRequestError,
+    NotFoundError,
+)
+from mcp_vs_code_mode.banking.models import (
+    SPEND_CATEGORIES,
+    Account,
+    Balance,
+    Customer,
+    Dataset,
+    SpendCategory,
+    Transaction,
+    TransactionCategory,
+)
+from mcp_vs_code_mode.banking.service import BankingService
+
+__all__ = [
+    "ACCOUNT_TYPES",
+    "DATASET_VERSION",
+    "DEFAULT_SEED",
+    "REFERENCE_DATE",
+    "SPEND_CATEGORIES",
+    "UNAUTHORIZED_CUSTOMER_ID",
+    "VOLUMES",
+    "WINDOW_END",
+    "WINDOW_START",
+    "Account",
+    "AuditLog",
+    "AuditOutcome",
+    "AuditRecord",
+    "AuthenticationError",
+    "AuthorizationError",
+    "Balance",
+    "BankingError",
+    "BankingService",
+    "Channel",
+    "Customer",
+    "Dataset",
+    "InvalidRequestError",
+    "NotFoundError",
+    "Principal",
+    "SessionStore",
+    "SpendCategory",
+    "Transaction",
+    "TransactionCategory",
+    "account_ids_for",
+    "benchmark_principal",
+    "customer_id_for",
+    "generate_dataset",
+]
