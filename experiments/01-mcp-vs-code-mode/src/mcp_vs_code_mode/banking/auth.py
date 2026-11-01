@@ -46,10 +46,10 @@ class SessionStore:
 
 
 def benchmark_principal() -> Principal:
-    """Relationship manager allowed to see the three benchmark customers only (not CUST-9999)."""
+    """Relationship manager allowed to see the four benchmark customers only (not CUST-9999)."""
     return Principal(
         principal_id="rm-001",
-        allowed_customer_ids=frozenset({"CUST-0010", "CUST-0050", "CUST-0200"}),
+        allowed_customer_ids=frozenset({"CUST-0010", "CUST-0050", "CUST-0100", "CUST-0200"}),
     )
 
 

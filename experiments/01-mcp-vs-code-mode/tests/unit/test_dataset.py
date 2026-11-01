@@ -1,5 +1,7 @@
 """Unit tests for the synthetic dataset generator."""
 
+import hashlib
+import json
 from collections import Counter
 from decimal import Decimal
 
@@ -19,8 +21,9 @@ from mcp_vs_code_mode.banking import (
 pytestmark = pytest.mark.unit
 
 # Changing the generator invalidates comparability of benchmark results;
-# update deliberately and bump DATASET_VERSION.
-GOLDEN_CHECKSUM = "b89980294a7d99858c92b817fd29b47e8e69fe51cce01d6fedbc0c18d557199c"
+# update deliberately and bump DATASET_VERSION. (1.1.0: volume 100 appended; the volumes
+# present in 1.0.0 are guarded separately by test_existing_volumes_unchanged.)
+GOLDEN_CHECKSUM = "ad579f7026dd30417869520cc9b159715625e6eea05deabaf6e8faf9dab96d96"
 
 
 def test_generation_is_deterministic(dataset: Dataset) -> None:
@@ -72,3 +75,31 @@ def test_unauthorized_customer(dataset: Dataset) -> None:
         a.account_id for a in dataset.accounts if a.customer_id == UNAUTHORIZED_CUSTOMER_ID
     ] == ["ACC-9999-1"]
     assert len([t for t in dataset.transactions if t.account_id == "ACC-9999-1"]) == 5
+
+
+def _fingerprint(ds: Dataset, customer_ids: set[str]) -> str:
+    accs = [a for a in ds.accounts if a.customer_id in customer_ids]
+    ids = {a.account_id for a in accs}
+    payload = {
+        "customers": [
+            c.model_dump(mode="json") for c in ds.customers if c.customer_id in customer_ids
+        ],
+        "accounts": [a.model_dump(mode="json") for a in accs],
+        "balances": [b.model_dump(mode="json") for b in ds.balances if b.account_id in ids],
+        "transactions": [t.model_dump(mode="json") for t in ds.transactions if t.account_id in ids],
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def test_existing_volumes_unchanged(dataset: Dataset) -> None:
+    """Data of dataset 1.0.0 (canary runs) must stay byte-identical when volumes are appended."""
+    assert (
+        _fingerprint(dataset, {"CUST-0010", "CUST-0050", "CUST-0200"})
+        == "bfe1f5b4a00634e45f873c3b15bf0b8c4792e125ba1f2592a14c4aacde041dea"
+    )
+    assert (
+        _fingerprint(dataset, {UNAUTHORIZED_CUSTOMER_ID})
+        == "dbbc13e015c52c4520f283e325f2a68cab19d682000de5a34a00c19132b96911"
+    )

@@ -18,16 +18,21 @@ from mcp_vs_code_mode.banking.models import (
     TransactionCategory,
 )
 
-DATASET_VERSION = "1.0.0"
+DATASET_VERSION = "1.1.0"
 DEFAULT_SEED = 20261001
 REFERENCE_DATE = date(2026, 10, 1)
 WINDOW_START = date(2026, 7, 3)  # 90 days inclusive ending on REFERENCE_DATE
 WINDOW_END = REFERENCE_DATE
-VOLUMES: tuple[int, ...] = (10, 50, 200)
+VOLUMES: tuple[int, ...] = (10, 50, 100, 200)
 ACCOUNT_TYPES = ("current", "savings", "credit_card", "joint_current")
 UNAUTHORIZED_CUSTOMER_ID = "CUST-9999"
 
 _UNAUTHORIZED_VOLUME = 9999
+# Generation order matters: all customers draw from one random stream. Volumes 10, 50 and 200
+# (and the unauthorized customer) are generated first, exactly as in dataset 1.0.0, so their
+# data stays byte-identical to the canary runs. Volume 100 is generated last, appended after.
+_PRIMARY_VOLUMES: tuple[int, ...] = (10, 50, 200)
+_APPENDED_VOLUMES: tuple[int, ...] = (100,)
 _UNAUTHORIZED_TXN_COUNT = 5
 _SEGMENTS = ("retail", "premier", "business")
 _MERCHANTS: dict[TransactionCategory, tuple[str, ...]] = {
@@ -98,8 +103,11 @@ def generate_dataset(seed: int = DEFAULT_SEED) -> Dataset:
     balances: list[Balance] = []
     transactions: list[Transaction] = []
 
-    plan: list[tuple[int, int, int]] = [(volume, len(ACCOUNT_TYPES), volume) for volume in VOLUMES]
+    plan: list[tuple[int, int, int]] = [
+        (volume, len(ACCOUNT_TYPES), volume) for volume in _PRIMARY_VOLUMES
+    ]
     plan.append((_UNAUTHORIZED_VOLUME, 1, _UNAUTHORIZED_TXN_COUNT))
+    plan.extend((volume, len(ACCOUNT_TYPES), volume) for volume in _APPENDED_VOLUMES)
 
     for volume, account_count, txn_count in plan:
         customer_id = customer_id_for(volume)

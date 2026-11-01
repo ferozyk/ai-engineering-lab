@@ -42,7 +42,7 @@ def test_revoked_token_fails() -> None:
 def test_benchmark_principal_scope() -> None:
     principal = benchmark_principal()
     assert principal.principal_id == "rm-001"
-    assert {"CUST-0010", "CUST-0050", "CUST-0200"} <= principal.allowed_customer_ids
+    assert {"CUST-0010", "CUST-0050", "CUST-0100", "CUST-0200"} <= principal.allowed_customer_ids
     assert UNAUTHORIZED_CUSTOMER_ID not in principal.allowed_customer_ids
 
 
