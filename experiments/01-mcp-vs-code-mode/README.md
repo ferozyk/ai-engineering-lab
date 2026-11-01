@@ -13,8 +13,8 @@ Terminology used throughout:
 - **MCP mode:** the model calls tools exposed by an MCP server; every tool result enters the model context.
 - **Code Mode:** the model gets one tool, `run_python`, and writes a script that calls the same tools inside a sandbox; only the script's return value enters the model context.
 - **Scenario A (simple lookup)** and **Scenario B (chained aggregation)**.
-- **Volume:** transactions per account in Scenario B: 10, 50, 100, 200.
-- **Cell:** one (scenario, volume, mode) combination. There are 10 cells.
+- **Volume:** transactions per account in Scenario B. The dataset has 10, 50, 100 and 200; the measured run uses 10 and 100.
+- **Cell:** one (scenario, volume, mode) combination. The measured run has 6 cells.
 - **Task:** one execution of one cell.
 
 ## 2. Research Question
@@ -30,9 +30,9 @@ As the number of tools grows, so does the context a model must carry. The choice
 Pre-registered. All hypotheses are unverified. The 25% threshold in H1 was fixed before any run, and results will be reported whether or not they support the hypotheses.
 
 - **H1 (parity on simple lookups):** For Scenario A, mean total tokens and p50 latency differ by less than 25% between modes.
-- **H2 (token savings on chaining):** For Scenario B, Code Mode uses fewer total tokens than MCP mode at every volume, and the gap widens as volume increases.
-- **H3 (latency):** For Scenario B, Code Mode has lower p50 latency at volume 50 and 200. At volume 10 the difference may be small.
-- **H4 (accuracy):** MCP mode accuracy decreases as volume increases, because the model aggregates large tool outputs in-context; Code Mode accuracy remains stable, with failures dominated by code errors rather than arithmetic errors.
+- **H2 (token savings on chaining):** For Scenario B, Code Mode uses fewer total tokens than MCP mode at every measured volume, and the gap widens as volume increases.
+- **H3 (latency):** For Scenario B, Code Mode has lower p50 latency at the largest measured volume (100 in the measured run). At the smallest volume the difference may be small.
+- **H4 (accuracy):** MCP mode accuracy at the largest measured volume is lower than at the smallest, because the model aggregates large tool outputs in-context; Code Mode accuracy stays stable (max - min across measured volumes at most 0.10), with failures dominated by code errors rather than arithmetic errors.
 
 ## 5. Objectives
 
@@ -79,7 +79,7 @@ For Code Mode, generated code runs only in a sandbox with filesystem restriction
 Two scenarios (details in [benchmarks/methodology.md](benchmarks/methodology.md)):
 
 - **Scenario A — Simple lookup:** retrieve the available balance of one account.
-- **Scenario B — Chained aggregation:** for one customer and a fixed 90-day window, retrieve balances and transactions across 4 accounts and compute per-account spend by category, large debits and the total balance, at 10, 50, 100 and 200 transactions per account.
+- **Scenario B — Chained aggregation:** for one customer and a fixed 90-day window, retrieve balances and transactions across 4 accounts and compute per-account spend by category, large debits and the total balance, at 10, 50, 100 and 200 transactions per account in the dataset. The measured run uses volumes 10 and 100 only (maintainer decision before any measured run); volumes 50 and 200 are not measured. Canary observations at volume 200 are recorded in [methodology section 3](benchmarks/methodology.md#3-controls).
 
 ### Out of scope
 
@@ -151,8 +151,8 @@ The model receives one tool, `run_python(code)`, and Python function stubs gener
 
 ## 10. Experimental Methodology
 
-- 10 cells: Scenario A x {MCP, Code Mode} and Scenario B x {10, 50, 100, 200} x {MCP, Code Mode}.
-- 10 iterations per cell (100 measured tasks), plus one unmeasured warm-up task per mode.
+- 6 measured cells: Scenario A x {MCP, Code Mode} and Scenario B x {10, 100} x {MCP, Code Mode}. The dataset also contains volumes 50 and 200, which are not part of the measured run (see [methodology section 3](benchmarks/methodology.md#3-controls)).
+- 10 iterations per cell (60 measured tasks), plus one unmeasured warm-up task per mode.
 - Same model, temperature 0, same turn limit, same dataset and principal in both modes.
 - Cells run interleaved in a seed-shuffled order per iteration, so provider drift affects both modes equally.
 - Ground truth is computed by plain Python, never by an LLM; a task is correct only if every value matches.
@@ -189,6 +189,7 @@ See [benchmarking standards](../../docs/standards/benchmarking-standards.md).
 Known in advance:
 
 - Single model.
+- Measured volumes are 10 and 100 only; behaviour at 50 and 200 is not measured. See [methodology section 3](benchmarks/methodology.md#3-controls) for the scope decision and single-run canary observations at volume 200 (not measured statistics).
 - Free-tier provider routing adds latency variance.
 - stdio MCP transport only (no network hop).
 - n=10 per cell makes p95 close to the sample maximum.

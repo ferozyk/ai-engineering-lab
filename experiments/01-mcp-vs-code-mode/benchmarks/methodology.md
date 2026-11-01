@@ -22,7 +22,7 @@ Status: design approved; runner implemented. All request counts below are planni
 
 The window is stated as explicit dates (no relative dates) to remove ambiguity.
 
-Scenario B is run at four volumes (transactions per account): 10, 50, 100 and 200. This gives 10 cells: A x {mcp, code} and B x {10, 50, 100, 200} x {mcp, code}.
+The dataset contains four Scenario B volumes (transactions per account): 10, 50, 100 and 200. The measured run covers Scenario A and Scenario B at volumes 10 and 100 only (maintainer decision, see section 3). This gives 6 measured cells: A x {mcp, code} and B x {10, 100} x {mcp, code}.
 
 ## 2. Ground truth and scoring
 
@@ -34,18 +34,20 @@ Ground truth is computed by plain Python over the dataset, never by an LLM. A ta
 - Same system prompt structure (role, rules, answer schema), differing only in the tool description section.
 - Same dataset and principal.
 - Both runtimes warm.
-- Interleaved execution: for each iteration, the 10 cells run in an order shuffled with a fixed seed, so provider-side drift affects both modes equally.
+- Interleaved execution: for each iteration, the 6 cells run in an order shuffled with a fixed seed, so provider-side drift affects both modes equally.
 
 **Pre-run protocol change (canary `20261101T154924Z-canary`).** The first canary used `max_output_tokens = 4096`. In the B200 MCP task the model spent all 4,096 output tokens on reasoning over a 68,038-token prompt and was truncated (`finish_reason = length`) before writing an answer. That cap was a harness setting, not a model limit, and would have failed every B200 MCP task by construction. Before any measured run, the cap was raised to 32,768 for **both** modes (and the request timeout from 180 s to 600 s). Answers still truncated at 32,768 tokens are recorded as failures, not excluded. The canary's raw data is kept in `results/raw/20261101T154924Z-canary/`.
 
 **Pre-run protocol change (2026-11-02, before the measured run).** Volume 100 was added (generated after the existing customers, so the dataset 1.0.0 data for volumes 10, 50 and 200 is byte-identical; dataset version 1.1.0) and iterations were reduced from 15 to 10 by maintainer decision. Canary runs used dataset 1.0.0; their volume 10 and 200 data is unchanged.
 
+**Pre-run protocol change (2026-11-02, scope, before any measured run).** Measured run scope reduced to Scenario A and Scenario B volumes 10 and 100 (maintainer decision, before any measured run). H3 and H4 were restated relative to the largest/smallest measured volume. Volume 200 is not part of the measured run. Canary observations (single runs, not measured statistics): MCP at volume 200 was cut off at the 32,768-token output limit in canaries 20261101T155803Z (104,255 tokens) and 20261101T162525Z (106,185 tokens); Code Mode at volume 200 answered correctly with 5,441 tokens in canary 20261101T163457Z.
+
 **Pre-run protocol change (canary `20261101T162525Z-canary`).** In the B10 Code Mode task the model reused a variable defined in an earlier `run_python` call and got `NameError`, costing an extra round trip. Each call deliberately runs in a fresh sandbox, but the Code Mode instructions did not say so — an ambiguity in the harness, not a property of Code Mode. Before any measured run, one rule was added to the Code Mode instructions: "Each run_python call starts in a fresh sandbox: variables, functions and imports from earlier calls are not kept, so each call must contain all the code it needs." The MCP instructions are unchanged. Raw data from this canary is kept in `results/raw/20261101T162525Z-canary/`.
 
 ## 4. Sample size and request budget (planning estimates)
 
-- Iterations: 10 per cell, giving 100 measured tasks, plus 1 unmeasured warm-up task per mode (2 warm-up tasks). 10 is exactly the minimum measured count per cell below which hypothesis verdicts are reported as inconclusive (section 10), so any infra error that is not recovered by resume makes the affected hypotheses inconclusive.
-- Planning estimate (not a result): about 300 model requests typical; lower bound 244 (ideal agent); worst case 102 x 8 = 816. The `plan` command computes and prints both figures before anything runs.
+- Iterations: 10 per cell, giving 6 cells x 10 = 60 measured tasks, plus 1 unmeasured warm-up task per mode (2 warm-up tasks). 10 is exactly the minimum measured count per cell below which hypothesis verdicts are reported as inconclusive (section 10), so any infra error that is not recovered by resume makes the affected hypotheses inconclusive.
+- Planning estimate (not a result): lower bound 144 (ideal agent: 4 warm-up requests plus 14 per iteration x 10); worst case 62 x 8 = 496. The `plan` command computes and prints both figures before anything runs.
 - OpenRouter free tier at this account level: 20 requests per minute, 1,000 per day. The runner throttles to 15 requests per minute and stops cleanly at a configurable daily cap (default 900). The run is resumable.
 
 ## 5. Metrics
@@ -118,7 +120,7 @@ All charts are generated from `processed/` data.
 
 | File | Type | Shows |
 |---|---|---|
-| `tokens_vs_volume` | Line (x: transactions per account, log scale 10/50/200; y: mean total tokens per task), MCP vs Code Mode, min-max band | Headline: how token use scales with chained data |
+| `tokens_vs_volume` | Line (x: transactions per account, log scale, measured volumes only (10 and 100 for the scoped run); y: mean total tokens per task), MCP vs Code Mode, min-max band | Headline: how token use scales with chained data |
 | `latency_vs_volume` | Line, p50 with p95 markers | Latency scaling |
 | `cost_vs_volume` | Line, estimated USD per 1,000 tasks, labelled "Estimated" | Cost scaling |
 | `model_calls_vs_volume` | Line, mean model calls per task | Round trips |
@@ -137,6 +139,8 @@ Token and latency statistics include all tasks with outcome other than `infra_er
 | Hypothesis | Supported if and only if |
 |---|---|
 | H1 | For Scenario A, both \|mean total tokens(code) - mean total tokens(mcp)\| / mean total tokens(mcp) < 0.25 and \|p50 latency(code) - p50 latency(mcp)\| / p50 latency(mcp) < 0.25. |
-| H2 | For every Scenario B volume, mean total tokens(code) < mean total tokens(mcp), and the absolute difference (mcp - code) strictly increases with volume. |
-| H3 | For Scenario B, p50 latency(code) < p50 latency(mcp) at volume 50 and at volume 200. |
-| H4 | Accuracy(mcp, 200) < accuracy(mcp, 10), and max - min of Code Mode accuracy across volumes is at most 0.10. |
+| H2 | For every measured Scenario B volume, mean total tokens(code) < mean total tokens(mcp), and the absolute difference (mcp - code) strictly increases with volume. |
+| H3 | For Scenario B, p50 latency(code) < p50 latency(mcp) at the largest measured volume. |
+| H4 | Accuracy(mcp, largest measured volume) < accuracy(mcp, smallest measured volume), and max - min of Code Mode accuracy across measured volumes is at most 0.10. |
+
+The smallest and largest volumes are taken from the Scenario B volumes present in the run (10 and 100 for the scoped measured run); verdicts and evidence name the actual volumes. A verdict is also "inconclusive" when fewer than 2 Scenario B volumes are present (H2 and H4).
