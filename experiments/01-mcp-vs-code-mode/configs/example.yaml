@@ -1,9 +1,1 @@
-# Placeholder - not consumed by any code yet.
-experiment: mcp-vs-code-mode
-version: 0.1.0
-dataset_version: null
-approaches: [mcp, code_mode]
-iterations: null    # decide during methodology design
-warmup: null        # decide during methodology design
-timeout_seconds: null
-# Model provider and model id come from LLM_PROVIDER / LLM_MODEL env vars - never set them here.
+# Placeholder kept for the experiment template. The real configuration is benchmark.yaml.

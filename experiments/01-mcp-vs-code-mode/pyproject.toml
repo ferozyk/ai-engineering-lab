@@ -7,13 +7,18 @@ license = "MIT"
 authors = [{ name = "Feroz Khatri" }]
 dependencies = [
     "ai-engineering-lab",
+    "httpx>=0.28.1",
     "matplotlib>=3.11.2",
     "mcp>=2.3.0",
     "openai>=3.42.0",
     "pandas>=3.1.0",
     "pydantic>=2.9",
     "pydantic-monty>=1.4.0",
+    "pyyaml>=6.0.3",
 ]
+
+[project.scripts]
+mcp-vs-code-mode = "mcp_vs_code_mode.cli:main"
 
 [tool.uv.sources]
 ai-engineering-lab = { workspace = true }

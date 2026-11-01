@@ -1,0 +1,26 @@
+# Benchmark configuration for experiment 01. The model id comes from LLM_MODEL (never set here).
+experiment: mcp-vs-code-mode
+experiment_version: 0.1.0
+iterations: 15
+warmup_tasks_per_mode: 1          # scenario A, unmeasured
+volumes: [10, 50, 200]
+max_turns: 8
+max_output_tokens: 4096
+temperature: 0.0
+order_seed: 20261101              # seeds per-iteration cell shuffling
+llm_seed: null                    # sent to the provider only if not null
+rate_limit_per_minute: 15         # provider limit is 20; stay below it
+daily_request_cap: 900            # hard stop for this tool (provider limit 1,000)
+request_timeout_seconds: 180
+mcp_call_timeout_seconds: 10
+sandbox:
+  max_duration_secs: 5
+  max_memory_mb: 128
+  max_host_calls: 100
+pricing:
+  # Used only if the paid variant of LLM_MODEL cannot be found in the provider's model list.
+  reference_model_label: null
+  reference_prompt_usd_per_million: null
+  reference_completion_usd_per_million: null
+canary:
+  cells: ["A:mcp", "A:code", "B10:mcp", "B10:code", "B200:mcp"]
