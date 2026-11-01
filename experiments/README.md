@@ -2,7 +2,7 @@
 
 | # | Experiment | Status |
 |---|---|---|
-| 01 | [MCP vs Code Mode](01-mcp-vs-code-mode/) | Design |
+| 01 | [MCP vs Code Mode](01-mcp-vs-code-mode/) | Complete |
 
 ## Starting a new experiment
 

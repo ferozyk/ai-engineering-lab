@@ -8,7 +8,7 @@ Every number below comes from `results/processed/20261101T203521Z-full/cells.csv
 Link: https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/01-mcp-vs-code-mode
 (The repository must be pushed before posting, or the link will not resolve.)
 
-Suggested image: `linkedin/visual-assets/20261101T203521Z-full/linkedin-landscape.png`
+Suggested image (local file, gitignored, not in the repository): `linkedin/visual-assets/20261101T203521Z-full/linkedin-landscape.png`
 (1200 x 627). The portrait card works better as a second slide or a carousel.
 
 ---

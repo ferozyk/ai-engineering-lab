@@ -21,3 +21,5 @@ Assets live in a per-run subdirectory, `visual-assets/<run_id>/`, and are produc
 Dry-run images are written under the gitignored `results/dry-run/<run_id>/linkedin/` and are watermarked as simulated.
 
 Assets are generated from data in `results/`, never from invented values. Original charts stay in `results/charts/`.
+
+These images are generated locally for posting and are **not committed** (`visual-assets/*/` is gitignored). The README embeds the equivalent charts from `results/charts/<run_id>/` instead.
