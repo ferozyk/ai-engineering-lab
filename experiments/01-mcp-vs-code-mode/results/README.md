@@ -1,6 +1,6 @@
 # results
 
-No results yet: the experiment is not implemented.
+No real results yet: the benchmark pipeline is verified offline and the real run is pending.
 
 ## Planned layout
 
@@ -13,7 +13,7 @@ results/
 │   ├── tool_calls.jsonl     # one record per tool / sandbox execution
 │   ├── audit.jsonl          # banking-service audit log
 │   └── transcripts/<task_id>.json
-├── processed/<run_id>/summary.json, summary.csv
+├── processed/<run_id>/summary.json, cells.csv, comparisons.csv
 ├── charts/<run_id>/*.png, *.svg
 └── reports/<run_id>/report.md
 ```
@@ -25,6 +25,8 @@ results/
 | `charts/` | Charts generated from processed data | PNG, SVG |
 | `reports/` | Written benchmark reports | Markdown |
 
-Dry-run output goes to a gitignored `results/dry-run/` directory, with charts watermarked `SIMULATED DATA`.
+Each run has its own `<run_id>/` subdirectory under `raw/`, `processed/`, `charts/` and `reports/`. Produced per run: `summary.json`, `cells.csv` and `comparisons.csv` (processed); one PNG and one SVG per chart (charts; see `benchmarks/methodology.md` for the list); `report.md` (reports). Regenerate them from the raw data with `uv run mcp-vs-code-mode publish <run_id>`.
+
+Dry-run output goes to a gitignored `results/dry-run/<run_id>/` directory (with `raw/`, `processed/`, `charts/`, `reports/` and `linkedin/` inside), with charts watermarked `SIMULATED DATA — NOT A RESULT`.
 
 Never hand-edit results. Failed runs are recorded, not discarded.

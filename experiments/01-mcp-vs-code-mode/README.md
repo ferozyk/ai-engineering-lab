@@ -1,6 +1,6 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Phase 4a — runner, preflight and CLI implemented; analysis pending
+> **Status:** Phase 4 — benchmark pipeline complete and verified offline; real run pending
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-01
 
@@ -206,13 +206,25 @@ Set `OPENROUTER_API_KEY` and `LLM_MODEL` in `.env` (see `.env.example`). The mod
 
 ```bash
 uv run mcp-vs-code-mode plan                 # request estimate, no network
-uv run mcp-vs-code-mode dry-run              # whole schedule offline against a scripted oracle model
+uv run mcp-vs-code-mode dry-run              # whole schedule offline against a scripted oracle model, then publish
 uv run mcp-vs-code-mode preflight            # config, model, pricing, key tier, MCP server, sandbox (no model request)
 uv run mcp-vs-code-mode preflight --live     # same, plus exactly one model request
 uv run mcp-vs-code-mode canary               # one task per canary cell against the provider
 uv run mcp-vs-code-mode run                  # the full benchmark
 uv run mcp-vs-code-mode run --resume RUN_ID  # continue a halted run
+uv run mcp-vs-code-mode publish RUN_ID       # analyze + charts + report + LinkedIn images, no requests
 ```
+
+`publish` is `analyze`, `charts`, `report` and `linkedin-assets` in one go; each can also be run on its own. All of them read only the raw files of the run, so they can be repeated at any time without new model requests. Artefact locations for a run `RUN_ID`:
+
+| Artefact | Location |
+|---|---|
+| Processed summary | `results/processed/RUN_ID/summary.json`, `cells.csv`, `comparisons.csv` |
+| Charts (PNG and SVG) | `results/charts/RUN_ID/` |
+| Markdown report | `results/reports/RUN_ID/report.md` |
+| LinkedIn images | `linkedin/visual-assets/RUN_ID/linkedin-landscape.png`, `linkedin-portrait.png` |
+
+Dry-run artefacts live together under `results/dry-run/RUN_ID/` (`raw/`, `processed/`, `charts/`, `reports/`, `linkedin/`), are gitignored, and are watermarked `SIMULATED DATA — NOT A RESULT`. The report leaves its interpretation, trade-off and conclusion sections as marked author placeholders.
 
 Safety rails:
 
@@ -221,8 +233,6 @@ Safety rails:
 - The runner halts cleanly on a daily-limit signal, auth, missing-model or bad-request errors, three consecutive infra errors, or when fewer requests remain than one task could use. Every finished task is already on disk, so `run --resume` repeats only `infra_error` tasks.
 - `run` refuses a dirty git tree unless `--allow-dirty`, so results map to a commit.
 - `dry-run` writes to the gitignored `results/dry-run/` and makes zero model requests; its output is simulated and not a measurement.
-
-Analysis, charts, report and LinkedIn assets are added in the next phase.
 
 ## 17. References
 
