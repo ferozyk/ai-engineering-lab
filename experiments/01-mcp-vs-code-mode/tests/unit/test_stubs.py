@@ -39,3 +39,7 @@ def test_prompt_section_contains_stubs_and_rules() -> None:
     assert "Sandbox rules:" in section
     assert "the modules json, math, datetime and collections" in section
     assert "run_python" in section
+
+
+def test_prompt_states_sandbox_is_fresh_per_call() -> None:
+    assert "Each run_python call starts in a fresh sandbox" in code_mode_prompt_section()

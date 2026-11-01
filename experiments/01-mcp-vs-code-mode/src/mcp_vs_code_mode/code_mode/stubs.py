@@ -40,6 +40,7 @@ Sandbox rules:
 - Do the data processing inside the code and return only the values the answer needs.
 - Supported: standard Python syntax, functions, loops, comprehensions, dict/list/set, and the modules json, math, datetime and collections.
 - There is no file, network or environment access.
+- Each run_python call starts in a fresh sandbox: variables, functions and imports from earlier calls are not kept, so each call must contain all the code it needs.
 - If the code raises an error, you receive the error; fix the code and call run_python again."""  # noqa: E501
 
 _INTRO = (
