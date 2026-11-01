@@ -129,9 +129,28 @@ def n_label(cells: Sequence[CellStats | None]) -> str:
     return f"n={counts[0]}–{counts[-1]} per point"
 
 
+SCENARIO_TITLES = {
+    "A": "Single lookup (one account balance)",
+    "B": "Chained task (4 accounts: balance, spend by category, large debits)",
+}
+# Subtitle variant: the full chained title nearly fills the figure width.
+_SUBTITLE_TITLES = {**SCENARIO_TITLES, "B": "Chained task (4 accounts)"}
+
+
+def group_label(scenario: str, volume: int | None, *, multiline: bool = False) -> str:
+    """Reader-facing label for a scenario/volume group."""
+    if scenario == "A" or volume is None:
+        return "Single lookup"
+    sep = "\n" if multiline else " · "
+    return f"Chained{sep}{volume} tx/account"
+
+
 def subtitle_text(summary: Summary, scenario: str, cells: Sequence[CellStats | None]) -> str:
     """Subtitle line: scenario, model id, sample size and run id."""
-    return f"Scenario {scenario} · {summary.model_id} · {n_label(cells)} · run {summary.run_id}"
+    return (
+        f"{_SUBTITLE_TITLES[scenario]} · {summary.model_id} · {n_label(cells)} · "
+        f"run {summary.run_id}"
+    )
 
 
 def add_header(
@@ -582,8 +601,10 @@ def scenario_a_parity(summary: Summary, out_dir: Path) -> list[Path]:
 
 
 def _groups(summary: Summary) -> list[tuple[str, str, int | None]]:
-    groups: list[tuple[str, str, int | None]] = [("A", "Scenario A", None)]
-    groups.extend(("B", f"B · {v}", v) for v in summary.volumes)
+    groups: list[tuple[str, str, int | None]] = [
+        ("A", group_label("A", None, multiline=True), None)
+    ]
+    groups.extend(("B", group_label("B", v, multiline=True), v) for v in summary.volumes)
     return groups
 
 
@@ -593,7 +614,8 @@ def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -
     fig, ax = _new_figure(
         summary,
         "Task latency distribution per cell",
-        f"Scenarios A and B · {summary.model_id} · {n_label(cells)} · run {summary.run_id}",
+        f"Single lookup and chained task · {summary.model_id} · {n_label(cells)} · "
+        f"run {summary.run_id}",
         "Measured. Box = interquartile range, line = median, whiskers = 1.5 x IQR; outliers "
         "not drawn. Latency excludes client-side throttling.",
     )
@@ -625,7 +647,7 @@ def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -
         ax.set_xticks(range(len(groups)), labels=[g[1] for g in groups])
         ax.set_xlim(-0.6, len(groups) - 0.4)
         ax.set_ylim(bottom=0)
-        ax.set_xlabel("Scenario · transactions per account")
+        ax.set_xlabel("Task type · transactions per account")
         ax.set_ylabel("Latency per task (seconds)")
         ax.legend(handles=_mode_patches(), loc="upper left", frameon=False, fontsize=9)
     else:
@@ -640,7 +662,8 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
     fig, ax = _new_figure(
         summary,
         "Accuracy by scenario and volume",
-        f"Scenarios A and B · {summary.model_id} · {n_label(cells)} · run {summary.run_id}",
+        f"Single lookup and chained task · {summary.model_id} · {n_label(cells)} · "
+        f"run {summary.run_id}",
         "Measured. Accuracy = correct answers / measured tasks (tasks with an infrastructure "
         "error are excluded and reported separately)."
         + (
@@ -675,7 +698,7 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
         ax.set_xlim(-0.6, len(groups) - 0.4)
         ax.set_ylim(0, 125)
         ax.set_yticks([0, 20, 40, 60, 80, 100])
-        ax.set_xlabel("Scenario · transactions per account")
+        ax.set_xlabel("Task type · transactions per account")
         ax.set_ylabel("Accuracy (% of measured tasks correct)")
         ax.legend(handles=_mode_patches(), loc="upper left", frameon=False, fontsize=9, ncols=2)
     else:
@@ -687,15 +710,18 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
     """Mean input vs output tokens per task for Scenario A and the largest Scenario B volume."""
     volumes = summary.volumes
     largest = volumes[-1] if volumes else None
-    panels: list[tuple[str, str, int | None]] = [("A", "Scenario A", None)]
+    panels: list[tuple[str, str, int | None]] = [("A", group_label("A", None), None)]
     if largest is not None:
-        panels.append(("B", f"Scenario B · {largest} transactions per account", largest))
+        panels.append(("B", group_label("B", largest), largest))
     cells = [summary.cell(s, v, m) for s, _, v in panels for m in MODES]
+    subtitle_scope = "Single lookup and chained task"
+    if largest is not None:
+        subtitle_scope += f" ({largest} tx/account)"
     fig = plt.figure(figsize=(10, 6))
     axes = [fig.add_axes((0.09 + 0.47 * i, 0.17, 0.36, 0.60)) for i in range(len(panels))]
     add_header(
         fig, summary, "Input and output tokens per task",
-        f"{' and '.join(p[1] for p in panels)} · {summary.model_id} · {n_label(cells)} · "
+        f"{subtitle_scope} · {summary.model_id} · {n_label(cells)} · "
         f"run {summary.run_id}",
     )  # fmt: skip
     add_footnote(

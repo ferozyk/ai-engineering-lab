@@ -19,6 +19,7 @@ from mcp_vs_code_mode.bench.charts import (
     TEXT_SECONDARY,
     add_watermark,
     draw_volume_lines,
+    group_label,
     mode_legend,
     style_context,
     title_prefix,
@@ -101,13 +102,14 @@ def _n_text(summary: Summary) -> str:
 def _scenario_a_sentence(summary: Summary) -> str:
     comp = summary.comparison("A", None)
     if comp is None or comp.tokens_reduction_pct is None:
-        return "Scenario A (single lookup): no measured token comparison available"
+        return "Single lookup (one account balance): no measured token comparison available"
     change = -comp.tokens_reduction_pct
     if abs(change) < _EQUAL_BELOW_PCT:
-        return "Scenario A (single lookup): tokens differ by under 1%"
+        return "Single lookup (one account balance): tokens differ by under 1%"
     direction = "more" if change > 0 else "fewer"
     return (
-        f"Scenario A (single lookup): tokens differ by {abs(change):.1f}% (Code Mode {direction})"
+        f"Single lookup (one account balance): tokens differ by {abs(change):.1f}% "
+        f"(Code Mode {direction})"
     )
 
 
@@ -140,7 +142,9 @@ def landscape(summary: Summary, out_dir: Path) -> Path:
             "chaining grows", fontsize=17, fontweight="bold", va="top",
         )  # fmt: skip
         fig.text(
-            0.04, 0.885, "Mean total tokens and p50 latency per task, by transactions per account",
+            0.04, 0.885,
+            "Chained task: summarise 4 accounts (balance, spend by category, large debits). "
+            "Mean tokens and p50 latency per task.",
             fontsize=10.5, color=TEXT_SECONDARY, va="top",
         )  # fmt: skip
         left = fig.add_axes((0.08, 0.31, 0.31, 0.47))
@@ -160,8 +164,8 @@ def landscape(summary: Summary, out_dir: Path) -> Path:
         )  # fmt: skip
         fig.text(
             0.04, 0.035,
-            f"{REPO_LINK}  ·  {summary.model_id}  ·  {_n_text(summary)}  ·  Scenario B  ·  "
-            f"run {summary.run_id}",
+            f"{REPO_LINK}  ·  {summary.model_id}  ·  {_n_text(summary)}  ·  "
+            f"Chained task: 4 accounts  ·  run {summary.run_id}",
             fontsize=9, color=TEXT_SECONDARY, va="bottom",
         )  # fmt: skip
         _save(fig, summary, path)
@@ -197,8 +201,8 @@ def _correct_line(summary: Summary) -> str:
 
 def _table_rows(summary: Summary) -> list[list[str]]:
     rows: list[list[str]] = []
-    groups: list[tuple[str, int | None]] = [("Scenario A", None)]
-    groups.extend((f"B · {v}", v) for v in summary.volumes)
+    groups: list[tuple[str, int | None]] = [(group_label("A", None), None)]
+    groups.extend((group_label("B", v), v) for v in summary.volumes)
     for label, volume in groups:
         scenario = "A" if volume is None else "B"
         mcp: CellStats | None = summary.cell(scenario, volume, "mcp")
@@ -271,7 +275,7 @@ def _draw_table(fig: Figure, summary: Summary) -> None:
         "Acc.\nMCP",
         "Acc.\nCode",
     ]
-    columns = [0.06, 0.27, 0.40, 0.53, 0.66, 0.79, 0.90]  # right edges for numeric columns
+    columns = [0.06, 0.40, 0.51, 0.61, 0.71, 0.82, 0.92]  # right edges for numeric columns
     top = 0.625
     for i, (x, text) in enumerate(zip(columns, header, strict=True)):
         fig.text(

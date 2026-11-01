@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from mcp_vs_code_mode.bench.analysis import Summary, summarise
-from mcp_vs_code_mode.bench.linkedin import render_linkedin, takeaway
+from mcp_vs_code_mode.bench.linkedin import _scenario_a_sentence, render_linkedin, takeaway
 
 pytestmark = pytest.mark.unit
 
@@ -120,3 +120,10 @@ def test_images_render_with_truncation(synthetic: Any, tmp_path: Path) -> None:
     landscape, portrait = render_linkedin(summary, tmp_path / "li")
     assert _png_size(landscape) == (1200, 627)
     assert _png_size(portrait) == (1080, 1350)
+
+
+def test_footer_sentence_uses_descriptive_name(synthetic: Any) -> None:
+    summary, _ = _summary(synthetic, 290)
+    sentence = _scenario_a_sentence(summary)
+    assert sentence.startswith("Single lookup (one account balance): tokens differ by")
+    assert "Scenario" not in sentence

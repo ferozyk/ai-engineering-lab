@@ -8,7 +8,14 @@ import matplotlib.pyplot as plt
 import pytest
 
 from mcp_vs_code_mode.bench.analysis import Summary, load_tasks, summarise
-from mcp_vs_code_mode.bench.charts import CHART_STEMS, render_all, volume_axis
+from mcp_vs_code_mode.bench.charts import (
+    CHART_STEMS,
+    SCENARIO_TITLES,
+    group_label,
+    render_all,
+    subtitle_text,
+    volume_axis,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -112,3 +119,22 @@ def test_volume_ticks_come_from_data(synthetic: Any, tmp_path: Path) -> None:
     assert [int(t) for t in ax.get_xticks()] == [10, 100]
     assert [t.get_text() for t in ax.get_xticklabels()] == ["10", "100"]
     plt.close(fig)
+
+
+def test_group_labels() -> None:
+    assert group_label("A", None) == "Single lookup"
+    assert group_label("B", 100) == "Chained · 100 tx/account"
+    assert group_label("B", 10, multiline=True) == "Chained\n10 tx/account"
+
+
+def test_no_internal_scenario_names_in_charts(synthetic: Any, tmp_path: Path) -> None:
+    _, written = _render(synthetic, tmp_path)
+    for svg in (p for p in written if p.suffix == ".svg"):
+        text = _svg_text(svg)
+        assert "Scenario A" not in text, svg.name
+        assert "Scenario B" not in text, svg.name
+
+
+def test_subtitle_uses_descriptive_title(synthetic: Any, tmp_path: Path) -> None:
+    summary, _ = _render(synthetic, tmp_path)
+    assert subtitle_text(summary, "A", []).startswith(SCENARIO_TITLES["A"])
