@@ -1,8 +1,8 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Phase 4 — benchmark pipeline complete and verified offline; real run pending
+> **Status:** Complete — measured run `20261101T203521Z-full`
 > **Experiment version:** 0.1.0
-> **Last updated:** 2026-11-01
+> **Last updated:** 2026-11-02
 
 ## 1. Overview
 
@@ -178,17 +178,63 @@ See [benchmarking standards](../../docs/standards/benchmarking-standards.md).
 
 ## 12. Results
 
-> Results pending. Do not fill in until benchmarks have been run.
+Measured run [`20261101T203521Z-full`](results/raw/20261101T203521Z-full/) on `nvidia/nemotron-3.5-super-vl:free` (served by Nvidia via OpenRouter), commit `3af3f6a`: 60 measured tasks (10 per row) plus 2 warm-ups, 172 model requests, 0 failed requests, 0 infrastructure errors. Full report: [`results/reports/20261101T203521Z-full/report.md`](results/reports/20261101T203521Z-full/report.md). Processed data: [`results/processed/20261101T203521Z-full/`](results/processed/20261101T203521Z-full/).
+
+| Scenario | Mode | Correct | Mean total tokens | p50 latency | p95 latency | Mean model calls | Est. cost / 1,000 tasks |
+|---|---|---|---|---|---|---|---|
+| A: simple lookup | MCP | 10/10 | 2,205 | 1.66 s | 1.9 s | 2.0 | $0.38 |
+| A: simple lookup | Code Mode | 10/10 | 2,022 | 1.65 s | 3.2 s | 2.0 | $0.36 |
+| B: chained, 10 tx/account | MCP | 10/10 | 13,555 | 18.62 s | 24.8 s | 3.6 | $3.47 |
+| B: chained, 10 tx/account | Code Mode | 10/10 | 7,554 | 7.63 s | 14.0 s | 2.8 | $1.69 |
+| B: chained, 100 tx/account | MCP | 0/10 | 65,579 | 137.29 s | 167.8 s | 3.5 | $19.21 |
+| B: chained, 100 tx/account | Code Mode | 10/10 | 7,117 | 8.52 s | 12.0 s | 2.9 | $1.66 |
+
+Tokens and latency are measured (provider-reported usage; wall clock excluding client-side throttling). Cost is **estimated** at the paid list price of the same model captured on 2026-11-01; the free tier cost nothing. With n=10, p95 is close to the slowest run.
+
+Of the 10 MCP tasks at 100 transactions per account, 5 were cut off at the 32,768-token output limit while still reasoning (their tokens are included and are a lower bound) and 5 returned well-formed answers containing arithmetic errors (mean field-level score 0.41 across all 10).
+
+Pre-registered hypotheses ([criteria](benchmarks/methodology.md#10-hypothesis-evaluation-criteria)), computed automatically:
+
+| | Hypothesis | Verdict |
+|---|---|---|
+| H1 | Simple lookups: tokens and p50 latency within 25% | Supported (tokens −8.3%, latency −0.4%) |
+| H2 | Chained: Code Mode uses fewer tokens, gap grows with volume | Supported (gap 6,001 → 58,462 tokens) |
+| H3 | Chained: Code Mode faster at the largest volume | Supported (8.5 s vs 137.3 s at 100) |
+| H4 | MCP accuracy drops with volume; Code Mode stays stable | Supported (MCP 100% → 0%; Code Mode 100% at both) |
+
+![Total tokens per task vs transactions per account](results/charts/20261101T203521Z-full/tokens_vs_volume.png)
+
+![Task latency vs transactions per account](results/charts/20261101T203521Z-full/latency_vs_volume.png)
+
+![Simple lookup: MCP vs Code Mode](results/charts/20261101T203521Z-full/scenario_a_parity.png)
+
+More charts (cost, accuracy, model calls, latency distribution, token breakdown) are in [`results/charts/20261101T203521Z-full/`](results/charts/20261101T203521Z-full/).
 
 ## 13. Analysis
 
-> Results pending. Do not fill in until benchmarks have been run.
+**Where the tokens go.** In MCP mode every tool result is appended to the conversation, so the prompt grows with the data: at 100 transactions per account the final prompt averaged 35,153 tokens. More striking is the output side: MCP tasks at that volume averaged 26,793 output tokens, of which 25,919 were reasoning tokens. The model was not just reading the transactions; it was trying to add them up in its head. In Code Mode the same rows never reach the model. The script loops, filters and sums inside the sandbox and returns a few hundred characters, so total tokens stayed flat at about 7,000 whether an account had 10 or 100 transactions.
+
+**Why MCP got the answers wrong.** The model fetched the right data in every MCP run (all balances and transactions, zero tool errors). The failures happened afterwards: either it ran out of output budget mid-reasoning, or it produced totals that were off by anything from a few cents to over 3,000. This is a property of asking a language model to do exact arithmetic over hundreds of numbers in context, not of the MCP protocol itself. A stronger model would likely do better on accuracy; the token growth would not go away, because it follows from where the data flows.
+
+**Where latency comes from.** Tool and sandbox execution took milliseconds in both modes (mean under 0.05 s per task); the MCP server connected once in about 0.4 s and the sandbox warmed up in about 0.03 s. Almost all task time is model time, so latency tracks tokens: 137 s vs 8.5 s at 100 transactions per account.
+
+**Where Code Mode costs more.** Code Mode was less predictable on the small chained task: between 2 and 5 model calls per run, and total tokens from 4,473 to 23,221, because the model sometimes inspected the data first or had to fix a runtime error in its own code. It also needs a real sandbox (here: no file, network or environment access, time, memory and host-call limits, credentials kept on the host) and a model that writes working code. For the simple lookup it brought no measurable benefit.
+
+**Engineering trade-offs.**
+
+| Prefer MCP tool calling when | Prefer Code Mode when |
+|---|---|
+| The agent makes a few calls with small results | The task chains several calls together |
+| The model mainly reads data rather than computing over it | Results are large and need filtering or aggregation |
+| You want a standard integration with no code execution to secure | Exact numbers matter and you can run code in a proper sandbox |
+| Predictable call counts matter more than token efficiency | Token cost and latency grow with data volume |
+
+These are complementary rather than competing: Code Mode in this experiment calls exactly the same tools, with the same authorisation, as the MCP server. The difference is only who processes the tool results: the model, or code the model wrote.
 
 ## 14. Limitations
 
-Known in advance:
 
-- Single model.
+- Single model (`nvidia/nemotron-3.5-super-vl:free`) with the provider's default reasoning behaviour; accuracy results in particular are model-specific.
 - Measured volumes are 10 and 100 only; behaviour at 50 and 200 is not measured. See [methodology section 3](benchmarks/methodology.md#3-controls) for the scope decision and single-run canary observations at volume 200 (not measured statistics).
 - Free-tier provider routing adds latency variance.
 - stdio MCP transport only (no network hop).
@@ -199,7 +245,11 @@ Known in advance:
 
 ## 15. Conclusion
 
-> Results pending. Do not fill in until benchmarks have been run.
+For a single lookup, MCP tool calling and Code Mode performed the same on tokens, latency and correctness, so the simpler MCP approach is the sensible default there. Once the task chained several calls over larger results, Code Mode used 44% fewer tokens at 10 transactions per account and 89% fewer at 100, was about 16 times faster at 100 (8.5 s vs 137 s median), and stayed correct (10/10) while MCP mode failed every run (0/10).
+
+The practical takeaway is not to replace MCP, but to recognise the point where an agent stops *looking up* data and starts *processing* it. Before that point, direct tool calls are simpler. After it, letting the model write code against the same tools is cheaper, faster and more reliable, provided the code runs in a properly restricted sandbox.
+
+These results come from one model, synthetic data and 10 runs per scenario. The direction of the token and latency effect follows from the architecture and should generalise; the exact accuracy numbers are model-specific and should be re-tested with other models.
 
 ## 16. How to Run
 
@@ -223,7 +273,7 @@ uv run mcp-vs-code-mode publish RUN_ID       # analyze + charts + report + Linke
 | Processed summary | `results/processed/RUN_ID/summary.json`, `cells.csv`, `comparisons.csv` |
 | Charts (PNG and SVG) | `results/charts/RUN_ID/` |
 | Markdown report | `results/reports/RUN_ID/report.md` |
-| LinkedIn images | `linkedin/visual-assets/RUN_ID/linkedin-landscape.png`, `linkedin-portrait.png` |
+| LinkedIn images | `linkedin/visual-assets/RUN_ID/linkedin-landscape.png`, `linkedin-portrait.png` (generated locally, gitignored) |
 
 Dry-run artefacts live together under `results/dry-run/RUN_ID/` (`raw/`, `processed/`, `charts/`, `reports/`, `linkedin/`), are gitignored, and are watermarked `SIMULATED DATA — NOT A RESULT`. The report leaves its interpretation, trade-off and conclusion sections as marked author placeholders.
 

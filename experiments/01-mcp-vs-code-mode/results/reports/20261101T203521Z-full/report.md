@@ -9,7 +9,7 @@
 
 Percentages compare Code Mode with MCP; negative token change means fewer tokens.
 
-> Author interpretation: _pending — to be written after reviewing the results._
+> Author interpretation: see the [experiment README](../../../README.md), sections 13 (Analysis) and 15 (Conclusion).
 
 ## Research question
 
@@ -114,11 +114,11 @@ Cost is estimated, not billed. Estimated at the paid variant's list price (nvidi
 | H3 | Scenario B: Code Mode has lower p50 latency than MCP at the largest measured volume (100). | supported | at volume 100: p50 latency mcp 137.29 s vs code 8.52 s (-93.8%) |
 | H4 | MCP accuracy at the largest measured volume (100) is lower than at the smallest (10); Code Mode accuracy max - min across measured volumes (10, 100) is at most 10 percentage points. | supported | MCP accuracy B10 100.0% vs B100 0.0%; Code Mode accuracy spread across volumes 0.0 percentage points |
 
-> Author interpretation pending.
+> Author interpretation: see the [experiment README](../../../README.md), section 13 (Analysis).
 
 ## Engineering trade-offs
 
-> Author section — pending.
+> Author section: see the [experiment README](../../../README.md), sections 13 and 15.
 
 ## Limitations
 
@@ -139,4 +139,4 @@ Cost is estimated, not billed. Estimated at the paid variant's list price (nvidi
 
 ## Conclusion
 
-> Author section — pending.
+> Author section: see the [experiment README](../../../README.md), sections 13 and 15.
