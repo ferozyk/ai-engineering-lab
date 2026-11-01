@@ -1,0 +1,52 @@
+{
+  "task_id": "c-A-code",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a banking data assistant acting for relationship manager rm-001.\nUse the available tools to obtain every value you report; never guess or invent data.\nWhen you have the answer, reply with only the JSON object requested and no other text.\n\nCall the run_python tool with Python code. The code runs in a sandbox where these functions are already defined (call them directly; do not import or redefine them):\n\ndef get_customer(customer_id: str) -> dict:\n    \"\"\"Get a customer's profile. Returns {customer_id, name, segment}.\n\n    customer_id: Customer ID, e.g. CUST-0050\n    \"\"\"\n\ndef list_accounts(customer_id: str) -> list[dict]:\n    \"\"\"List a customer's accounts. Returns a list of {account_id, customer_id, account_type, currency}.\n\n    customer_id: Customer ID, e.g. CUST-0050\n    \"\"\"\n\ndef get_balance(account_id: str) -> dict:\n    \"\"\"Get an account's balance. Returns {account_id, available_balance, ledger_balance, currency, as_of}.\n\n    account_id: Account ID, e.g. ACC-0050-1\n    \"\"\"\n\ndef get_transactions(account_id: str, start_date: str, end_date: str) -> list[dict]:\n    \"\"\"List an account's transactions between two dates (inclusive). Returns a list of {transaction_id, account_id, date, amount, currency, merchant, category, description}. Negative amount = debit.\n\n    account_id: Account ID, e.g. ACC-0050-1\n    start_date: Inclusive start date, YYYY-MM-DD\n    end_date: Inclusive end date, YYYY-MM-DD\n    \"\"\"\n\nSandbox rules:\n- The value of the code's final expression is returned to you as JSON; printed output is returned too.\n- Do the data processing inside the code and return only the values the answer needs.\n- Supported: standard Python syntax, functions, loops, comprehensions, dict/list/set, and the modules json, math, datetime and collections.\n- There is no file, network or environment access.\n- If the code raises an error, you receive the error; fix the code and call run_python again."
+    },
+    {
+      "role": "user",
+      "content": "What is the available balance of account ACC-0050-1?\nRespond with only a JSON object with keys: \"account_id\" (string), \"available_balance\" (number), \"currency\" (string)."
+    },
+    {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {
+          "id": "call-2daf78b9-1f9b-4c9e-807d-c6faa8f781bd",
+          "type": "function",
+          "function": {
+            "name": "run_python",
+            "arguments": "{\"code\":\"get_balance(\\\"ACC-0050-1\\\")\"}"
+          }
+        }
+      ],
+      "reasoning_details": [
+        {
+          "type": "reasoning.text",
+          "text": "The user wants the available balance of account ACC-0050-1. I need to call get_balance with account_id \"ACC-0050-1\".",
+          "format": "unknown",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call-2daf78b9-1f9b-4c9e-807d-c6faa8f781bd",
+      "content": "{\"result\":{\"account_id\":\"ACC-0050-1\",\"available_balance\":13353.3,\"ledger_balance\":13368.02,\"currency\":\"USD\",\"as_of\":\"2026-10-01\"}}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\n  \"account_id\": \"ACC-0050-1\",\n  \"available_balance\": 13353.3,\n  \"currency\": \"USD\"\n}",
+      "reasoning_details": [
+        {
+          "type": "reasoning.text",
+          "text": "The result shows account_id: ACC-0050-1, available_balance: 13353.3, currency: USD. I need to respond with only a JSON object with keys: account_id (string), available_balance (number), currency (string).",
+          "format": "unknown",
+          "index": 0
+        }
+      ]
+    }
+  ]
+}
