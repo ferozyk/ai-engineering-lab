@@ -38,3 +38,6 @@ experiments/*/results/dry-run/
 .DS_Store
 .idea/
 .vscode/
+
+# LinkedIn images are generated locally for posting and never committed
+experiments/*/linkedin/visual-assets/*/
