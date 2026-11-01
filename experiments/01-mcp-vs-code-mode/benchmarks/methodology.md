@@ -1,6 +1,6 @@
 # Benchmark methodology — MCP vs Code Mode
 
-Status: design approved; implementation pending. All request counts below are planning estimates, not results. Terminology follows the [experiment README](../README.md).
+Status: design approved; runner implemented. All request counts below are planning estimates, not results. Terminology follows the [experiment README](../README.md).
 
 ## 1. Scenarios
 

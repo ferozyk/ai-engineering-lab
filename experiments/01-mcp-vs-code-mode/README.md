@@ -1,6 +1,6 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Phase 3 — MCP mode, Code Mode and agent loop implemented (simulated tests only)
+> **Status:** Phase 4a — runner, preflight and CLI implemented; analysis pending
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-01
 
@@ -202,17 +202,27 @@ Known in advance:
 
 ## 16. How to Run
 
-Not yet implemented. Planned commands:
+Set `OPENROUTER_API_KEY` and `LLM_MODEL` in `.env` (see `.env.example`). The model id is never set in the repository. Benchmark settings live in [`configs/benchmark.yaml`](configs/benchmark.yaml).
 
-- `dry-run`: run the whole pipeline offline against a scripted fake LLM (zero model requests).
-- `preflight`: validate configuration, model, pricing, MCP server, sandbox and ground truth.
-- `plan`: print the planned and worst-case request counts.
-- `canary`: run one task per cell for Scenario A and Scenario B volume 10.
-- `run [--resume]`: execute the full benchmark, resuming from the checkpoint if requested.
-- `analyze`: compute processed summaries from raw data.
-- `charts`: generate charts from processed data.
-- `report`: generate the Markdown report.
-- `linkedin-assets`: generate LinkedIn-ready visuals from processed data.
+```bash
+uv run mcp-vs-code-mode plan                 # request estimate, no network
+uv run mcp-vs-code-mode dry-run              # whole schedule offline against a scripted oracle model
+uv run mcp-vs-code-mode preflight            # config, model, pricing, key tier, MCP server, sandbox (no model request)
+uv run mcp-vs-code-mode preflight --live     # same, plus exactly one model request
+uv run mcp-vs-code-mode canary               # one task per canary cell against the provider
+uv run mcp-vs-code-mode run                  # the full benchmark
+uv run mcp-vs-code-mode run --resume RUN_ID  # continue a halted run
+```
+
+Safety rails:
+
+- Requests are throttled to 15 per minute (the free-model limit is 20) and the tool stops at a daily cap of 900 requests (the provider limit is 1,000). Requests already used today are counted from the key-info endpoint.
+- `canary` must pass before the full run; it exits non-zero on any infra error, invalid answer or turn-limit hit.
+- The runner halts cleanly on a daily-limit signal, auth, missing-model or bad-request errors, three consecutive infra errors, or when fewer requests remain than one task could use. Every finished task is already on disk, so `run --resume` repeats only `infra_error` tasks.
+- `run` refuses a dirty git tree unless `--allow-dirty`, so results map to a commit.
+- `dry-run` writes to the gitignored `results/dry-run/` and makes zero model requests; its output is simulated and not a measurement.
+
+Analysis, charts, report and LinkedIn assets are added in the next phase.
 
 ## 17. References
 
