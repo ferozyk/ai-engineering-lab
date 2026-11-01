@@ -40,12 +40,46 @@ def _largest_comparison(summary: Summary) -> tuple[int, float, int] | None:
     return None
 
 
+def _mode_clause(name: str, cell: CellStats, verb: str) -> str:
+    """``MCP tool calling used 104,255 tokens per task and answered 0 of 15 correctly (...)``."""
+    correct = cell.outcomes.get("correct", 0)
+    tokens = f"{cell.tokens_mean:,.0f}" if cell.tokens_mean is not None else "n/a"
+    cut = f" ({cell.n_truncated} cut off at the output limit)" if cell.n_truncated else ""
+    answered = f"answered {correct} of {cell.n_measured} correctly"
+    return f"{name} {verb}{tokens} tokens per task and {answered}{cut}"
+
+
+def _accuracy_differs(summary: Summary, volume: int) -> tuple[CellStats, CellStats] | None:
+    comp = summary.comparison("B", volume)
+    mcp, code = summary.cell("B", volume, "mcp"), summary.cell("B", volume, "code")
+    if comp is None or mcp is None or code is None or mcp.tokens_mean is None:
+        return None
+    if code.tokens_mean is None or comp.accuracy_mcp == comp.accuracy_code:
+        return None
+    return mcp, code
+
+
 def takeaway(summary: Summary) -> str:
-    """One sentence stating the measured token difference at the largest volume."""
+    """One sentence stating the measured token difference at the largest volume.
+
+    When accuracy differs between the modes at that volume, the sentence instead reports the
+    tokens and correct-answer counts of both modes (including tasks cut off at the output limit).
+    """
     found = _largest_comparison(summary)
     if found is None:
         return "No measured token comparison is available for this run."
     volume, reduction, n = found
+    differing = _accuracy_differs(summary, volume)
+    if differing is not None:
+        mcp, code = differing
+        code_correct = code.outcomes.get("correct", 0)
+        code_cut = f" ({code.n_truncated} cut off at the output limit)" if code.n_truncated else ""
+        return (
+            f"At {volume} transactions per account, "
+            f"{_mode_clause('MCP tool calling', mcp, 'used ')}; "
+            f"Code Mode answered {code_correct} of {code.n_measured} correctly{code_cut} "
+            f"using {code.tokens_mean:,.0f} tokens (mean of {n} runs)."
+        )
     prefix = f"At {volume} transactions per account, Code Mode used "
     suffix = f"tokens per task than MCP tool calling (mean of {n} runs)."
     if abs(reduction) < _EQUAL_BELOW_PCT:
@@ -147,6 +181,20 @@ def _hero(summary: Summary) -> tuple[str, str]:
     return f"{-reduction:.0f}%", f"more tokens per task with {where}"
 
 
+def _correct_line(summary: Summary) -> str:
+    """``MCP 0/15 correct · Code Mode 15/15 correct`` at the largest volume with data."""
+    found = _largest_comparison(summary)
+    if found is None:
+        return ""
+    comp = summary.comparison("B", found[0])
+    if comp is None:
+        return ""
+    return (
+        f"MCP {comp.mcp_correct}/{comp.n_mcp} correct  ·  "
+        f"Code Mode {comp.code_correct}/{comp.n_code} correct"
+    )
+
+
 def _table_rows(summary: Summary) -> list[list[str]]:
     rows: list[list[str]] = []
     groups: list[tuple[str, int | None]] = [("Scenario A", None)]
@@ -188,9 +236,14 @@ def portrait(summary: Summary, out_dir: Path) -> Path:
         number, caption = _hero(summary)
         fig.text(0.5, 0.835, number, fontsize=100, fontweight="bold", ha="center", va="top")
         fig.text(
-            0.5, 0.715, textwrap.fill(caption, 50), fontsize=16, color=TEXT_SECONDARY,
+            0.5, 0.715, textwrap.fill(caption, 70), fontsize=16, color=TEXT_SECONDARY,
             ha="center", va="top",
         )  # fmt: skip
+        correct_line = _correct_line(summary)
+        if correct_line:
+            fig.text(
+                0.5, 0.672, correct_line, fontsize=16, fontweight="bold", ha="center", va="top",
+            )  # fmt: skip
         _draw_table(fig, summary)
         ax = fig.add_axes((0.11, 0.15, 0.72, 0.25))
         if draw_volume_lines(ax, summary, lambda c: c.tokens_mean):
@@ -219,7 +272,7 @@ def _draw_table(fig: Figure, summary: Summary) -> None:
         "Acc.\nCode",
     ]
     columns = [0.06, 0.27, 0.40, 0.53, 0.66, 0.79, 0.90]  # right edges for numeric columns
-    top = 0.64
+    top = 0.625
     for i, (x, text) in enumerate(zip(columns, header, strict=True)):
         fig.text(
             x, top, text, fontsize=10.5, color=TEXT_SECONDARY, va="top",

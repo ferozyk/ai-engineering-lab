@@ -220,6 +220,64 @@ def end_labels(ax: Axes, items: Sequence[tuple[float, str]]) -> None:
         )
 
 
+def any_truncated(summary: Summary) -> bool:
+    """Whether any Scenario B cell has tasks cut off at the output limit."""
+    return any(c.n_truncated > 0 for c in summary.cells if c.volume is not None)
+
+
+def output_limit(summary: Summary) -> int | None:
+    """Configured ``max_output_tokens`` of the run, when recorded."""
+    value = summary.metadata.config.get("max_output_tokens")
+    return int(value) if isinstance(value, int | float) else None
+
+
+def truncation_footnote(summary: Summary) -> str:
+    """Footnote sentence explaining hollow markers (empty when nothing was cut off)."""
+    if not any_truncated(summary):
+        return ""
+    limit = output_limit(summary)
+    where = f"the {limit:,}-token output limit" if limit is not None else "the output limit"
+    return (
+        f" Hollow marker: some or all tasks were cut off at {where} before answering; "
+        "their tokens are included and are a lower bound."
+    )
+
+
+def cut_off_text(cell: CellStats) -> str:
+    """Annotation text for a cell with truncated tasks."""
+    return f"{cell.n_truncated}/{cell.n_measured} cut off at output limit"
+
+
+def _mark_truncated(
+    ax: Axes, cells: Sequence[CellStats], getter: Callable[[CellStats], float | None], mode: str
+) -> None:
+    """Hollow marker plus a small note on every point whose cell has truncated tasks."""
+    color, marker = MODE_COLOR[mode], MODE_MARKER[mode]
+    for cell in cells:
+        value = getter(cell)
+        if cell.n_truncated <= 0 or value is None or cell.volume is None:
+            continue
+        ax.plot(
+            [cell.volume], [value], color=color, marker=marker, markersize=MARKER_SIZE,
+            markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.8,
+            linestyle="none", zorder=4,
+        )  # fmt: skip
+        frac = float(
+            ax.transAxes.inverted().transform(ax.transData.transform((cell.volume, value)))[1]
+        )
+        if mode == "mcp":
+            near_edge = frac > 0.8  # no room above: put the note left of the point instead
+            offset, va = ((-10, 0), "center") if near_edge else ((-8, 9), "bottom")
+        else:
+            near_edge = frac < 0.2  # no room below: put the note above
+            offset, va = ((-8, 9), "bottom") if near_edge else ((-8, -9), "top")
+        ax.annotate(
+            cut_off_text(cell), xy=(cell.volume, value), xytext=offset,
+            textcoords="offset points", ha="right", va=va, fontsize=7.5, color=TEXT_SECONDARY,
+            zorder=6,
+        )  # fmt: skip
+
+
 def _series(summary: Summary, mode: str) -> list[CellStats]:
     cells = [summary.cell("B", v, mode) for v in summary.volumes]
     return [c for c in cells if c is not None]
@@ -279,10 +337,11 @@ def draw_volume_lines(
         if hollow is not None:
             px, py = _points(cells, hollow)
             if px:
+                # Secondary statistic (e.g. p95): a short horizontal tick, so hollow
+                # markers stay reserved for "cut off at the output limit".
                 ax.plot(
-                    px, py, color=color, marker=marker, markersize=MARKER_SIZE,
-                    markerfacecolor=SURFACE, markeredgewidth=1.6, linestyle=":",
-                    linewidth=1.0, zorder=3,
+                    px, py, color=color, marker="_", markersize=MARKER_SIZE * 2,
+                    markeredgewidth=2.4, linestyle="none", zorder=3,
                 )  # fmt: skip
         end_points.append((ys[-1], mode))
     if not any_data:
@@ -294,6 +353,8 @@ def draw_volume_lines(
     if integer_ticks:
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.figure.canvas.draw()
+    for mode in MODES:
+        _mark_truncated(ax, _series(summary, mode), getter, mode)
     end_labels(ax, end_points)
     return True
 
@@ -374,7 +435,8 @@ def tokens_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         "Total tokens per task vs transactions per account",
         subtitle_text(summary, "B", _all_b_cells(summary)),
         "Measured (provider-reported usage). Line = mean per cell; band = min to max; "
-        "labels between the lines = Code Mode tokens relative to MCP (mean).",
+        "labels between the lines = Code Mode tokens relative to MCP (mean)."
+        + truncation_footnote(summary),
     )
     if draw_volume_lines(
         ax, summary, lambda c: c.tokens_mean, band=(lambda c: c.tokens_min, lambda c: c.tokens_max)
@@ -387,13 +449,14 @@ def tokens_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
 
 
 def latency_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
-    """p50 latency (filled) and p95 (hollow) against volume."""
+    """p50 latency (line) and p95 (tick marks) against volume."""
     fig, ax = _new_figure(
         summary,
         "Task latency vs transactions per account",
         subtitle_text(summary, "B", _all_b_cells(summary)),
-        "Measured wall-clock latency; excludes client-side throttling. Filled markers = p50, "
-        "hollow markers = p95. p95 with n=15 is close to the sample maximum.",
+        "Measured wall-clock latency; excludes client-side throttling. Line = p50; "
+        "horizontal ticks = p95 (with n=15, close to the sample maximum)."
+        + truncation_footnote(summary),
     )
     if draw_volume_lines(ax, summary, lambda c: c.latency_p50_s, hollow=lambda c: c.latency_p95_s):
         mode_legend(ax)
@@ -407,7 +470,7 @@ def cost_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         summary,
         "Estimated cost per 1,000 tasks vs transactions per account",
         subtitle_text(summary, "B", _all_b_cells(summary)),
-        f"Estimated, not billed. {summary.metadata.pricing.note}.",
+        f"Estimated, not billed. {summary.metadata.pricing.note}." + truncation_footnote(summary),
     )
     if draw_volume_lines(ax, summary, lambda c: c.cost_usd_per_1k_tasks):
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: f"${v:,.4g}"))
@@ -571,7 +634,12 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
         "Accuracy by scenario and volume",
         f"Scenarios A and B · {summary.model_id} · {n_label(cells)} · run {summary.run_id}",
         "Measured. Accuracy = correct answers / measured tasks (tasks with an infrastructure "
-        "error are excluded and reported separately).",
+        "error are excluded and reported separately)."
+        + (
+            " Tasks cut off at the output limit count as incorrect."
+            if any_truncated(summary)
+            else ""
+        ),
     )
     style_axes(ax)
     width = 0.36
@@ -588,6 +656,12 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
                 f"{value:.1f}%", xy=(index + shift, value), xytext=(0, 4),
                 textcoords="offset points", ha="center", va="bottom", fontsize=9, color=TEXT,
             )  # fmt: skip
+            if cell.n_truncated > 0:
+                ax.annotate(
+                    f"{cell.n_truncated} cut off", xy=(index + shift, value), xytext=(0, 16),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=7.5,
+                    color=TEXT_SECONDARY,
+                )  # fmt: skip
     if drawn:
         ax.set_xticks(range(len(groups)), labels=[g[1] for g in groups])
         ax.set_xlim(-0.6, len(groups) - 0.4)

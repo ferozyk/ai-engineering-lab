@@ -78,10 +78,12 @@ def build_schedule(config: BenchmarkConfig) -> tuple[ScheduledTask, ...]:
     return tuple(tasks)
 
 
-def build_canary_schedule(config: BenchmarkConfig) -> tuple[ScheduledTask, ...]:
-    """One task per configured canary cell."""
+def build_canary_schedule(
+    config: BenchmarkConfig, cells: Sequence[str] | None = None
+) -> tuple[ScheduledTask, ...]:
+    """One task per canary cell: ``cells`` when given, else the configured canary cells."""
     tasks: list[ScheduledTask] = []
-    for text in config.canary.cells:
+    for text in config.canary.cells if cells is None else cells:
         cell = Cell.parse(text)
         tasks.append(ScheduledTask(f"c-{cell.name}", cell, 1, False, len(tasks)))
     return tuple(tasks)

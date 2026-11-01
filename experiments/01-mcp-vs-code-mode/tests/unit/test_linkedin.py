@@ -73,3 +73,50 @@ def test_images_render_without_data(synthetic: Any, tmp_path: Path) -> None:
     landscape, portrait = render_linkedin(summary, tmp_path / "li")
     assert _png_size(landscape) == (1200, 627)
     assert _png_size(portrait) == (1080, 1350)
+
+
+def test_takeaway_mcp_truncated(synthetic: Any) -> None:
+    summary = summarise(synthetic.truncated_run(15))
+    assert takeaway(summary) == (
+        "At 200 transactions per account, MCP tool calling used 100,000 tokens per task and "
+        "answered 0 of 15 correctly (15 cut off at the output limit); Code Mode answered "
+        "15 of 15 correctly using 6,000 tokens (mean of 15 runs)."
+    )
+
+
+def test_takeaway_code_less_accurate(synthetic: Any) -> None:
+    summary = summarise(synthetic.truncated_run(15, code_wrong=3))
+    text = takeaway(summary)
+    assert "Code Mode answered 12 of 15 correctly using 6,000 tokens" in text
+    assert "(15 cut off" in text
+    assert text.count("cut off") == 1
+
+
+def test_takeaway_code_less_accurate_without_truncation(synthetic: Any) -> None:
+    rows = [
+        synthetic.row(f"{i:02d}-B200-mcp", "B200:mcp", tokens=1000) for i in range(1, 5)
+    ] + [
+        synthetic.row(
+            f"{i:02d}-B200-code", "B200:code", tokens=500,
+            outcome="incorrect" if i == 1 else "correct",
+        )
+        for i in range(1, 5)
+    ]  # fmt: skip
+    text = takeaway(summarise(synthetic.build(rows)))
+    assert text == (
+        "At 200 transactions per account, MCP tool calling used 1,000 tokens per task and "
+        "answered 4 of 4 correctly; Code Mode answered 3 of 4 correctly using 500 tokens "
+        "(mean of 4 runs)."
+    )
+
+
+def test_takeaway_keeps_phrasing_when_accuracy_equal(synthetic: Any) -> None:
+    summary, _ = _summary(synthetic, 290)
+    assert "answered" not in takeaway(summary)
+
+
+def test_images_render_with_truncation(synthetic: Any, tmp_path: Path) -> None:
+    summary = summarise(synthetic.truncated_run(15))
+    landscape, portrait = render_linkedin(summary, tmp_path / "li")
+    assert _png_size(landscape) == (1200, 627)
+    assert _png_size(portrait) == (1080, 1350)

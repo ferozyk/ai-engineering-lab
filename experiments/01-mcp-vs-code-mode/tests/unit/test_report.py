@@ -72,3 +72,21 @@ def test_chart_links_are_relative_and_table_marks_estimates(synthetic: Any, tmp_
     assert "](../charts/tokens_vs_volume.png)" in text
     assert "Cost per 1k tasks (est.)" in text
     assert "| H1 |" in text
+
+
+def test_truncation_in_report(synthetic: Any, tmp_path: Path) -> None:
+    paths = synthetic.truncated_run(3)
+    summary = summarise(paths)
+    out = tmp_path / "reports" / "report.md"
+    render_report(summary, [], out)
+    text = out.read_text(encoding="utf-8")
+    assert (
+        "**B200 · MCP**: 3 of 3 tasks were cut off at the 32,768-token output limit while "
+        "reasoning; mean 100,000 tokens per task (lower bound)."
+    ) in text
+    assert "B200 · Code Mode**: " not in text
+    assert "| Cell | n | completed | cut off | Accuracy |" in text
+    assert "| B200:mcp | 3 | 0 | 3 | 0.0% |" in text
+    assert "| B10:mcp | 3 | 3 | 0 | 100.0% |" in text
+    assert "Output-limit rule" in text
+    assert "methodology.md#3-controls" in text

@@ -1,5 +1,6 @@
 """Unit tests for chart rendering from a synthetic summary."""
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -73,3 +74,28 @@ def test_empty_run_renders_no_data_charts(synthetic: Any, tmp_path: Path) -> Non
     assert len(written) == 2 * len(CHART_STEMS)
     svg = (tmp_path / "empty" / "tokens_vs_volume.svg").read_text(encoding="utf-8")
     assert "No data" in svg
+
+
+def _svg_text(path: Path) -> str:
+    """Visible text of an SVG: tags removed, whitespace (including footnote wraps) collapsed."""
+    return " ".join(re.sub(r"<[^>]+>", " ", path.read_text(encoding="utf-8")).split())
+
+
+def test_truncated_points_are_hollow_and_annotated(synthetic: Any, tmp_path: Path) -> None:
+    paths = synthetic.truncated_run(3)
+    summary = summarise(paths)
+    written = render_all(summary, load_tasks(paths), tmp_path / "cut")
+    assert all(p.stat().st_size > 0 for p in written)
+    for stem in ("tokens_vs_volume", "latency_vs_volume", "cost_vs_volume"):
+        text = _svg_text(tmp_path / "cut" / f"{stem}.svg")
+        assert "3/3 cut off at output limit" in text, stem
+        assert "32,768-token output limit" in text, stem
+        assert "lower bound" in text, stem
+    accuracy = _svg_text(tmp_path / "cut" / "accuracy_by_cell.svg")
+    assert "3 cut off" in accuracy
+
+
+def test_no_truncation_note_without_truncation(synthetic: Any, tmp_path: Path) -> None:
+    _, written = _render(synthetic, tmp_path)
+    for svg in (p for p in written if p.suffix == ".svg"):
+        assert "cut off" not in _svg_text(svg)

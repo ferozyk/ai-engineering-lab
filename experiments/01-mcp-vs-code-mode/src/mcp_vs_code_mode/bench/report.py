@@ -78,6 +78,35 @@ def _executive_bullets(summary: Summary) -> list[str]:
             f"Code Mode {_ratio_pct(comp.accuracy_code)}",
         ]
         bullets.append(f"- **{_scope(comp.volume)}** — " + "; ".join(parts))
+    return bullets + _truncation_bullets(summary)
+
+
+def _cell_name(cell: CellStats) -> str:
+    return (
+        ("A" if cell.volume is None else f"B{cell.volume}")
+        + " · "
+        + ("MCP" if cell.mode == "mcp" else "Code Mode")
+    )
+
+
+def _limit_text(summary: Summary) -> str:
+    limit = summary.metadata.config.get("max_output_tokens")
+    if isinstance(limit, int | float):
+        return f"{int(limit):,}-token output limit"
+    return "output limit"
+
+
+def _truncation_bullets(summary: Summary) -> list[str]:
+    bullets: list[str] = []
+    for c in summary.cells:
+        if c.n_truncated <= 0:
+            continue
+        tokens = "n/a" if c.tokens_mean is None else f"{c.tokens_mean:,.0f}"
+        bullets.append(
+            f"- **{_cell_name(c)}**: {c.n_truncated} of {c.n_measured} tasks were cut off at the "
+            f"{_limit_text(summary)} while reasoning; mean {tokens} tokens per task "
+            "(lower bound). These tasks count as failures, not exclusions."
+        )
     return bullets
 
 
@@ -120,6 +149,8 @@ def _results_rows(cells: Sequence[CellStats]) -> list[list[str]]:
         [
             f"{c.cell}",
             str(c.n_measured),
+            str(c.completed),
+            str(c.n_truncated),
             _ratio_pct(c.accuracy),
             _int(c.tokens_mean),
             _sec(c.latency_p50_s),
@@ -155,7 +186,7 @@ def _chart_section(chart_paths: Sequence[Path], out_path: Path) -> list[str]:
     return lines or ["No charts were generated.", ""]
 
 
-def _run_limitations(summary: Summary) -> list[str]:
+def _run_limitations(summary: Summary, out_path: Path) -> list[str]:
     meta = summary.metadata
     infra_tasks = sum(c.n_infra_error for c in summary.cells)
     items = [
@@ -168,6 +199,16 @@ def _run_limitations(summary: Summary) -> list[str]:
         f"Providers served: {len(meta.providers_served)} "
         f"({', '.join(meta.providers_served) or NA}).",
     ]
+    limit = meta.config.get("max_output_tokens")
+    limit_text = f"{int(limit):,}-token" if isinstance(limit, int | float) else "configured"
+    items.append(
+        f"Output-limit rule: a task whose final model call is cut off at the {limit_text} output "
+        "limit (`finish_reason` = length) before giving an answer is scored as a failure and "
+        "stays in every statistic; it is not excluded. Its tokens are included and are a lower "
+        "bound on what the model would have used. `completed` = measured tasks that produced a "
+        "final answer (right or wrong); `cut off` = measured tasks that did not. See "
+        f"[methodology section 3]({_methodology_link(out_path)}#3-controls)."
+    )
     if meta.halted:
         items.append(f"The run was halted: {meta.halt_reason}")
     else:
@@ -247,6 +288,8 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
         [
             "Cell",
             "n",
+            "completed",
+            "cut off",
             "Accuracy",
             "Mean tokens",
             "p50 latency",
@@ -272,7 +315,7 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
 
     lines += ["## Limitations", ""]
     lines += [f"- {item}" for item in KNOWN_LIMITATIONS]
-    lines += [f"- {item}" for item in _run_limitations(summary)]
+    lines += [f"- {item}" for item in _run_limitations(summary, out_path)]
     lines += [""]
 
     lines += ["## Conclusion", "", "> Author section — pending.", ""]

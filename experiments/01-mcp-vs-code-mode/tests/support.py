@@ -19,7 +19,7 @@ from mcp_vs_code_mode.bench.cells import Cell
 from mcp_vs_code_mode.bench.metadata import RunMetadata
 from mcp_vs_code_mode.bench.paths import RunPaths
 from mcp_vs_code_mode.bench.pricing import simulated_pricing
-from mcp_vs_code_mode.bench.records import TaskRow, append_row
+from mcp_vs_code_mode.bench.records import LLMCallRow, TaskRow, append_row
 from mcp_vs_code_mode.tools import ToolExecutor
 
 
@@ -143,12 +143,67 @@ class SyntheticRuns:
                 )
         return rows
 
-    def build(self, rows: Sequence[TaskRow], *, simulated: bool = True) -> RunPaths:
+    @staticmethod
+    def call(task_id: str, turn: int, finish_reason: str | None = "stop") -> LLMCallRow:
+        """One ``LLMCallRow`` with the given turn and finish reason."""
+        return LLMCallRow(
+            task_id=task_id,
+            turn=turn,
+            latency_ms=100.0,
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            reasoning_tokens=None,
+            cached_tokens=None,
+            finish_reason=finish_reason,
+            tool_call_count=0,
+            attempts=1,
+            client_wait_ms=0.0,
+            provider=None,
+            model=None,
+            request_id=None,
+            simulated=True,
+        )
+
+    def truncated_run(self, n: int = 3, *, code_wrong: int = 0) -> RunPaths:
+        """All cells have ``n`` correct tasks except B200:mcp, which is entirely cut off.
+
+        Each B200:mcp task is an ``invalid_answer`` whose final model call has
+        ``finish_reason == "length"``. The first ``code_wrong`` B200:code tasks are incorrect.
+        """
+        rows: list[TaskRow] = []
+        calls: list[LLMCallRow] = []
+        for cell in (
+            "A:mcp", "A:code", "B10:mcp", "B10:code", "B50:mcp", "B50:code",
+            "B200:mcp", "B200:code",
+        ):  # fmt: skip
+            for i in range(n):
+                name = Cell.parse(cell).name
+                task_id = f"{i + 1:02d}-{name}"
+                if cell == "B200:mcp":
+                    rows.append(self.row(task_id, cell, outcome="invalid_answer", tokens=100_000))
+                    calls += [self.call(task_id, 1, "tool_calls"), self.call(task_id, 2, "length")]
+                elif cell == "B200:code":
+                    outcome: TaskOutcome = "incorrect" if i < code_wrong else "correct"
+                    rows.append(self.row(task_id, cell, outcome=outcome, tokens=6_000))
+                else:
+                    rows.append(self.row(task_id, cell, tokens=1_000))
+        return self.build(rows, llm_calls=calls)
+
+    def build(
+        self,
+        rows: Sequence[TaskRow],
+        *,
+        simulated: bool = True,
+        llm_calls: Sequence[LLMCallRow] = (),
+    ) -> RunPaths:
         """Write ``rows`` and matching metadata under a fresh results directory."""
         self._count += 1
         run_id = f"synthetic{self._count}-dry-run"
         paths = RunPaths.for_run(run_id, "dry-run", results_dir=self._root / "results")
         paths.ensure()
+        for call in llm_calls:
+            append_row(paths.raw / "llm_calls.jsonl", call)
         for row in rows:
             append_row(paths.raw / "tasks.jsonl", row.model_copy(update={"run_id": run_id}))
         meta = RunMetadata(
@@ -168,7 +223,12 @@ class SyntheticRuns:
             model_id="test-model",
             dataset_version="d1",
             dataset_checksum="abc",
-            config={"volumes": [10, 50, 200], "temperature": 0.0, "warmup_tasks_per_mode": 1},
+            config={
+                "volumes": [10, 50, 200],
+                "temperature": 0.0,
+                "warmup_tasks_per_mode": 1,
+                "max_output_tokens": 32768,
+            },
             iterations=3,
             tasks_planned=len(rows),
             package_versions={"mcp": "1"},

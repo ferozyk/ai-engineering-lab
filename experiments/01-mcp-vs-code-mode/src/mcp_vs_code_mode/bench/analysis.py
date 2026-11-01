@@ -12,12 +12,12 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from mcp_vs_code_mode.bench.cells import Cell, all_cells
 from mcp_vs_code_mode.bench.metadata import RunMetadata
 from mcp_vs_code_mode.bench.paths import RunPaths
-from mcp_vs_code_mode.bench.records import TaskRow, load_rows
+from mcp_vs_code_mode.bench.records import LLMCallRow, TaskRow, load_rows
 
 MIN_TASKS_FOR_VERDICT = 10
 H1_THRESHOLD = 0.25
@@ -36,6 +36,8 @@ class CellStats(BaseModel):
     n_tasks: int
     n_measured: int
     n_infra_error: int
+    n_truncated: int = 0
+    completed: int = 0
     outcomes: dict[str, int]
     accuracy: float | None
     mean_partial_score: float | None
@@ -64,6 +66,14 @@ class CellStats(BaseModel):
     cost_usd_mean: float | None
     cost_usd_per_1k_tasks: float | None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _default_completed(cls, data: object) -> object:
+        """Older summaries lack ``completed``; derive it so they still load."""
+        if isinstance(data, dict) and "completed" not in data and "n_measured" in data:
+            data = {**data, "completed": data["n_measured"] - data.get("n_truncated", 0)}
+        return data
+
 
 class Comparison(BaseModel):
     """Code Mode against MCP at one scenario/volume."""
@@ -76,6 +86,12 @@ class Comparison(BaseModel):
     cost_reduction_pct: float | None
     accuracy_mcp: float | None
     accuracy_code: float | None
+    mcp_correct: int = 0
+    code_correct: int = 0
+    mcp_truncated: int = 0
+    code_truncated: int = 0
+    n_mcp: int = 0
+    n_code: int = 0
 
 
 class HypothesisResult(BaseModel):
@@ -138,6 +154,28 @@ def _load_frame(paths: RunPaths) -> tuple[pd.DataFrame, int, int]:
     return frame, warmups, superseded
 
 
+_TRUNCATABLE_OUTCOMES = frozenset({"invalid_answer", "max_turns"})
+
+
+def truncated_task_ids(paths: RunPaths, frame: pd.DataFrame) -> set[str]:
+    """Task ids whose final model call stopped at the output limit (``finish_reason == "length"``).
+
+    Only the latest record of each task counts, and only when it is a measured failure
+    (``invalid_answer`` or ``max_turns``). ``llm_calls.jsonl`` is append-only and may hold calls
+    of earlier, superseded attempts (turns restart per attempt); the last row written for a task
+    id is the final call of its latest attempt, which is the one inspected.
+    """
+    if not len(frame):
+        return set()
+    candidates = set(frame.loc[frame["outcome"].isin(_TRUNCATABLE_OUTCOMES), "task_id"])
+    last_call: dict[str, LLMCallRow] = {}
+    for call in load_rows(paths.raw / "llm_calls.jsonl", LLMCallRow):
+        if call.task_id not in candidates:
+            continue
+        last_call[call.task_id] = call  # file order: the last row is the latest attempt's end
+    return {tid for tid, call in last_call.items() if call.finish_reason == "length"}
+
+
 def load_tasks(paths: RunPaths) -> pd.DataFrame:
     """Latest record per ``task_id`` (by file order) with warm-up tasks excluded."""
     return _load_frame(paths)[0]
@@ -179,7 +217,7 @@ def _scaled(value: float | None, factor: float) -> float | None:
     return None if value is None else value * factor
 
 
-def _cell_stats(cell: Cell, frame: pd.DataFrame) -> CellStats:
+def _cell_stats(cell: Cell, frame: pd.DataFrame, truncated: set[str]) -> CellStats:
     subset = frame[frame["cell"] == cell.label] if len(frame) else frame
     measured = subset[subset["outcome"] != "infra_error"] if len(subset) else subset
     n_measured = len(measured)
@@ -187,6 +225,7 @@ def _cell_stats(cell: Cell, frame: pd.DataFrame) -> CellStats:
     correct = int((measured["outcome"] == "correct").sum()) if n_measured else 0
     latency_s = measured["latency_ms"] / 1000 if n_measured else measured["latency_ms"]
     cost_mean = _mean(measured["estimated_cost_usd"])
+    n_truncated = int(measured["task_id"].isin(truncated).sum()) if n_measured and truncated else 0
     return CellStats(
         cell=cell.label,
         scenario=cell.scenario,
@@ -195,6 +234,8 @@ def _cell_stats(cell: Cell, frame: pd.DataFrame) -> CellStats:
         n_tasks=len(subset),
         n_measured=n_measured,
         n_infra_error=len(subset) - n_measured,
+        n_truncated=n_truncated,
+        completed=n_measured - n_truncated,
         outcomes=outcomes,
         accuracy=_clean(correct / n_measured) if n_measured else None,
         mean_partial_score=_mean(measured["partial_score"]),
@@ -264,6 +305,12 @@ def _compare(scenario: str, volume: int | None, mcp: CellStats, code: CellStats)
         cost_reduction_pct=_scaled(cost, 100),
         accuracy_mcp=mcp.accuracy,
         accuracy_code=code.accuracy,
+        mcp_correct=mcp.outcomes.get("correct", 0),
+        code_correct=code.outcomes.get("correct", 0),
+        mcp_truncated=mcp.n_truncated,
+        code_truncated=code.n_truncated,
+        n_mcp=mcp.n_measured,
+        n_code=code.n_measured,
     )
 
 
@@ -463,7 +510,8 @@ def summarise(paths: RunPaths) -> Summary:
     )
     frame, warmups, superseded = _load_frame(paths)
     volumes = [int(v) for v in metadata.config.get("volumes", [])]
-    cells = [_cell_stats(cell, frame) for cell in all_cells(volumes)]
+    truncated = truncated_task_ids(paths, frame)
+    cells = [_cell_stats(cell, frame, truncated) for cell in all_cells(volumes)]
     return Summary(
         run_id=metadata.run_id,
         simulated=metadata.simulated,

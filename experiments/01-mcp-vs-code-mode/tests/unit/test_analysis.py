@@ -242,3 +242,63 @@ def test_infra_errors_can_make_a_hypothesis_inconclusive(synthetic: Any) -> None
     summary = summarise(synthetic.build(synthetic.uniform(11, tokens, latency, outcomes=outcomes)))
     assert _verdicts(summary)["H1"] == "inconclusive"
     assert _verdicts(summary)["H2"] != "inconclusive"
+
+
+def test_truncated_and_completed_counts(synthetic: Any) -> None:
+    call = synthetic.call
+    rows = [
+        synthetic.row("01-B200-mcp", "B200:mcp", outcome="invalid_answer", tokens=100),
+        synthetic.row("02-B200-mcp", "B200:mcp", outcome="incorrect", tokens=100),
+        synthetic.row("03-B200-mcp", "B200:mcp", outcome="invalid_answer", tokens=100),
+        synthetic.row("04-B200-mcp", "B200:mcp", outcome="infra_error", tokens=0),
+        synthetic.row("04-B200-mcp", "B200:mcp", outcome="correct", tokens=100),
+        synthetic.row("05-B200-mcp", "B200:mcp", outcome="infra_error", tokens=0),
+        synthetic.row("01-B200-code", "B200:code", tokens=50),
+    ]
+    calls = [
+        call("01-B200-mcp", 1, "tool_calls"),
+        call("01-B200-mcp", 2, "length"),  # truncated
+        call("02-B200-mcp", 1, "length"),  # wrong answer: outcome is incorrect, not counted
+        call("03-B200-mcp", 1, "length"),
+        call("03-B200-mcp", 2, "stop"),  # invalid answer but the final call finished normally
+        call("04-B200-mcp", 1, "length"),  # superseded infra attempt
+        call("04-B200-mcp", 1, "tool_calls"),
+        call("04-B200-mcp", 2, "stop"),  # latest attempt finished
+        call("05-B200-mcp", 1, "length"),  # infra error: not measured
+    ]
+    summary = summarise(synthetic.build(rows, llm_calls=calls))
+    cell = summary.cell("B", 200, "mcp")
+    assert cell is not None
+    assert (cell.n_measured, cell.n_infra_error) == (4, 1)
+    assert cell.n_truncated == 1
+    assert cell.completed == 3
+    code = summary.cell("B", 200, "code")
+    assert code is not None
+    assert (code.n_truncated, code.completed) == (0, 1)
+    comp = summary.comparison("B", 200)
+    assert comp is not None
+    assert (comp.mcp_correct, comp.code_correct) == (1, 1)
+    assert (comp.mcp_truncated, comp.code_truncated) == (1, 0)
+    assert (comp.n_mcp, comp.n_code) == (4, 1)
+
+
+def test_truncation_counts_in_outputs(synthetic: Any) -> None:
+    paths = synthetic.truncated_run(3)
+    summary = summarise(paths)
+    write_summary(summary, paths)
+    loaded = Summary.model_validate_json((paths.processed / "summary.json").read_text())
+    cell = loaded.cell("B", 200, "mcp")
+    assert cell is not None
+    assert (cell.n_truncated, cell.completed) == (3, 0)
+    header = (paths.processed / "cells.csv").read_text().splitlines()[0].split(",")
+    assert "n_truncated" in header
+    assert "completed" in header
+    comparison_header = (paths.processed / "comparisons.csv").read_text().splitlines()[0]
+    assert "mcp_truncated" in comparison_header
+
+
+def test_no_llm_calls_file_means_no_truncation(synthetic: Any) -> None:
+    rows = [synthetic.row("01-A-mcp", "A:mcp", outcome="invalid_answer")]
+    cell = summarise(synthetic.build(rows)).cell("A", None, "mcp")
+    assert cell is not None
+    assert (cell.n_truncated, cell.completed) == (0, 1)

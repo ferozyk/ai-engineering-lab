@@ -14,6 +14,7 @@ from mcp_vs_code_mode.agent import ChatModel, OpenAIChatModel
 from mcp_vs_code_mode.agent.fakes import OracleChatModel
 from mcp_vs_code_mode.bench.analysis import Summary, load_tasks, summarise, write_summary
 from mcp_vs_code_mode.bench.cells import (
+    Cell,
     ScheduledTask,
     build_canary_schedule,
     build_schedule,
@@ -60,6 +61,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     canary = sub.add_parser("canary", help="run one task per canary cell against the provider")
     canary.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+    canary.add_argument(
+        "--cells",
+        metavar="LABELS",
+        help="comma-separated cells to run instead of the configured canary cells, e.g. "
+        "'A:mcp,B200:code'; fewer cells means fewer provider requests",
+    )
     run = sub.add_parser("run", help="run the full benchmark")
     run.add_argument("--resume", metavar="RUN_ID", help="resume an interrupted run")
     run.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
@@ -186,10 +193,10 @@ async def _prepare_real(
     return model_id, pricing, key, client
 
 
-async def _cmd_canary(assume_yes: bool) -> int:
+async def _cmd_canary(assume_yes: bool, cells: Sequence[str] | None = None) -> int:
     settings = load_settings()
     config = load_config()
-    schedule = build_canary_schedule(config)
+    schedule = build_canary_schedule(config, cells)
     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as http:
         checks = await run_preflight(
             settings=settings, config=config, http=http, live=False, chat_model_factory=None
@@ -351,6 +358,16 @@ def _publish(run_id: str) -> None:
     _linkedin(paths, summary)
 
 
+def _parse_cells(text: str | None) -> list[str] | None:
+    """Validate a ``--cells`` value; return normalised labels, or ``None`` when not given."""
+    if text is None:
+        return None
+    labels = [part.strip() for part in text.split(",") if part.strip()]
+    if not labels:
+        raise ValueError("--cells needs at least one cell label, e.g. 'A:mcp,B200:code'")
+    return [Cell.parse(label).label for label in labels]
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point; returns the process exit code."""
     args = _build_parser().parse_args(argv)
@@ -360,7 +377,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "preflight":
             return asyncio.run(_cmd_preflight(args.live))
         if args.command == "canary":
-            return asyncio.run(_cmd_canary(args.yes))
+            try:
+                cells = _parse_cells(args.cells)
+            except ValueError as exc:
+                print(f"Error: {exc}", file=sys.stderr)
+                return 2
+            return asyncio.run(_cmd_canary(args.yes, cells))
         if args.command == "run":
             return asyncio.run(_cmd_run(args.resume, args.yes, args.allow_dirty))
         if args.command == "analyze":
