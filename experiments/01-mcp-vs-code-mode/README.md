@@ -1,6 +1,6 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Phase 1 — design complete, not implemented
+> **Status:** Phase 2 — domain, tools and ground truth implemented; agents not implemented
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-01
 
