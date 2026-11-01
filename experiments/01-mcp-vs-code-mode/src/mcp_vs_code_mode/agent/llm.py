@@ -25,10 +25,14 @@ InfraErrorKind = Literal[
 ]
 
 
+_MAX_PROVIDER_MESSAGE = 300
+
+
 class LLMInfraError(Exception):
     """Provider failure after retries (counts as infra_error).
 
-    ``attempts`` is the number of requests sent in the failing call. Messages never contain
+    ``attempts`` is the number of requests sent in the failing call. ``provider_message`` is the
+    provider's own error text (truncated), appended to ``str(exc)``. Messages never contain
     headers or keys.
     """
 
@@ -39,8 +43,13 @@ class LLMInfraError(Exception):
         kind: InfraErrorKind = "other",
         status_code: int | None = None,
         attempts: int = 0,
+        provider_message: str | None = None,
     ) -> None:
+        if provider_message is not None:
+            provider_message = provider_message[:_MAX_PROVIDER_MESSAGE]
+            message = f"{message} — provider: {provider_message}"
         super().__init__(message)
+        self.provider_message = provider_message
         self.kind: InfraErrorKind = kind
         self.status_code = status_code
         self.attempts = attempts
@@ -72,6 +81,23 @@ def _describe(exc: Exception) -> str:
     status = _status(exc)
     suffix = f" (status {status})" if status is not None else ""
     return f"{type(exc).__name__}{suffix}"
+
+
+def _error_message(error: Any) -> str | None:
+    """Pull ``message`` out of an OpenRouter-style error object (or ``{"error": {...}}``)."""
+    if isinstance(error, dict):
+        inner = error.get("error", error)
+        if isinstance(inner, str):
+            return inner or None
+        if isinstance(inner, dict):
+            message = inner.get("message")
+            if isinstance(message, str) and message:
+                return message
+    return None
+
+
+def _provider_message(exc: openai.APIStatusError) -> str | None:
+    return _error_message(exc.body) or (exc.message or None)
 
 
 def _is_daily_limit(exc: openai.RateLimitError) -> bool:
@@ -143,6 +169,7 @@ class OpenAIChatModel:
         last_error = "no attempts made"
         last_kind: InfraErrorKind = "other"
         last_status: int | None = None
+        last_provider: str | None = None
         for attempt in range(1, self._max_attempts + 1):
             if self._before_request is not None:
                 await self._before_request()
@@ -153,6 +180,7 @@ class OpenAIChatModel:
                 latency_ms = (time.perf_counter() - started) * 1000
                 if not response.choices:
                     error = (response.model_extra or {}).get("error")
+                    last_provider = _error_message({"error": error})
                     raise _EmptyChoicesError(f"Provider returned no choices; error={error!r}")
             except _EmptyChoicesError as exc:
                 last_error, last_kind, last_status = str(exc), "empty_choices", None
@@ -163,11 +191,14 @@ class OpenAIChatModel:
                         kind="daily_limit",
                         status_code=_status(exc),
                         attempts=attempt,
+                        provider_message=_provider_message(exc),
                     ) from exc
                 last_error, last_kind, last_status = _describe(exc), "rate_limited", _status(exc)
+                last_provider = _provider_message(exc)
                 override = _retry_after(exc)
             except openai.InternalServerError as exc:
                 last_error, last_kind, last_status = _describe(exc), "server", _status(exc)
+                last_provider = _provider_message(exc)
             except openai.APITimeoutError as exc:
                 last_error, last_kind, last_status = _describe(exc), "timeout", None
             except openai.APIConnectionError as exc:
@@ -179,6 +210,9 @@ class OpenAIChatModel:
                     kind=_non_retryable_kind(status),
                     status_code=status,
                     attempts=attempt,
+                    provider_message=_provider_message(exc)
+                    if isinstance(exc, openai.APIStatusError)
+                    else None,
                 ) from exc
             else:
                 total_ms = (time.perf_counter() - entered) * 1000
@@ -198,6 +232,7 @@ class OpenAIChatModel:
             kind=last_kind,
             status_code=last_status,
             attempts=self._max_attempts,
+            provider_message=last_provider,
         )
 
     @staticmethod

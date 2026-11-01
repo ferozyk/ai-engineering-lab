@@ -379,7 +379,10 @@ async def _live_tool_call(chat_model_factory: Callable[[], ChatModel] | None) ->
     try:
         response = await chat_model_factory().complete(messages, tools)
     except LLMInfraError as exc:
-        return CheckResult("live_tool_call", "fail", f"provider error kind={exc.kind}")
+        detail = f"provider error kind={exc.kind} status={exc.status_code}"
+        if exc.provider_message:
+            detail += f": {exc.provider_message}"
+        return CheckResult("live_tool_call", "fail", detail)
     elapsed = time.perf_counter() - started
     for call in response.tool_calls:
         if call.name != "ping":

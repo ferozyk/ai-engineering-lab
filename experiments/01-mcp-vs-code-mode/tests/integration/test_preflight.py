@@ -166,3 +166,13 @@ async def test_live_check_reports_infra_error() -> None:
     checks = await _run(live=True, chat=chat)
     assert checks["live_tool_call"].status == "fail"
     assert "server" in checks["live_tool_call"].detail
+
+
+async def test_live_check_detail_includes_provider_message() -> None:
+    error = LLMInfraError(
+        "x", kind="auth", status_code=403, attempts=1, provider_message="only on agentic harnesses"
+    )
+    checks = await _run(live=True, chat=ScriptedChatModel([error]))
+    assert checks["live_tool_call"].detail == (
+        "provider error kind=auth status=403: only on agentic harnesses"
+    )

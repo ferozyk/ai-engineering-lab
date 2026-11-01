@@ -336,3 +336,59 @@ async def test_empty_choices_and_no_usage_kinds() -> None:
     with pytest.raises(LLMInfraError) as info2:
         await model.complete([], [])
     assert (info2.value.kind, info2.value.attempts) == ("no_usage", 1)
+
+
+_OPENROUTER_403 = "x/model is only available on agentic harnesses"
+
+
+async def test_403_provider_message_from_openrouter_body() -> None:
+    error = openai.PermissionDeniedError(
+        "Error code: 403",
+        response=httpx2.Response(403, request=_REQUEST),
+        body={"error": {"message": _OPENROUTER_403, "code": 403, "metadata": {"a": 1}}},
+    )
+    model, _ = _model([error])
+    with pytest.raises(LLMInfraError) as info:
+        await model.complete([], [])
+    assert info.value.kind == "auth"
+    assert info.value.provider_message == _OPENROUTER_403
+    assert f"— provider: {_OPENROUTER_403}" in str(info.value)
+
+
+async def test_provider_message_from_inner_body_and_fallback() -> None:
+    inner = openai.PermissionDeniedError(
+        "Error code: 403",
+        response=httpx2.Response(403, request=_REQUEST),
+        body={"message": "inner msg", "code": 403},
+    )
+    model, _ = _model([inner])
+    with pytest.raises(LLMInfraError) as info:
+        await model.complete([], [])
+    assert info.value.provider_message == "inner msg"
+    model, _ = _model([_status_error(openai.BadRequestError, 400)])
+    with pytest.raises(LLMInfraError) as info2:
+        await model.complete([], [])
+    assert info2.value.provider_message == "boom"
+
+
+async def test_empty_choices_provider_message_after_retries() -> None:
+    text = "Upstream error from Nvidia: Service temporarily overloaded"
+    empty = _completion(choices=[], error={"message": text})
+    model, _ = _model([empty, empty, empty])
+    with pytest.raises(LLMInfraError) as info:
+        await model.complete([], [])
+    assert info.value.kind == "empty_choices"
+    assert info.value.provider_message == text
+    assert "— provider: Upstream error from Nvidia" in str(info.value)
+
+
+async def test_provider_message_truncated() -> None:
+    error = openai.PermissionDeniedError(
+        "Error code: 403",
+        response=httpx2.Response(403, request=_REQUEST),
+        body={"error": {"message": "y" * 500}},
+    )
+    model, _ = _model([error])
+    with pytest.raises(LLMInfraError) as info:
+        await model.complete([], [])
+    assert info.value.provider_message == "y" * 300
