@@ -36,7 +36,6 @@ MODES: tuple[str, ...] = ("mcp", "code")
 MODE_LABEL = {"mcp": "MCP", "code": "Code Mode"}
 MODE_COLOR = {"mcp": MCP_COLOR, "code": CODE_COLOR}
 MODE_MARKER = {"mcp": "o", "code": "s"}
-VOLUME_TICKS = (10, 50, 200)
 LINE_WIDTH = 2.0
 MARKER_SIZE = 8
 BAND_ALPHA = 0.15
@@ -109,18 +108,19 @@ def thousands(ax: Axes) -> None:
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: f"{v:,.0f}"))
 
 
-def volume_axis(ax: Axes, *, label: bool = True) -> None:
-    """Log x axis with ticks exactly at the benchmark volumes."""
+def volume_axis(ax: Axes, volumes: Sequence[int], *, label: bool = True) -> None:
+    """Log x axis with ticks exactly at the benchmark volumes present in the data."""
+    ticks = sorted(volumes) or [10, 200]
     ax.set_xscale("log")
-    ax.set_xticks(list(VOLUME_TICKS), labels=[str(v) for v in VOLUME_TICKS])
+    ax.set_xticks(ticks, labels=[str(v) for v in ticks])
     ax.minorticks_off()
-    ax.set_xlim(7.0, 290.0)
+    ax.set_xlim(ticks[0] * 0.7, ticks[-1] * 1.45)
     if label:
         ax.set_xlabel("Transactions per account (log scale)")
 
 
 def n_label(cells: Sequence[CellStats | None]) -> str:
-    """``n=15 per point`` (or a range when cells differ)."""
+    """``n=10 per point`` (or a range when cells differ)."""
     counts = sorted({c.n_measured for c in cells if c is not None})
     if not counts:
         return "n=0 per point"
@@ -309,7 +309,7 @@ def draw_volume_lines(
 ) -> bool:
     """Draw one line per mode against volume. Returns ``False`` if there is nothing to plot."""
     style_axes(ax)
-    volume_axis(ax, label=xlabel)
+    volume_axis(ax, summary.volumes, label=xlabel)
     any_data = False
     end_points: list[tuple[float, str]] = []
     for mode in MODES:
@@ -448,6 +448,14 @@ def tokens_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
     return _save(fig, summary, out_dir, "tokens_vs_volume")
 
 
+def _sample_size(summary: Summary) -> str:
+    """Sample size per Scenario B cell: ``10`` or a range when cells differ."""
+    counts = sorted({c.n_measured for c in summary.cells if c.volume is not None})
+    if not counts:
+        return "0"
+    return str(counts[0]) if len(counts) == 1 else f"{counts[0]}–{counts[-1]}"
+
+
 def latency_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
     """p50 latency (line) and p95 (tick marks) against volume."""
     fig, ax = _new_figure(
@@ -455,7 +463,7 @@ def latency_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         "Task latency vs transactions per account",
         subtitle_text(summary, "B", _all_b_cells(summary)),
         "Measured wall-clock latency; excludes client-side throttling. Line = p50; "
-        "horizontal ticks = p95 (with n=15, close to the sample maximum)."
+        f"horizontal ticks = p95 (with n={_sample_size(summary)}, close to the sample maximum)."
         + truncation_footnote(summary),
     )
     if draw_volume_lines(ax, summary, lambda c: c.latency_p50_s, hollow=lambda c: c.latency_p95_s):

@@ -21,8 +21,8 @@ def _raw() -> dict[str, Any]:
 
 def test_repo_config_loads() -> None:
     config = load_config()
-    assert config.iterations == 15
-    assert config.volumes == [10, 50, 200]
+    assert config.iterations == 10
+    assert config.volumes == [10, 50, 100, 200]
     assert config.rate_limit_per_minute == 15
     assert config.daily_request_cap == 900
     assert config.llm_seed is None
@@ -49,7 +49,7 @@ def test_invalid_values_are_rejected(key: str, value: object) -> None:
 def test_override_iterations() -> None:
     config = load_config().with_overrides(iterations=2)
     assert config.iterations == 2
-    assert load_config().iterations == 15
+    assert load_config().iterations == 10
 
 
 def test_load_from_explicit_path(tmp_path: Path) -> None:

@@ -15,8 +15,8 @@ from mcp_vs_code_mode.bench.config import load_config
 pytestmark = pytest.mark.unit
 
 
-def test_eight_cells_in_canonical_order() -> None:
-    cells = all_cells([10, 50, 200])
+def test_ten_cells_in_canonical_order() -> None:
+    cells = all_cells([10, 50, 100, 200])
     assert [c.label for c in cells] == [
         "A:mcp",
         "A:code",
@@ -24,13 +24,15 @@ def test_eight_cells_in_canonical_order() -> None:
         "B10:code",
         "B50:mcp",
         "B50:code",
+        "B100:mcp",
+        "B100:code",
         "B200:mcp",
         "B200:code",
     ]
 
 
 def test_parse_round_trip() -> None:
-    for cell in all_cells([10, 50, 200]):
+    for cell in all_cells([10, 50, 100, 200]):
         assert Cell.parse(cell.label) == cell
     with pytest.raises(ValueError):
         Cell.parse("C:mcp")
@@ -39,7 +41,7 @@ def test_parse_round_trip() -> None:
 def test_schedule_shape_and_ids() -> None:
     config = load_config()
     schedule = build_schedule(config)
-    assert len(schedule) == 2 + config.iterations * 8
+    assert len(schedule) == 2 + config.iterations * 10
     assert [t.task_id for t in schedule[:2]] == ["w1-A-mcp", "w1-A-code"]
     assert all(t.warmup and t.iteration == 0 for t in schedule[:2])
     assert [t.order_index for t in schedule] == list(range(len(schedule)))

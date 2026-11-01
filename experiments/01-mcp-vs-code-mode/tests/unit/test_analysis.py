@@ -21,6 +21,8 @@ ALL_CELLS = (
     "B10:code",
     "B50:mcp",
     "B50:code",
+    "B100:mcp",
+    "B100:code",
     "B200:mcp",
     "B200:code",
 )
@@ -41,7 +43,7 @@ def _uniform_inputs(
 ) -> tuple[dict[str, list[int]], dict[str, list[float]]]:
     tokens: dict[str, list[int]] = {}
     latency: dict[str, list[float]] = {}
-    for scope in ("A", "B10", "B50", "B200"):
+    for scope in ("A", "B10", "B50", "B100", "B200"):
         tokens[f"{scope}:mcp"] = [mcp[scope]]
         tokens[f"{scope}:code"] = [code[scope]]
         latency[f"{scope}:mcp"] = [lat_mcp[scope]]
@@ -77,10 +79,10 @@ def test_exact_statistics(synthetic: Any) -> None:
 
 def test_comparison_numbers(synthetic: Any) -> None:
     tokens, latency = _uniform_inputs(
-        {"A": 1000, "B10": 2000, "B50": 8000, "B200": 20000},
-        {"A": 1100, "B10": 1000, "B50": 1000, "B200": 5000},
-        {"A": 1000.0, "B10": 2000.0, "B50": 4000.0, "B200": 10000.0},
-        {"A": 1100.0, "B10": 1500.0, "B50": 1000.0, "B200": 2500.0},
+        {"A": 1000, "B10": 2000, "B50": 8000, "B100": 8000, "B200": 20000},
+        {"A": 1100, "B10": 1000, "B50": 1000, "B100": 1000, "B200": 5000},
+        {"A": 1000.0, "B10": 2000.0, "B50": 4000.0, "B100": 4000.0, "B200": 10000.0},
+        {"A": 1100.0, "B10": 1500.0, "B50": 1000.0, "B100": 1000.0, "B200": 2500.0},
     )
     summary = summarise(synthetic.build(_grid(synthetic, 3, tokens, latency)))
     comp = summary.comparison("B", 200)
@@ -159,10 +161,10 @@ def _verdicts(summary: Summary) -> dict[str, str]:
 
 def test_hypotheses_supported(synthetic: Any) -> None:
     tokens, latency = _uniform_inputs(
-        {"A": 1000, "B10": 2000, "B50": 8000, "B200": 20000},
-        {"A": 1100, "B10": 1000, "B50": 1000, "B200": 1000},
-        {"A": 1000.0, "B10": 1000.0, "B50": 4000.0, "B200": 10000.0},
-        {"A": 1100.0, "B10": 900.0, "B50": 1000.0, "B200": 2000.0},
+        {"A": 1000, "B10": 2000, "B50": 8000, "B100": 12000, "B200": 20000},
+        {"A": 1100, "B10": 1000, "B50": 1000, "B100": 1000, "B200": 1000},
+        {"A": 1000.0, "B10": 1000.0, "B50": 4000.0, "B100": 6000.0, "B200": 10000.0},
+        {"A": 1100.0, "B10": 900.0, "B50": 1000.0, "B100": 1000.0, "B200": 2000.0},
     )
     outcomes = {"B10:mcp": ["correct"], "B200:mcp": ["correct", "incorrect"]}
     rows = synthetic.uniform(10, tokens, latency, outcomes=outcomes)
@@ -180,10 +182,10 @@ def test_hypotheses_supported(synthetic: Any) -> None:
 
 def test_hypotheses_not_supported(synthetic: Any) -> None:
     tokens, latency = _uniform_inputs(
-        {"A": 1000, "B10": 1000, "B50": 1000, "B200": 1000},
-        {"A": 2000, "B10": 1500, "B50": 1500, "B200": 1500},
-        {"A": 1000.0, "B10": 1000.0, "B50": 1000.0, "B200": 1000.0},
-        {"A": 2000.0, "B10": 1000.0, "B50": 2000.0, "B200": 2000.0},
+        {"A": 1000, "B10": 1000, "B50": 1000, "B100": 1000, "B200": 1000},
+        {"A": 2000, "B10": 1500, "B50": 1500, "B100": 1500, "B200": 1500},
+        {"A": 1000.0, "B10": 1000.0, "B50": 1000.0, "B100": 1000.0, "B200": 1000.0},
+        {"A": 2000.0, "B10": 1000.0, "B50": 2000.0, "B100": 2000.0, "B200": 2000.0},
     )
     summary = summarise(synthetic.build(synthetic.uniform(10, tokens, latency)))
     assert _verdicts(summary) == {
@@ -196,17 +198,17 @@ def test_hypotheses_not_supported(synthetic: Any) -> None:
 
 def test_h2_requires_widening_gap(synthetic: Any) -> None:
     tokens, latency = _uniform_inputs(
-        {"A": 1000, "B10": 5000, "B50": 5000, "B200": 6000},
-        {"A": 1000, "B10": 1000, "B50": 1000, "B200": 1000},
-        dict.fromkeys(("A", "B10", "B50", "B200"), 1000.0),
-        dict.fromkeys(("A", "B10", "B50", "B200"), 1000.0),
+        {"A": 1000, "B10": 5000, "B50": 5000, "B100": 5000, "B200": 6000},
+        {"A": 1000, "B10": 1000, "B50": 1000, "B100": 1000, "B200": 1000},
+        dict.fromkeys(("A", "B10", "B50", "B100", "B200"), 1000.0),
+        dict.fromkeys(("A", "B10", "B50", "B100", "B200"), 1000.0),
     )
     summary = summarise(synthetic.build(synthetic.uniform(10, tokens, latency)))
     assert _verdicts(summary)["H2"] == "not supported"  # gap 4000, 4000, 5000: not strict
 
 
 def test_h4_requires_stable_code_accuracy(synthetic: Any) -> None:
-    keys = ("A", "B10", "B50", "B200")
+    keys = ("A", "B10", "B50", "B100", "B200")
     tokens, latency = _uniform_inputs(
         dict.fromkeys(keys, 1000), dict.fromkeys(keys, 500),
         dict.fromkeys(keys, 1000.0), dict.fromkeys(keys, 500.0),
@@ -222,10 +224,10 @@ def test_h4_requires_stable_code_accuracy(synthetic: Any) -> None:
 
 def test_hypotheses_inconclusive_below_ten_tasks(synthetic: Any) -> None:
     tokens, latency = _uniform_inputs(
-        {"A": 1000, "B10": 2000, "B50": 8000, "B200": 20000},
-        {"A": 1100, "B10": 1000, "B50": 1000, "B200": 1000},
-        dict.fromkeys(("A", "B10", "B50", "B200"), 1000.0),
-        dict.fromkeys(("A", "B10", "B50", "B200"), 900.0),
+        {"A": 1000, "B10": 2000, "B50": 8000, "B100": 8000, "B200": 20000},
+        {"A": 1100, "B10": 1000, "B50": 1000, "B100": 1000, "B200": 1000},
+        dict.fromkeys(("A", "B10", "B50", "B100", "B200"), 1000.0),
+        dict.fromkeys(("A", "B10", "B50", "B100", "B200"), 900.0),
     )
     summary = summarise(synthetic.build(synthetic.uniform(9, tokens, latency)))
     assert set(_verdicts(summary).values()) == {"inconclusive"}
@@ -233,7 +235,7 @@ def test_hypotheses_inconclusive_below_ten_tasks(synthetic: Any) -> None:
 
 
 def test_infra_errors_can_make_a_hypothesis_inconclusive(synthetic: Any) -> None:
-    keys = ("A", "B10", "B50", "B200")
+    keys = ("A", "B10", "B50", "B100", "B200")
     tokens, latency = _uniform_inputs(
         dict.fromkeys(keys, 1000), dict.fromkeys(keys, 1050),
         dict.fromkeys(keys, 1000.0), dict.fromkeys(keys, 1000.0),

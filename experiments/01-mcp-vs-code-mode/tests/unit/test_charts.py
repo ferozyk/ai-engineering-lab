@@ -4,14 +4,15 @@ import re
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
 import pytest
 
 from mcp_vs_code_mode.bench.analysis import Summary, load_tasks, summarise
-from mcp_vs_code_mode.bench.charts import CHART_STEMS, render_all
+from mcp_vs_code_mode.bench.charts import CHART_STEMS, render_all, volume_axis
 
 pytestmark = pytest.mark.unit
 
-KEYS = ("A", "B10", "B50", "B200")
+KEYS = ("A", "B10", "B50", "B100", "B200")
 
 
 def _rows(synthetic: Any, cells: tuple[str, ...] | None = None) -> list[Any]:
@@ -99,3 +100,15 @@ def test_no_truncation_note_without_truncation(synthetic: Any, tmp_path: Path) -
     _, written = _render(synthetic, tmp_path)
     for svg in (p for p in written if p.suffix == ".svg"):
         assert "cut off" not in _svg_text(svg)
+
+
+def test_volume_ticks_come_from_data(synthetic: Any, tmp_path: Path) -> None:
+    rows = _rows(synthetic, cells=("B10:mcp", "B10:code", "B100:mcp", "B100:code"))
+    paths = synthetic.build(rows, volumes=(10, 100))
+    summary = summarise(paths)
+    assert summary.volumes == [10, 100]
+    fig, ax = plt.subplots()
+    volume_axis(ax, summary.volumes)
+    assert [int(t) for t in ax.get_xticks()] == [10, 100]
+    assert [t.get_text() for t in ax.get_xticklabels()] == ["10", "100"]
+    plt.close(fig)

@@ -175,7 +175,7 @@ class SyntheticRuns:
         calls: list[LLMCallRow] = []
         for cell in (
             "A:mcp", "A:code", "B10:mcp", "B10:code", "B50:mcp", "B50:code",
-            "B200:mcp", "B200:code",
+            "B100:mcp", "B100:code", "B200:mcp", "B200:code",
         ):  # fmt: skip
             for i in range(n):
                 name = Cell.parse(cell).name
@@ -196,6 +196,7 @@ class SyntheticRuns:
         *,
         simulated: bool = True,
         llm_calls: Sequence[LLMCallRow] = (),
+        volumes: Sequence[int] = (10, 50, 100, 200),
     ) -> RunPaths:
         """Write ``rows`` and matching metadata under a fresh results directory."""
         self._count += 1
@@ -224,7 +225,7 @@ class SyntheticRuns:
             dataset_version="d1",
             dataset_checksum="abc",
             config={
-                "volumes": [10, 50, 200],
+                "volumes": list(volumes),
                 "temperature": 0.0,
                 "warmup_tasks_per_mode": 1,
                 "max_output_tokens": 32768,

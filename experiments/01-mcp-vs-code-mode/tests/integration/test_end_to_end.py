@@ -31,6 +31,7 @@ _TASKS = {
     "A": scenario_a_task(),
     "B10": scenario_b_task(10),
     "B50": scenario_b_task(50),
+    "B100": scenario_b_task(100),
     "B200": scenario_b_task(200),
 }
 

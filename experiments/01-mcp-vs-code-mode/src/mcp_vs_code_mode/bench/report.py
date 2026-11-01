@@ -20,7 +20,6 @@ KNOWN_LIMITATIONS = (
     "Single model.",
     "Free-tier provider routing adds latency variance.",
     "stdio MCP transport only (no network hop).",
-    "n=15 per cell makes p95 close to the sample maximum.",
     "Monty runs a Python subset.",
     "Synthetic data.",
     "Cost is estimated, not billed.",
@@ -315,6 +314,7 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
 
     lines += ["## Limitations", ""]
     lines += [f"- {item}" for item in KNOWN_LIMITATIONS]
+    lines += [f"- n={meta.iterations} per cell makes p95 close to the sample maximum."]
     lines += [f"- {item}" for item in _run_limitations(summary, out_path)]
     lines += [""]
 

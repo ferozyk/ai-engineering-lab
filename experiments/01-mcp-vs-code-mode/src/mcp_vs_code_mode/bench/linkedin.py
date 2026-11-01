@@ -245,7 +245,7 @@ def portrait(summary: Summary, out_dir: Path) -> Path:
                 0.5, 0.672, correct_line, fontsize=16, fontweight="bold", ha="center", va="top",
             )  # fmt: skip
         _draw_table(fig, summary)
-        ax = fig.add_axes((0.11, 0.15, 0.72, 0.25))
+        ax = fig.add_axes((0.11, 0.15, 0.72, 0.24))
         if draw_volume_lines(ax, summary, lambda c: c.tokens_mean):
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
             mode_legend(ax)
@@ -287,7 +287,7 @@ def _draw_table(fig: Figure, summary: Summary) -> None:
                 x, row_y, text, fontsize=12, va="top", ha="left" if i == 0 else "right",
                 color=TEXT,
             )  # fmt: skip
-        row_y -= 0.032
+        row_y -= 0.028
 
 
 def render_linkedin(summary: Summary, out_dir: Path) -> list[Path]:

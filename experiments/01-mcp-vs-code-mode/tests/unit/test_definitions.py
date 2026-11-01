@@ -15,7 +15,7 @@ def test_scenario_a_prompt() -> None:
     assert '"available_balance" (number)' in task.user_prompt
 
 
-@pytest.mark.parametrize("volume", [10, 50, 200])
+@pytest.mark.parametrize("volume", [10, 50, 100, 200])
 def test_scenario_b_prompt(volume: int) -> None:
     task = scenario_b_task(volume)
     assert task.scenario == "B"

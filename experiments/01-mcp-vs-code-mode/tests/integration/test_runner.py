@@ -87,17 +87,17 @@ async def test_dry_run_writes_all_files() -> None:
     outcome = await _run()
     raw = outcome.paths.raw
     assert not outcome.halted
-    assert outcome.completed == 10
+    assert outcome.completed == 12
 
     tasks = load_rows(raw / "tasks.jsonl", TaskRow)
     llm = load_rows(raw / "llm_calls.jsonl", LLMCallRow)
     tools = load_rows(raw / "tool_calls.jsonl", ToolCallRow)
-    assert len(tasks) == 10
+    assert len(tasks) == 12
     assert sum(1 for t in tasks if t.warmup) == 2
     assert all(t.outcome == "correct" and t.simulated for t in tasks)
     assert len(llm) == sum(t.model_calls for t in tasks)
     assert len(tools) == sum(t.tool_call_count for t in tasks)
-    assert len(list((raw / "transcripts").glob("*.json"))) == 10
+    assert len(list((raw / "transcripts").glob("*.json"))) == 12
     transcript = json.loads((raw / "transcripts" / f"{tasks[0].task_id}.json").read_text())
     assert transcript["task_id"] == tasks[0].task_id
     assert transcript["messages"][0]["role"] == "system"
@@ -111,8 +111,8 @@ async def test_dry_run_writes_all_files() -> None:
 
     meta = RunMetadata.model_validate_json((raw / "run_metadata.json").read_text())
     assert meta.simulated
-    assert meta.tasks_planned == 10
-    assert meta.tasks_completed == 10
+    assert meta.tasks_planned == 12
+    assert meta.tasks_completed == 12
     assert meta.finished_at is not None
     assert meta.mcp_connect_ms > 0
     assert meta.sandbox_warmup_ms > 0
@@ -133,17 +133,17 @@ async def test_resume_reattempts_only_infra_errors() -> None:
     assert first.infra_errors == 1
     assert not first.halted
     rows = load_rows(first.paths.raw / "tasks.jsonl", TaskRow)
-    assert len(rows) == 10
+    assert len(rows) == 12
     assert [r.task_id for r in rows if r.outcome == "infra_error"] == ["01-B10-code"]
 
     second = await _run(run_id=first.run_id)
     rows = load_rows(second.paths.raw / "tasks.jsonl", TaskRow)
-    assert len(rows) == 11
+    assert len(rows) == 13
     assert rows[-1].task_id == "01-B10-code"
     assert rows[-1].outcome == "correct"
-    assert second.completed == 10
+    assert second.completed == 12
     meta = RunMetadata.model_validate_json((second.paths.raw / "run_metadata.json").read_text())
-    assert meta.tasks_completed == 10
+    assert meta.tasks_completed == 12
     assert meta.infra_errors == 1
 
 
