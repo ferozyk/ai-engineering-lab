@@ -1,43 +1,33 @@
-"""Shared fixtures for experiment 01 tests."""
+"""Shared fixtures for experiment 01 unit tests.
 
-import pytest
+The fixtures live in ``tests/support.py``. They are loaded by file path because the repository
+root also has a ``tests`` directory, which makes ``tests.support`` ambiguous in a full run.
+"""
 
-from mcp_vs_code_mode.banking import (
-    AuditLog,
-    BankingService,
-    Dataset,
-    Principal,
-    benchmark_principal,
-    generate_dataset,
-)
-from mcp_vs_code_mode.tools import ToolExecutor
+import importlib.util
+import sys
+from pathlib import Path
+from types import ModuleType
 
 
-@pytest.fixture(scope="session")
-def dataset() -> Dataset:
-    """The default synthetic dataset, generated once per session."""
-    return generate_dataset()
+def _load_support() -> ModuleType:
+    name = "exp01_tests_support"
+    if name in sys.modules:
+        return sys.modules[name]
+    path = Path(__file__).resolve().parents[1] / "support.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-@pytest.fixture
-def audit_log() -> AuditLog:
-    """A fresh in-memory audit log."""
-    return AuditLog()
-
-
-@pytest.fixture
-def service(dataset: Dataset, audit_log: AuditLog) -> BankingService:
-    """Banking service over the default dataset."""
-    return BankingService(dataset, audit_log)
-
-
-@pytest.fixture
-def principal() -> Principal:
-    """The benchmark principal."""
-    return benchmark_principal()
-
-
-@pytest.fixture
-def executor(service: BankingService, principal: Principal) -> ToolExecutor:
-    """Tool executor on the test channel."""
-    return ToolExecutor(service, principal, "test")
+_support = _load_support()
+anyio_backend = _support.anyio_backend
+audit_log = _support.audit_log
+dataset = _support.dataset
+executor = _support.executor
+principal = _support.principal
+service = _support.service
