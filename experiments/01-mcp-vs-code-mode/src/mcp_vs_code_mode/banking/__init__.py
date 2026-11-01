@@ -1,7 +1,14 @@
 """Synthetic banking domain: models, dataset, authentication, audit and service."""
 
 from mcp_vs_code_mode.banking.audit import AuditLog, AuditOutcome, AuditRecord, Channel
-from mcp_vs_code_mode.banking.auth import Principal, SessionStore, benchmark_principal
+from mcp_vs_code_mode.banking.auth import (
+    KNOWN_PRINCIPALS,
+    Principal,
+    SessionStore,
+    authenticate_token,
+    benchmark_principal,
+    token_fingerprint,
+)
 from mcp_vs_code_mode.banking.dataset import (
     ACCOUNT_TYPES,
     DATASET_VERSION,
@@ -38,6 +45,7 @@ __all__ = [
     "ACCOUNT_TYPES",
     "DATASET_VERSION",
     "DEFAULT_SEED",
+    "KNOWN_PRINCIPALS",
     "REFERENCE_DATE",
     "SPEND_CATEGORIES",
     "UNAUTHORIZED_CUSTOMER_ID",
@@ -64,7 +72,9 @@ __all__ = [
     "Transaction",
     "TransactionCategory",
     "account_ids_for",
+    "authenticate_token",
     "benchmark_principal",
     "customer_id_for",
     "generate_dataset",
+    "token_fingerprint",
 ]

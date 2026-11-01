@@ -5,10 +5,11 @@ execute through ``ToolExecutor``. Timeouts are enforced at the transport layer
 in Phase 3 (MCP call timeout, Monty limits), not here.
 """
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -38,15 +39,27 @@ from mcp_vs_code_mode.tools.errors import (
 _CUSTOMER_ID_PATTERN = r"^CUST-\d{4}$"
 _ACCOUNT_ID_PATTERN = r"^ACC-\d{4}-\d$"
 
+CustomerIdArg = Annotated[
+    str, Field(pattern=_CUSTOMER_ID_PATTERN, description="Customer ID, e.g. CUST-0050")
+]
+AccountIdArg = Annotated[
+    str, Field(pattern=_ACCOUNT_ID_PATTERN, description="Account ID, e.g. ACC-0050-1")
+]
+StartDateArg = Annotated[date, Field(description="Inclusive start date, YYYY-MM-DD")]
+EndDateArg = Annotated[date, Field(description="Inclusive end date, YYYY-MM-DD")]
+
+
+def compact_json(value: JsonValue) -> str:
+    """Serialise tool data identically in both modes."""
+    return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+
 
 class GetCustomerInput(BaseModel):
     """Arguments for ``get_customer``."""
 
     model_config = ConfigDict(extra="forbid")
 
-    customer_id: str = Field(
-        pattern=_CUSTOMER_ID_PATTERN, description="Customer ID, e.g. CUST-0050"
-    )
+    customer_id: CustomerIdArg
 
 
 class ListAccountsInput(BaseModel):
@@ -54,9 +67,7 @@ class ListAccountsInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    customer_id: str = Field(
-        pattern=_CUSTOMER_ID_PATTERN, description="Customer ID, e.g. CUST-0050"
-    )
+    customer_id: CustomerIdArg
 
 
 class GetBalanceInput(BaseModel):
@@ -64,7 +75,7 @@ class GetBalanceInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    account_id: str = Field(pattern=_ACCOUNT_ID_PATTERN, description="Account ID, e.g. ACC-0050-1")
+    account_id: AccountIdArg
 
 
 class GetTransactionsInput(BaseModel):
@@ -72,9 +83,9 @@ class GetTransactionsInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    account_id: str = Field(pattern=_ACCOUNT_ID_PATTERN, description="Account ID, e.g. ACC-0050-1")
-    start_date: date = Field(description="Inclusive start date, YYYY-MM-DD")
-    end_date: date = Field(description="Inclusive end date, YYYY-MM-DD")
+    account_id: AccountIdArg
+    start_date: StartDateArg
+    end_date: EndDateArg
 
     @model_validator(mode="after")
     def _check_range(self) -> "GetTransactionsInput":
@@ -90,6 +101,7 @@ class ToolSpec:
     name: str
     description: str
     input_model: type[BaseModel]
+    returns: Literal["object", "list"]
 
 
 TOOL_SPECS: tuple[ToolSpec, ...] = (
@@ -97,6 +109,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         name="get_customer",
         description="Get a customer's profile. Returns {customer_id, name, segment}.",
         input_model=GetCustomerInput,
+        returns="object",
     ),
     ToolSpec(
         name="list_accounts",
@@ -105,6 +118,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
             "Returns a list of {account_id, customer_id, account_type, currency}."
         ),
         input_model=ListAccountsInput,
+        returns="list",
     ),
     ToolSpec(
         name="get_balance",
@@ -113,6 +127,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
             "Returns {account_id, available_balance, ledger_balance, currency, as_of}."
         ),
         input_model=GetBalanceInput,
+        returns="object",
     ),
     ToolSpec(
         name="get_transactions",
@@ -122,6 +137,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
             "category, description}. Negative amount = debit."
         ),
         input_model=GetTransactionsInput,
+        returns="list",
     ),
 )
 

@@ -63,6 +63,7 @@ python_version = "3.12"
 strict = true
 files = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests"]
 mypy_path = "shared/src:experiments/01-mcp-vs-code-mode/src"
+exclude = ["/__main__\\.py$"]
 plugins = ["pydantic.mypy"]
 
 [tool.pydantic-mypy]

@@ -9,20 +9,29 @@ from mcp_vs_code_mode.tools.errors import (
 )
 from mcp_vs_code_mode.tools.registry import (
     TOOL_SPECS,
+    AccountIdArg,
+    CustomerIdArg,
+    EndDateArg,
     GetBalanceInput,
     GetCustomerInput,
     GetTransactionsInput,
     ListAccountsInput,
+    StartDateArg,
     ToolExecutor,
     ToolSpec,
+    compact_json,
 )
 
 __all__ = [
     "TOOL_SPECS",
+    "AccountIdArg",
+    "CustomerIdArg",
+    "EndDateArg",
     "GetBalanceInput",
     "GetCustomerInput",
     "GetTransactionsInput",
     "ListAccountsInput",
+    "StartDateArg",
     "ToolAccessError",
     "ToolError",
     "ToolExecutor",
@@ -30,4 +39,5 @@ __all__ = [
     "ToolNotFoundError",
     "ToolSpec",
     "UnknownToolError",
+    "compact_json",
 ]
