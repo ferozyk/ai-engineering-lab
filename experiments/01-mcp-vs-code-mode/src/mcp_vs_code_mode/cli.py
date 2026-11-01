@@ -1,9 +1,10 @@
-"""Command-line interface: plan, preflight, canary, run and dry-run."""
+"""Command-line interface: plan, preflight, canary, run, dry-run and the analysis commands."""
 
 import argparse
 import asyncio
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import httpx
 from openai import AsyncOpenAI
@@ -11,17 +12,20 @@ from openai import AsyncOpenAI
 from ai_lab.config import ConfigurationError, Settings, load_settings
 from mcp_vs_code_mode.agent import ChatModel, OpenAIChatModel
 from mcp_vs_code_mode.agent.fakes import OracleChatModel
+from mcp_vs_code_mode.bench.analysis import Summary, load_tasks, summarise, write_summary
 from mcp_vs_code_mode.bench.cells import (
     ScheduledTask,
     build_canary_schedule,
     build_schedule,
 )
+from mcp_vs_code_mode.bench.charts import render_all
 from mcp_vs_code_mode.bench.config import BenchmarkConfig, load_config
 from mcp_vs_code_mode.bench.limiter import (
     MinIntervalLimiter,
     RequestBudget,
     before_request_hook,
 )
+from mcp_vs_code_mode.bench.linkedin import render_linkedin
 from mcp_vs_code_mode.bench.metadata import RunMetadata, git_state
 from mcp_vs_code_mode.bench.openrouter import KeyInfo, OpenRouterClient, OpenRouterError
 from mcp_vs_code_mode.bench.paths import RunPaths
@@ -34,6 +38,7 @@ from mcp_vs_code_mode.bench.pricing import (
     simulated_pricing,
 )
 from mcp_vs_code_mode.bench.records import TaskRow, load_rows
+from mcp_vs_code_mode.bench.report import render_report
 from mcp_vs_code_mode.bench.runner import ModelFactory, RunOutcome, run_benchmark
 from mcp_vs_code_mode.scenarios import TaskSpec
 
@@ -61,6 +66,15 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--allow-dirty", action="store_true", help="allow a dirty git tree")
     dry = sub.add_parser("dry-run", help="run the whole schedule offline against an oracle model")
     dry.add_argument("--iterations", type=int, default=None, help="override the iteration count")
+    for name, text in (
+        ("analyze", "compute the processed summary and print the hypothesis table"),
+        ("charts", "render all charts (PNG and SVG) from the processed summary"),
+        ("report", "write the Markdown report"),
+        ("linkedin-assets", "render the two LinkedIn images"),
+        ("publish", "analyze, charts, report and linkedin-assets in one go"),
+    ):
+        cmd = sub.add_parser(name, help=text)
+        cmd.add_argument("run_id", metavar="RUN_ID")
     return parser
 
 
@@ -277,7 +291,64 @@ async def _cmd_dry_run(iterations: int | None) -> int:
     )
     _print_outcome(outcome)
     print("SIMULATED: no model requests were made; nothing here is a measurement.")
+    print()
+    _publish(outcome.run_id)
     return 0
+
+
+def _print_hypotheses(summary: Summary) -> None:
+    print(f"{'ID':<4} {'Verdict':<14} Evidence")
+    for hyp in summary.hypotheses:
+        print(f"{hyp.id:<4} {hyp.verdict:<14} {hyp.evidence}")
+
+
+def _analyze(run_id: str) -> tuple[RunPaths, Summary]:
+    paths = RunPaths.find(run_id)
+    summary = summarise(paths)
+    write_summary(summary, paths)
+    print(f"Summary: {paths.processed / 'summary.json'}")
+    print(f"Cells:   {paths.processed / 'cells.csv'}")
+    print(f"Compare: {paths.processed / 'comparisons.csv'}")
+    _print_hypotheses(summary)
+    return paths, summary
+
+
+def _load_summary(run_id: str) -> tuple[RunPaths, Summary]:
+    paths = RunPaths.find(run_id)
+    path = paths.processed / "summary.json"
+    if not path.exists():
+        raise FileNotFoundError(f"No summary for run {run_id!r}; run 'analyze {run_id}' first")
+    return paths, Summary.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def _charts(paths: RunPaths, summary: Summary) -> list[Path]:
+    written = render_all(summary, load_tasks(paths), paths.charts)
+    for path in written:
+        print(f"Chart:   {path}")
+    return written
+
+
+def _report(paths: RunPaths, summary: Summary, charts: list[Path]) -> Path:
+    out = paths.reports / "report.md"
+    render_report(summary, charts, out)
+    print(f"Report:  {out}")
+    return out
+
+
+def _existing_charts(paths: RunPaths) -> list[Path]:
+    return sorted(paths.charts.glob("*.png")) if paths.charts.is_dir() else []
+
+
+def _linkedin(paths: RunPaths, summary: Summary) -> None:
+    for path in render_linkedin(summary, paths.linkedin):
+        print(f"LinkedIn: {path}")
+
+
+def _publish(run_id: str) -> None:
+    paths, summary = _analyze(run_id)
+    charts = _charts(paths, summary)
+    _report(paths, summary, charts)
+    _linkedin(paths, summary)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -292,6 +363,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             return asyncio.run(_cmd_canary(args.yes))
         if args.command == "run":
             return asyncio.run(_cmd_run(args.resume, args.yes, args.allow_dirty))
+        if args.command == "analyze":
+            _analyze(args.run_id)
+            return 0
+        if args.command == "charts":
+            paths, summary = _load_summary(args.run_id)
+            _charts(paths, summary)
+            return 0
+        if args.command == "report":
+            paths, summary = _load_summary(args.run_id)
+            _report(paths, summary, _existing_charts(paths))
+            return 0
+        if args.command == "linkedin-assets":
+            paths, summary = _load_summary(args.run_id)
+            _linkedin(paths, summary)
+            return 0
+        if args.command == "publish":
+            _publish(args.run_id)
+            return 0
         return asyncio.run(_cmd_dry_run(args.iterations))
     except (ConfigurationError, PricingError, OpenRouterError, FileNotFoundError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
