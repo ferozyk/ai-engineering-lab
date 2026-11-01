@@ -13,8 +13,8 @@ Terminology used throughout:
 - **MCP mode:** the model calls tools exposed by an MCP server; every tool result enters the model context.
 - **Code Mode:** the model gets one tool, `run_python`, and writes a script that calls the same tools inside a sandbox; only the script's return value enters the model context.
 - **Scenario A (simple lookup)** and **Scenario B (chained aggregation)**.
-- **Volume:** transactions per account in Scenario B: 10, 50, 200.
-- **Cell:** one (scenario, volume, mode) combination. There are 8 cells.
+- **Volume:** transactions per account in Scenario B: 10, 50, 100, 200.
+- **Cell:** one (scenario, volume, mode) combination. There are 10 cells.
 - **Task:** one execution of one cell.
 
 ## 2. Research Question
@@ -79,7 +79,7 @@ For Code Mode, generated code runs only in a sandbox with filesystem restriction
 Two scenarios (details in [benchmarks/methodology.md](benchmarks/methodology.md)):
 
 - **Scenario A — Simple lookup:** retrieve the available balance of one account.
-- **Scenario B — Chained aggregation:** for one customer and a fixed 90-day window, retrieve balances and transactions across 4 accounts and compute per-account spend by category, large debits and the total balance, at 10, 50 and 200 transactions per account.
+- **Scenario B — Chained aggregation:** for one customer and a fixed 90-day window, retrieve balances and transactions across 4 accounts and compute per-account spend by category, large debits and the total balance, at 10, 50, 100 and 200 transactions per account.
 
 ### Out of scope
 
@@ -151,8 +151,8 @@ The model receives one tool, `run_python(code)`, and Python function stubs gener
 
 ## 10. Experimental Methodology
 
-- 8 cells: Scenario A x {MCP, Code Mode} and Scenario B x {10, 50, 200} x {MCP, Code Mode}.
-- 15 iterations per cell (120 measured tasks), plus one unmeasured warm-up task per mode.
+- 10 cells: Scenario A x {MCP, Code Mode} and Scenario B x {10, 50, 100, 200} x {MCP, Code Mode}.
+- 10 iterations per cell (100 measured tasks), plus one unmeasured warm-up task per mode.
 - Same model, temperature 0, same turn limit, same dataset and principal in both modes.
 - Cells run interleaved in a seed-shuffled order per iteration, so provider drift affects both modes equally.
 - Ground truth is computed by plain Python, never by an LLM; a task is correct only if every value matches.
@@ -191,7 +191,7 @@ Known in advance:
 - Single model.
 - Free-tier provider routing adds latency variance.
 - stdio MCP transport only (no network hop).
-- n=15 per cell makes p95 close to the sample maximum.
+- n=10 per cell makes p95 close to the sample maximum.
 - Monty runs a Python subset.
 - Synthetic data.
 - Cost is estimated, not billed.

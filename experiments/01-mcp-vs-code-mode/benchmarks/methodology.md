@@ -22,7 +22,7 @@ Status: design approved; runner implemented. All request counts below are planni
 
 The window is stated as explicit dates (no relative dates) to remove ambiguity.
 
-Scenario B is run at three volumes (transactions per account): 10, 50 and 200. This gives 8 cells: A x {mcp, code} and B x {10, 50, 200} x {mcp, code}.
+Scenario B is run at four volumes (transactions per account): 10, 50, 100 and 200. This gives 10 cells: A x {mcp, code} and B x {10, 50, 100, 200} x {mcp, code}.
 
 ## 2. Ground truth and scoring
 
@@ -34,16 +34,18 @@ Ground truth is computed by plain Python over the dataset, never by an LLM. A ta
 - Same system prompt structure (role, rules, answer schema), differing only in the tool description section.
 - Same dataset and principal.
 - Both runtimes warm.
-- Interleaved execution: for each iteration, the 8 cells run in an order shuffled with a fixed seed, so provider-side drift affects both modes equally.
+- Interleaved execution: for each iteration, the 10 cells run in an order shuffled with a fixed seed, so provider-side drift affects both modes equally.
 
 **Pre-run protocol change (canary `20261101T154924Z-canary`).** The first canary used `max_output_tokens = 4096`. In the B200 MCP task the model spent all 4,096 output tokens on reasoning over a 68,038-token prompt and was truncated (`finish_reason = length`) before writing an answer. That cap was a harness setting, not a model limit, and would have failed every B200 MCP task by construction. Before any measured run, the cap was raised to 32,768 for **both** modes (and the request timeout from 180 s to 600 s). Answers still truncated at 32,768 tokens are recorded as failures, not excluded. The canary's raw data is kept in `results/raw/20261101T154924Z-canary/`.
+
+**Pre-run protocol change (2026-11-02, before the measured run).** Volume 100 was added (generated after the existing customers, so the dataset 1.0.0 data for volumes 10, 50 and 200 is byte-identical; dataset version 1.1.0) and iterations were reduced from 15 to 10 by maintainer decision. Canary runs used dataset 1.0.0; their volume 10 and 200 data is unchanged.
 
 **Pre-run protocol change (canary `20261101T162525Z-canary`).** In the B10 Code Mode task the model reused a variable defined in an earlier `run_python` call and got `NameError`, costing an extra round trip. Each call deliberately runs in a fresh sandbox, but the Code Mode instructions did not say so — an ambiguity in the harness, not a property of Code Mode. Before any measured run, one rule was added to the Code Mode instructions: "Each run_python call starts in a fresh sandbox: variables, functions and imports from earlier calls are not kept, so each call must contain all the code it needs." The MCP instructions are unchanged. Raw data from this canary is kept in `results/raw/20261101T162525Z-canary/`.
 
 ## 4. Sample size and request budget (planning estimates)
 
-- Iterations: 15 per cell, giving 120 measured tasks, plus 1 unmeasured warm-up task per mode.
-- Planning estimate (not a result): about 400-450 model requests typical; worst case 120 x 8 = 960. The `plan` command computes and prints both figures before anything runs.
+- Iterations: 10 per cell, giving 100 measured tasks, plus 1 unmeasured warm-up task per mode (2 warm-up tasks). 10 is exactly the minimum measured count per cell below which hypothesis verdicts are reported as inconclusive (section 10), so any infra error that is not recovered by resume makes the affected hypotheses inconclusive.
+- Planning estimate (not a result): about 300 model requests typical; lower bound 244 (ideal agent); worst case 102 x 8 = 816. The `plan` command computes and prints both figures before anything runs.
 - OpenRouter free tier at this account level: 20 requests per minute, 1,000 per day. The runner throttles to 15 requests per minute and stops cleanly at a configurable daily cap (default 900). The run is resumable.
 
 ## 5. Metrics
@@ -60,7 +62,7 @@ Ground truth is computed by plain Python over the dataset, never by an LLM. A ta
 | Estimated cost per task and per 1,000 tasks | **Estimated** | Tokens x paid-tier price of the same model from OpenRouter's models API, snapshotted with date at run start. If no paid variant exists, a reference price from config, explicitly labelled. |
 | Peak prompt size (tokens) per task | Measured | Max prompt tokens over calls |
 
-Percentiles use linear interpolation (numpy/pandas default). With n=15, p95 is close to the sample maximum; this is stated in every chart caption that shows it. Token and latency statistics include all non-`infra_error` tasks; accuracy is reported alongside. Infra errors are counted and reported, never silently dropped.
+Percentiles use linear interpolation (numpy/pandas default). With n=10, p95 is close to the sample maximum; this is stated in every chart caption that shows it. Token and latency statistics include all non-`infra_error` tasks; accuracy is reported alongside. Infra errors are counted and reported, never silently dropped.
 
 ## 6. First-run reliability protocol
 

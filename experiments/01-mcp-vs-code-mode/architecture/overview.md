@@ -32,7 +32,7 @@ flowchart TB
 
 ### Synthetic dataset
 Deterministic generator with a fixed seed. Reference date `2026-10-01`.
-- One customer per volume level (volume 10, 50, 200), each with 4 accounts (for example current, savings, credit card, joint current).
+- One customer per volume level (volume 10, 50, 100, 200), each with 4 accounts (for example current, savings, credit card, joint current).
 - Each account has exactly *volume* transactions dated within the analysis window `2026-07-03` to `2026-10-01` (90 days inclusive).
 - Transaction fields: `transaction_id, date, amount (negative = debit), currency, merchant, category, description`.
 - A fixed set of 6 categories.
