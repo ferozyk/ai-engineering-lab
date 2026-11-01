@@ -17,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.13",
+    "pandas-stubs>=3.1.0.261029",
     "pytest>=8.3",
     "ruff>=0.8",
     "types-PyYAML>=6.0",
@@ -46,6 +47,11 @@ select = [
     "SIM", # flake8-simplify
     "RUF", # ruff-specific
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Typographic minus/en dash are intentional in chart and report text.
+"experiments/01-mcp-vs-code-mode/src/mcp_vs_code_mode/bench/charts.py" = ["RUF001"]
+"experiments/01-mcp-vs-code-mode/src/mcp_vs_code_mode/bench/linkedin.py" = ["RUF001"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

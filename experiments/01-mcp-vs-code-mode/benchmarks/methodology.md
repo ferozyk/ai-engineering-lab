@@ -101,7 +101,7 @@ results/
 │   ├── tool_calls.jsonl     # one record per tool / sandbox execution
 │   ├── audit.jsonl          # banking-service audit log
 │   └── transcripts/<task_id>.json
-├── processed/<run_id>/summary.json, summary.csv
+├── processed/<run_id>/summary.json, cells.csv, comparisons.csv
 ├── charts/<run_id>/*.png, *.svg
 └── reports/<run_id>/report.md
 ```
@@ -121,3 +121,16 @@ All charts are generated from `processed/` data.
 | `accuracy_by_cell` | Grouped bars | Correctness per mode and volume |
 
 LinkedIn assets (in `linkedin/visual-assets/`): landscape 1200x627 (tokens and latency line charts plus one data-derived takeaway sentence) and portrait 1080x1350 (summary card). Takeaway text is generated from the processed numbers, never typed by hand.
+
+## 10. Hypothesis evaluation criteria
+
+Fixed before any real run. Each hypothesis is evaluated automatically from the processed data and reported as "supported", "not supported" or "inconclusive". A verdict is "inconclusive" when any cell it requires has fewer than 10 measured tasks (or a required statistic is missing).
+
+Token and latency statistics include all tasks with outcome other than `infra_error`; accuracy uses the same denominator.
+
+| Hypothesis | Supported if and only if |
+|---|---|
+| H1 | For Scenario A, both \|mean total tokens(code) - mean total tokens(mcp)\| / mean total tokens(mcp) < 0.25 and \|p50 latency(code) - p50 latency(mcp)\| / p50 latency(mcp) < 0.25. |
+| H2 | For every Scenario B volume, mean total tokens(code) < mean total tokens(mcp), and the absolute difference (mcp - code) strictly increases with volume. |
+| H3 | For Scenario B, p50 latency(code) < p50 latency(mcp) at volume 50 and at volume 200. |
+| H4 | Accuracy(mcp, 200) < accuracy(mcp, 10), and max - min of Code Mode accuracy across volumes is at most 0.10. |
