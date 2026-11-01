@@ -12,7 +12,7 @@ flowchart TB
         LLM["LLM client<br/>(OpenAI-compatible, usage + timing)"]
     end
     subgraph MCPMode["MCP mode"]
-        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["FastMCP server"]
+        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["MCPServer (mcp 2.x; formerly FastMCP)"]
     end
     subgraph CodeMode["Code Mode"]
         RunPy["run_python tool"] --> Monty["Monty sandbox<br/>(no fs / net / env)"]
@@ -69,7 +69,7 @@ Identical for both modes; only the toolset differs.
 
 ## 3. MCP mode
 
-- A FastMCP server exposes the 4 registry tools over stdio. It is started once per benchmark run (warm), not per task; a cold start is measured separately once and reported.
+- An MCPServer (mcp 2.x; formerly FastMCP) exposes the 4 registry tools over stdio. It is started once per benchmark run (warm), not per task; a cold start is measured separately once and reported.
 - The server resolves its principal at startup from a scoped session token passed via environment variable; the token never appears in prompts or tool results.
 - The client calls `list_tools` once per run and converts MCP tool schemas into the LLM `tools` parameter.
 - Multiple tool calls in one model turn are allowed and executed in order (current best practice; avoids a strawman baseline).
@@ -140,7 +140,7 @@ experiments/01-mcp-vs-code-mode/
 ├── src/mcp_vs_code_mode/
 │   ├── banking/      # dataset generator, models, service (authZ + audit)
 │   ├── tools/        # registry
-│   ├── mcp_server/   # FastMCP server
+│   ├── mcp_server/   # MCPServer (mcp 2.x; formerly FastMCP)
 │   ├── code_mode/    # Monty runner + stub generation
 │   ├── agent/        # shared loop, toolsets (mcp, code), LLM client
 │   ├── scenarios/    # prompts, answer schemas, ground truth, scoring
@@ -149,9 +149,11 @@ experiments/01-mcp-vs-code-mode/
 └── tests/            # unit + integration with a scripted fake LLM
 ```
 
-## 7. Open design questions (to resolve in Phase 3)
+## 7. Resolved design questions (Phase 3)
 
-- Exact Monty API for external functions, and whether memory limits are configurable.
-- The Python subset the system prompt advertises (derived from tests).
+- **Monty API and limits.** `pydantic-monty` runs workers as a subprocess pool. Per-session limits are configurable: `max_memory` (bytes), `max_feed_duration_secs` and `max_suspensions` (the cap on host function calls). Host functions are bound per feed with `external_lookup`; exceptions raised by the host surface inside the sandbox as the same builtin type. The first feed on a fresh pool takes about 0.76 s, so the sandbox warms the pool before any measurement.
+- **Advertised Python subset.** The prompt lists standard syntax, functions, loops, comprehensions, dict/list/set and the modules `json`, `math`, `datetime` and `collections`. A unit test executes one snippet per advertised feature, so the prompt cannot drift from what the sandbox runs.
+- **MCP server class.** mcp 2.x renamed FastMCP to `MCPServer` (`mcp.server.mcpserver`); the server registers one wrapper per `ToolSpec` and returns compact JSON text.
+- **Credential flow (identical in both modes).** The runner generates a random session token and a trust map `{sha256(token): principal_id}`. In MCP mode the server process receives `BANK_SESSION_TOKEN` and `BANK_TRUSTED_SESSIONS` through its environment and authenticates once at startup; in Code Mode the host runs the same `authenticate_token` before binding the executor. The principal is therefore resolved before any tool runs, the token is compared by fingerprint in constant time, and it never reaches the model, tool results, the transcript or the sandbox. The MCP stdio client passes only a safe allowlist of parent environment variables, so the provider API key is not inherited by the server.
 
 Related decisions: [ADR-0003](../../../docs/decisions/0003-experiment-as-uv-workspace-member.md), [ADR-0004](../../../docs/decisions/0004-hand-rolled-agent-loop.md), [ADR-0005](../../../docs/decisions/0005-monty-code-mode-sandbox.md).

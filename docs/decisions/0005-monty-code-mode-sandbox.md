@@ -25,4 +25,5 @@ Use `pydantic-monty` with execution-time and host-call limits. The registry tool
 ## Consequences
 
 - The model must write code in a Python subset.
-- Memory-limit support is to be verified in Phase 3; if absent, it is documented as a limitation.
+- A memory limit is supported (`max_memory`), alongside `max_feed_duration_secs` and `max_suspensions`.
+- The first feed on a fresh pool takes about 0.76 s, so pools are warmed before measurement.

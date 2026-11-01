@@ -1,6 +1,6 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Phase 2 — domain, tools and ground truth implemented; agents not implemented
+> **Status:** Phase 3 — MCP mode, Code Mode and agent loop implemented (simulated tests only)
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-01
 
@@ -101,7 +101,7 @@ flowchart TB
         LLM["LLM client<br/>(OpenAI-compatible, usage + timing)"]
     end
     subgraph MCPMode["MCP mode"]
-        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["FastMCP server"]
+        MCPClient["MCP client session"] -->|stdio JSON-RPC| MCPServer["MCPServer (mcp 2.x; formerly FastMCP)"]
     end
     subgraph CodeMode["Code Mode"]
         RunPy["run_python tool"] --> Monty["Monty sandbox<br/>(no fs / net / env)"]
@@ -121,7 +121,7 @@ flowchart TB
 
 ### MCP mode
 
-A FastMCP server exposes the 4 registry tools over stdio and is started once per run. The client lists tools once and passes their schemas to the model. Multiple tool calls per turn are allowed. Every tool result is serialised as compact JSON and appended to the conversation.
+An MCPServer (mcp 2.x; formerly FastMCP) exposes the 4 registry tools over stdio and is started once per run. The client lists tools once and passes their schemas to the model. Multiple tool calls per turn are allowed. Every tool result is serialised as compact JSON and appended to the conversation.
 
 ### Code Mode
 
@@ -143,7 +143,7 @@ The model receives one tool, `run_python(code)`, and Python function stubs gener
 | LLM access | `openai` SDK against OpenRouter's OpenAI-compatible API | Model-agnostic; provider-reported token usage |
 | Model | OpenRouter free model with tool-calling support, set via `LLM_MODEL` | Chosen at Phase 4 from the live model list |
 | Agent loop | Hand-written (~150 lines), shared by both modes | Full visibility of every token ([ADR-0004](../../docs/decisions/0004-hand-rolled-agent-loop.md)) |
-| MCP | Official `mcp` Python SDK, FastMCP server, stdio transport | Reference implementation |
+| MCP | Official `mcp` Python SDK, MCPServer (mcp 2.x; formerly FastMCP), stdio transport | Reference implementation |
 | Code Mode sandbox | `pydantic-monty` | In-process isolated interpreter; no filesystem, network or env access ([ADR-0005](../../docs/decisions/0005-monty-code-mode-sandbox.md)) |
 | Analysis | `pandas` | Aggregation and percentiles |
 | Charts | `matplotlib` | Static PNG/SVG |
