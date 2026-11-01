@@ -32,7 +32,7 @@ packages = ["shared/src/ai_lab"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["shared/src", "tests"]
+src = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests"]
 
 [tool.ruff.lint]
 select = [
@@ -49,7 +49,7 @@ select = [
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests"]
+testpaths = ["tests", "experiments/01-mcp-vs-code-mode/tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not live"]
 markers = [
     "unit: fast, isolated tests with no I/O",
@@ -61,11 +61,14 @@ markers = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["shared/src", "tests"]
-mypy_path = "shared/src"
+files = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests"]
+mypy_path = "shared/src:experiments/01-mcp-vs-code-mode/src"
 plugins = ["pydantic.mypy"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[tool.uv.workspace]
+members = ["experiments/01-mcp-vs-code-mode"]

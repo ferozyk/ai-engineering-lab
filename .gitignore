@@ -32,6 +32,7 @@ htmlcov/
 # Temporary logs (raw benchmark data under results/raw IS committed)
 *.log
 experiments/*/results/tmp/
+experiments/*/results/dry-run/
 
 # OS / editors
 .DS_Store

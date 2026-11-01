@@ -15,7 +15,7 @@ A learning journey and engineering portfolio. This repository holds small, repro
 
 | # | Experiment | Status |
 |---|---|---|
-| 01 | [MCP vs Code Mode](experiments/01-mcp-vs-code-mode/) | Design |
+| 01 | [MCP vs Code Mode](experiments/01-mcp-vs-code-mode/) | In progress (Phase 2: domain and tools) |
 
 ## Repository layout
 
@@ -31,12 +31,12 @@ tests/          Tests for the shared package
 
 ## Getting started
 
-Prerequisite: [uv](https://docs.astral.sh/uv/). uv installs Python 3.12 automatically.
+Prerequisite: [uv](https://docs.astral.sh/uv/). uv installs Python 3.12 automatically. Experiments are uv workspace members, so installs use `--all-packages` (a plain `uv sync` installs only the root package and removes members).
 
 ```bash
 git clone https://github.com/ferozyk/ai-engineering-lab.git
 cd ai-engineering-lab
-uv sync
+uv sync --all-packages
 cp .env.example .env   # optional; only needed for live model calls
 make check             # lint + typecheck + tests
 ```
@@ -45,7 +45,7 @@ make check             # lint + typecheck + tests
 
 | Command | Description |
 |---|---|
-| `make install` | Install dependencies with `uv sync` |
+| `make install` | Install dependencies with `uv sync --all-packages` (includes experiment workspace members) |
 | `make lint` | Ruff lint and format checks |
 | `make format` | Auto-format and fix lint issues |
 | `make typecheck` | Run mypy in strict mode |

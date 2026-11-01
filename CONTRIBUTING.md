@@ -3,12 +3,12 @@
 ## Development setup
 
 ```bash
-uv sync
+uv sync --all-packages
 cp .env.example .env   # optional
 make check
 ```
 
-Python 3.12 is installed by uv automatically.
+Python 3.12 is installed by uv automatically. Experiments are uv workspace members; always install with `--all-packages` (or `make install`), because a plain `uv sync` installs only the root package and removes the members.
 
 ## Workflow
 

@@ -5,8 +5,8 @@
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-12s %s\n", $$1, $$2}'
 
-install: ## Install dependencies with uv
-	uv sync
+install: ## Install dependencies (root and workspace members) with uv
+	uv sync --all-packages
 
 lint: ## Run Ruff lint and format checks
 	uv run ruff check .
