@@ -31,3 +31,5 @@ dataset = _support.dataset
 executor = _support.executor
 principal = _support.principal
 service = _support.service
+SyntheticRuns = _support.SyntheticRuns
+synthetic = _support.synthetic
