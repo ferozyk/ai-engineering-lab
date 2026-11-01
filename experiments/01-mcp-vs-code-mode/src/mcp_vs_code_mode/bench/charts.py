@@ -162,7 +162,7 @@ def no_data(ax: Axes, message: str = "No data") -> None:
     )  # fmt: skip
 
 
-def mode_legend(ax: Axes, *, loc: Any = "upper left", **kwargs: Any) -> None:
+def mode_legend(ax: Axes, *, loc: Any = "best", **kwargs: Any) -> None:
     """Legend with a marker per mode (frameless)."""
     handles = [
         Line2D(

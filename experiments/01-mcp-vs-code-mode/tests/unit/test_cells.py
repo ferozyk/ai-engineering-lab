@@ -41,7 +41,7 @@ def test_parse_round_trip() -> None:
 def test_schedule_shape_and_ids() -> None:
     config = load_config()
     schedule = build_schedule(config)
-    assert len(schedule) == 2 + config.iterations * 10
+    assert len(schedule) == 2 + config.iterations * 6
     assert [t.task_id for t in schedule[:2]] == ["w1-A-mcp", "w1-A-code"]
     assert all(t.warmup and t.iteration == 0 for t in schedule[:2])
     assert [t.order_index for t in schedule] == list(range(len(schedule)))

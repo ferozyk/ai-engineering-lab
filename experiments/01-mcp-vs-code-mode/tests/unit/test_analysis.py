@@ -304,3 +304,64 @@ def test_no_llm_calls_file_means_no_truncation(synthetic: Any) -> None:
     cell = summarise(synthetic.build(rows)).cell("A", None, "mcp")
     assert cell is not None
     assert (cell.n_truncated, cell.completed) == (0, 1)
+
+
+def _two_volume_run(
+    synthetic: Any,
+    n: int = 10,
+    *,
+    lat_code_100: float = 2000.0,
+    outcomes: dict[str, list[str]] | None = None,
+) -> Summary:
+    tokens: dict[str, list[int]] = {}
+    latency: dict[str, list[float]] = {}
+    for key, mcp_t, code_t, mcp_l, code_l in (
+        ("A", 1000, 1100, 1000.0, 1100.0),
+        ("B10", 2000, 1000, 1000.0, 900.0),
+        ("B100", 12000, 1000, 6000.0, lat_code_100),
+    ):
+        tokens[f"{key}:mcp"], tokens[f"{key}:code"] = [mcp_t], [code_t]
+        latency[f"{key}:mcp"], latency[f"{key}:code"] = [mcp_l], [code_l]
+    rows = synthetic.uniform(n, tokens, latency, outcomes=outcomes)
+    return summarise(synthetic.build(rows, volumes=(10, 100)))
+
+
+def test_two_volume_scope_hypotheses_supported(synthetic: Any) -> None:
+    outcomes = {"B10:mcp": ["correct"], "B100:mcp": ["correct", "incorrect"]}
+    summary = _two_volume_run(synthetic, outcomes=outcomes)
+    assert summary.volumes == [10, 100]
+    assert _verdicts(summary) == {
+        "H1": "supported",
+        "H2": "supported",
+        "H3": "supported",
+        "H4": "supported",
+    }
+    h3 = summary.hypotheses[2]
+    assert "largest measured volume (100)" in h3.statement
+    assert "at volume 100: p50 latency mcp 6.00 s vs code 2.00 s (-66.7%)" in h3.evidence
+    h4 = summary.hypotheses[3]
+    assert "(100)" in h4.statement
+    assert "(10)" in h4.statement
+    assert "MCP accuracy B10 100.0% vs B100 50.0%" in h4.evidence
+
+
+def test_two_volume_h3_uses_largest_volume_only(synthetic: Any) -> None:
+    # code is faster at 10 but slower at 100: H3 looks only at the largest volume
+    summary = _two_volume_run(synthetic, lat_code_100=9000.0)
+    assert _verdicts(summary)["H3"] == "not supported"
+
+
+def test_two_volume_h4_needs_mcp_drop(synthetic: Any) -> None:
+    summary = _two_volume_run(synthetic)  # MCP accuracy is 100% at both volumes
+    assert _verdicts(summary)["H4"] == "not supported"
+
+
+def test_single_volume_makes_h2_and_h4_inconclusive(synthetic: Any) -> None:
+    tokens = {"A:mcp": [1000], "A:code": [1000], "B100:mcp": [5000], "B100:code": [1000]}
+    latency = {k: [1000.0] for k in tokens}
+    rows = synthetic.uniform(10, tokens, latency)
+    summary = summarise(synthetic.build(rows, volumes=(100,)))
+    verdicts = _verdicts(summary)
+    assert verdicts["H2"] == verdicts["H4"] == "inconclusive"
+    assert "at least 2 Scenario B volume" in summary.hypotheses[1].evidence
+    assert verdicts["H3"] != "inconclusive"

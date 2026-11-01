@@ -3,7 +3,7 @@ experiment: mcp-vs-code-mode
 experiment_version: 0.1.0
 iterations: 10
 warmup_tasks_per_mode: 1          # scenario A, unmeasured
-volumes: [10, 50, 100, 200]
+volumes: [10, 100]            # measured run scope (2026-11-02); dataset also has 50 and 200
 max_turns: 8
 max_output_tokens: 32768         # raised from 4096 after canary 20261101T154924Z (see methodology §3)
 temperature: 0.0

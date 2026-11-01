@@ -360,6 +360,17 @@ def _inconclusive(hid: str, statement: str, cells: Sequence[CellStats | None]) -
     )
 
 
+def _too_few_volumes(
+    hid: str, statement: str, present: int, *, needed: int = 2
+) -> HypothesisResult:
+    return HypothesisResult(
+        id=hid,
+        statement=statement,
+        verdict="inconclusive",
+        evidence=f"needs at least {needed} Scenario B volume(s) in the run; {present} present",
+    )
+
+
 def _h1(mcp: CellStats | None, code: CellStats | None) -> HypothesisResult:
     statement = (
         "Scenario A: mean total tokens and p50 latency differ by less than 25% between modes."
@@ -400,7 +411,9 @@ def _h2(pairs: Sequence[tuple[CellStats | None, CellStats | None]]) -> Hypothesi
         "and the gap widens with volume."
     )
     flat = [c for pair in pairs for c in pair]
-    if not pairs or not _enough(*flat):
+    if len(pairs) < 2:
+        return _too_few_volumes("H2", statement, len(pairs))
+    if not _enough(*flat):
         return _inconclusive("H2", statement, flat)
     parts: list[str] = []
     fewer = True
@@ -427,29 +440,33 @@ def _h2(pairs: Sequence[tuple[CellStats | None, CellStats | None]]) -> Hypothesi
 
 
 def _h3(volumes: dict[int, tuple[CellStats | None, CellStats | None]]) -> HypothesisResult:
-    statement = "Scenario B: Code Mode has lower p50 latency than MCP at volumes 50 and 200."
-    required = [volumes.get(50, (None, None)), volumes.get(200, (None, None))]
-    flat = [c for pair in required for c in pair]
-    if not _enough(*flat):
-        return _inconclusive("H3", statement, flat)
-    parts: list[str] = []
-    faster = True
-    for mcp, code in required:
-        assert mcp is not None
-        assert code is not None
-        if mcp.latency_p50_s is None or code.latency_p50_s is None:
-            return _inconclusive("H3", statement, flat)
-        faster = faster and code.latency_p50_s < mcp.latency_p50_s
-        change = _relative(code.latency_p50_s - mcp.latency_p50_s, mcp.latency_p50_s)
-        parts.append(
-            f"{_label(mcp)}: p50 latency mcp {_sec(mcp.latency_p50_s)} vs "
-            f"code {_sec(code.latency_p50_s)} ({_signed_pct(change)})"
-        )
+    statement = (
+        "Scenario B: Code Mode has lower p50 latency than MCP at the largest measured volume."
+    )
+    if not volumes:
+        return _too_few_volumes("H3", statement, 0, needed=1)
+    largest = max(volumes)
+    mcp, code = volumes[largest]
+    statement = (
+        "Scenario B: Code Mode has lower p50 latency than MCP at the largest measured volume "
+        f"({largest})."
+    )
+    if not _enough(mcp, code):
+        return _inconclusive("H3", statement, [mcp, code])
+    assert mcp is not None
+    assert code is not None
+    if mcp.latency_p50_s is None or code.latency_p50_s is None:
+        return _inconclusive("H3", statement, [mcp, code])
+    change = _relative(code.latency_p50_s - mcp.latency_p50_s, mcp.latency_p50_s)
+    evidence = (
+        f"at volume {largest}: p50 latency mcp {_sec(mcp.latency_p50_s)} vs "
+        f"code {_sec(code.latency_p50_s)} ({_signed_pct(change)})"
+    )
     return HypothesisResult(
         id="H3",
         statement=statement,
-        verdict="supported" if faster else "not supported",
-        evidence="; ".join(parts),
+        verdict="supported" if code.latency_p50_s < mcp.latency_p50_s else "not supported",
+        evidence=evidence,
     )
 
 
@@ -459,14 +476,22 @@ def _pct_text(value: float | None) -> str:
 
 def _h4(volumes: dict[int, tuple[CellStats | None, CellStats | None]]) -> HypothesisResult:
     statement = (
-        "MCP accuracy decreases from volume 10 to 200; Code Mode accuracy stays within "
-        "10 percentage points across volumes."
+        "MCP accuracy at the largest measured volume is lower than at the smallest; Code Mode "
+        "accuracy max - min across measured volumes is at most 10 percentage points."
     )
-    mcp_low, _ = volumes.get(10, (None, None))
-    mcp_high, _ = volumes.get(200, (None, None))
+    if len(volumes) < 2:
+        return _too_few_volumes("H4", statement, len(volumes))
+    smallest, largest = min(volumes), max(volumes)
+    statement = (
+        f"MCP accuracy at the largest measured volume ({largest}) is lower than at the smallest "
+        f"({smallest}); Code Mode accuracy max - min across measured volumes "
+        f"({', '.join(str(v) for v in sorted(volumes))}) is at most 10 percentage points."
+    )
+    mcp_low = volumes[smallest][0]
+    mcp_high = volumes[largest][0]
     code_cells = [pair[1] for pair in volumes.values()]
     required = [mcp_low, mcp_high, *code_cells]
-    if not volumes or not _enough(*required):
+    if not _enough(*required):
         return _inconclusive("H4", statement, required)
     assert mcp_low is not None
     assert mcp_high is not None
@@ -477,7 +502,8 @@ def _h4(volumes: dict[int, tuple[CellStats | None, CellStats | None]]) -> Hypoth
     spread = max(code_acc) - min(code_acc)
     stable = spread <= H4_MAX_CODE_ACCURACY_SPREAD + 1e-12
     evidence = (
-        f"MCP accuracy B10 {_pct_text(mcp_low.accuracy)} vs B200 {_pct_text(mcp_high.accuracy)}; "
+        f"MCP accuracy B{smallest} {_pct_text(mcp_low.accuracy)} vs "
+        f"B{largest} {_pct_text(mcp_high.accuracy)}; "
         f"Code Mode accuracy spread across volumes {spread * 100:.1f} percentage points"
     )
     return HypothesisResult(

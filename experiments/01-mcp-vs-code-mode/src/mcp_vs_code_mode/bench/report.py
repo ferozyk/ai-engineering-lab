@@ -8,6 +8,7 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from mcp_vs_code_mode.banking.dataset import VOLUMES
 from mcp_vs_code_mode.bench.analysis import CellStats, Summary
 from mcp_vs_code_mode.bench.paths import EXPERIMENT_DIR
 
@@ -208,6 +209,15 @@ def _run_limitations(summary: Summary, out_path: Path) -> list[str]:
         "final answer (right or wrong); `cut off` = measured tasks that did not. See "
         f"[methodology section 3]({_methodology_link(out_path)}#3-controls)."
     )
+    measured = [int(v) for v in meta.config.get("volumes", [])]
+    if measured and set(measured) != set(VOLUMES):
+        omitted = [v for v in VOLUMES if v not in measured]
+        items.append(
+            f"Measured volumes: {', '.join(str(v) for v in measured)} (dataset also contains "
+            f"{', '.join(str(v) for v in omitted)}; see "
+            f"[methodology section 3]({_methodology_link(out_path)}#3-controls) for the scope "
+            "decision and canary observations)."
+        )
     if meta.halted:
         items.append(f"The run was halted: {meta.halt_reason}")
     else:

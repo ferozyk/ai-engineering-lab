@@ -22,7 +22,7 @@ def _raw() -> dict[str, Any]:
 def test_repo_config_loads() -> None:
     config = load_config()
     assert config.iterations == 10
-    assert config.volumes == [10, 50, 100, 200]
+    assert config.volumes == [10, 100]
     assert config.rate_limit_per_minute == 15
     assert config.daily_request_cap == 900
     assert config.llm_seed is None

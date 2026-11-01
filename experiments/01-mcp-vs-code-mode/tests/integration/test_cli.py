@@ -13,8 +13,8 @@ pytestmark = pytest.mark.integration
 def test_plan_prints_numbers(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["plan"]) == 0
     out = capsys.readouterr().out
-    assert "244" in out
-    assert "816" in out
+    assert "144" in out
+    assert "496" in out
     assert "Estimates, not measurements." in out
 
 

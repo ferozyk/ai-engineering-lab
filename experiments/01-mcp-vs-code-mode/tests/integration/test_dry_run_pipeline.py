@@ -25,7 +25,7 @@ def test_dry_run_publishes_everything(
     processed = run_dir / "processed"
     summary = json.loads((processed / "summary.json").read_text(encoding="utf-8"))
     assert summary["simulated"] is True
-    assert len(summary["cells"]) == 10
+    assert len(summary["cells"]) == 6
     for cell in summary["cells"]:
         assert cell["n_measured"] == 2
         assert cell["accuracy"] == 1.0  # the oracle always answers correctly

@@ -90,3 +90,25 @@ def test_truncation_in_report(synthetic: Any, tmp_path: Path) -> None:
     assert "| B10:mcp | 3 | 3 | 0 | 100.0% |" in text
     assert "Output-limit rule" in text
     assert "methodology.md#3-controls" in text
+
+
+def _scope_report(synthetic: Any, tmp_path: Path, volumes: tuple[int, ...]) -> str:
+    tokens = {"A:mcp": [1000], "A:code": [1100]}
+    latency = {"A:mcp": [1000.0], "A:code": [900.0]}
+    for volume in volumes:
+        tokens[f"B{volume}:mcp"], tokens[f"B{volume}:code"] = [5000], [900]
+        latency[f"B{volume}:mcp"], latency[f"B{volume}:code"] = [2000.0], [800.0]
+    paths = synthetic.build(synthetic.uniform(2, tokens, latency), volumes=volumes)
+    out = tmp_path / "reports" / "report.md"
+    render_report(summarise(paths), [], out)
+    return out.read_text(encoding="utf-8")
+
+
+def test_measured_volumes_line_when_scope_is_reduced(synthetic: Any, tmp_path: Path) -> None:
+    text = _scope_report(synthetic, tmp_path, (10, 100))
+    assert "Measured volumes: 10, 100 (dataset also contains 50, 200; see " in text
+    assert "methodology.md#3-controls" in text
+
+
+def test_no_measured_volumes_line_for_full_scope(synthetic: Any, tmp_path: Path) -> None:
+    assert "Measured volumes:" not in _scope_report(synthetic, tmp_path, (10, 50, 100, 200))
