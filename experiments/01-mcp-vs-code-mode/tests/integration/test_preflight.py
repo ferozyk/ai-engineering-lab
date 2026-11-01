@@ -42,7 +42,7 @@ def _models(
             "context_length": context,
             "pricing": {"prompt": price, "completion": price},
             "supported_parameters": ["tools"] if tools else ["temperature"],
-            "top_provider": {"context_length": context, "max_completion_tokens": 8192},
+            "top_provider": {"context_length": context, "max_completion_tokens": 131072},
         }
 
     return {

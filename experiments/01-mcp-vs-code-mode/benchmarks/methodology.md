@@ -36,6 +36,8 @@ Ground truth is computed by plain Python over the dataset, never by an LLM. A ta
 - Both runtimes warm.
 - Interleaved execution: for each iteration, the 8 cells run in an order shuffled with a fixed seed, so provider-side drift affects both modes equally.
 
+**Pre-run protocol change (canary `20261101T154924Z-canary`).** The first canary used `max_output_tokens = 4096`. In the B200 MCP task the model spent all 4,096 output tokens on reasoning over a 68,038-token prompt and was truncated (`finish_reason = length`) before writing an answer. That cap was a harness setting, not a model limit, and would have failed every B200 MCP task by construction. Before any measured run, the cap was raised to 32,768 for **both** modes (and the request timeout from 180 s to 600 s). Answers still truncated at 32,768 tokens are recorded as failures, not excluded. The canary's raw data is kept in `results/raw/20261101T154924Z-canary/`.
+
 ## 4. Sample size and request budget (planning estimates)
 
 - Iterations: 15 per cell, giving 120 measured tasks, plus 1 unmeasured warm-up task per mode.

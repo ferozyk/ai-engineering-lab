@@ -5,13 +5,13 @@ iterations: 15
 warmup_tasks_per_mode: 1          # scenario A, unmeasured
 volumes: [10, 50, 200]
 max_turns: 8
-max_output_tokens: 4096
+max_output_tokens: 32768         # raised from 4096 after canary 20261101T154924Z (see methodology §3)
 temperature: 0.0
 order_seed: 20261101              # seeds per-iteration cell shuffling
 llm_seed: null                    # sent to the provider only if not null
 rate_limit_per_minute: 15         # provider limit is 20; stay below it
 daily_request_cap: 900            # hard stop for this tool (provider limit 1,000)
-request_timeout_seconds: 180
+request_timeout_seconds: 600      # long reasoning outputs at the higher token cap
 mcp_call_timeout_seconds: 10
 sandbox:
   max_duration_secs: 5
