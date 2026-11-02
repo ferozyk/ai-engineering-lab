@@ -859,6 +859,25 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
     return _save(fig, summary, out_dir, "token_breakdown")
 
 
+def _cut_off_sentence(
+    summary: Summary, modes: Sequence[Mode], cells: Sequence[CellStats | None]
+) -> str:
+    """Footnote sentence naming each bar whose tasks were cut off at the output limit."""
+    parts = [
+        f"{mode_label(m, summary)}: {cut_off_text(c)}"
+        for m, c in zip(modes, cells, strict=True)
+        if c is not None and c.n_truncated > 0
+    ]
+    if not parts:
+        return ""
+    limit = output_limit(summary)
+    where = f" ({limit:,} tokens)" if limit is not None else ""
+    return (
+        f" {'; '.join(parts)}{where}; their tokens are included and are a lower bound, "
+        "and they count as incorrect."
+    )
+
+
 def unanticipated_query(summary: Summary, out_dir: Path) -> list[Path]:
     """Scenario C at its largest volume: mean tokens, p50 latency and accuracy per mode."""
     volume = summary.c_volumes[-1]
@@ -874,7 +893,8 @@ def unanticipated_query(summary: Summary, out_dir: Path) -> list[Path]:
         fig,
         "Measured. The aggregation tool cannot answer this question directly (no per-merchant "
         "totals, no weekday information); Code Mode has no aggregation tool either. Each panel "
-        "has its own y axis; latency is p50 wall-clock time excluding client-side throttling.",
+        "has its own y axis; latency is p50 wall-clock time excluding client-side throttling."
+        + _cut_off_sentence(summary, modes, cells),
     )
     getters: list[tuple[str, Callable[[CellStats], float | None], Callable[[float], str], str]] = [
         ("Mean tokens per task", lambda c: c.tokens_mean, lambda v: f"{v:,.0f}", "Tokens"),

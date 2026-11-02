@@ -15,6 +15,7 @@ from mcp_vs_code_mode.bench.analysis import Summary, load_tasks, mode_label, sum
 from mcp_vs_code_mode.bench.charts import (
     CHART_STEMS,
     UNANTICIPATED_STEM,
+    _cut_off_sentence,
     group_label,
     render_all,
     spread_positions,
@@ -300,3 +301,31 @@ def test_committed_run_still_reproduces_published_numbers() -> None:
     assert mode_label("mcp", summary) == "MCP"
     saved = json.loads((paths.processed / "summary.json").read_text(encoding="utf-8"))
     assert Summary.model_validate(saved).run_id == summary.run_id
+
+
+def test_committed_01b_run_reproduces_published_numbers() -> None:
+    paths = RunPaths.find("20261102T201532Z-full")  # read-only: nothing is written
+    summary = summarise(paths)
+    b100_agg = summary.cell("B", 100, "mcp_agg")
+    b100_code = summary.cell("B", 100, "code")
+    c100_agg = summary.cell("C", 100, "mcp_agg")
+    c100_code = summary.cell("C", 100, "code")
+    assert b100_agg is not None
+    assert b100_code is not None
+    assert c100_agg is not None
+    assert c100_code is not None
+    assert b100_agg.tokens_mean == pytest.approx(9_172, abs=1)
+    assert b100_code.tokens_mean == pytest.approx(5_714, abs=1)
+    assert c100_agg.tokens_mean == pytest.approx(83_132, abs=1)
+    assert c100_code.tokens_mean == pytest.approx(4_230, abs=1)
+    assert (b100_agg.accuracy, c100_agg.accuracy, c100_code.accuracy) == (1.0, 0.0, 1.0)
+    assert c100_agg.n_truncated == 9
+    verdicts = {h.id: h.verdict for h in summary.hypotheses}
+    assert [verdicts[f"H{i}"] for i in range(1, 7)] == ["supported"] * 4 + [
+        "not supported",
+        "supported",
+    ]
+    sentence = _cut_off_sentence(summary, ["mcp_agg", "code"], [c100_agg, c100_code])
+    assert "MCP + aggregation tool: 9/10 cut off at output limit (32,768 tokens)" in sentence
+    assert "Code Mode" not in sentence
+    assert _cut_off_sentence(summary, ["code"], [c100_code]) == ""
