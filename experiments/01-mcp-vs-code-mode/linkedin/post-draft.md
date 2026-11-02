@@ -130,15 +130,18 @@ Alternative: `results/charts/20261102T201532Z-full/unanticipated_query.png`.
 
 ## Reply to the comment
 
-Good call, so I tested it. I added a third mode: the same MCP server plus one `summarise_spending` tool that returns per-category totals and large debits, so the model never sees the 400 rows.
+Really good point, so I tried it. I added a summarise_spending tool to the MCP server that returns category totals and large debits, so the model never has to look at the 400 rows.
 
-You were mostly right. At 100 transactions per account it went from 68,012 tokens and 0/10 correct (raw MCP) to 9,172 tokens and 10/10 correct. That is 94% of the gap to Code Mode, so most of the original gain was about sending less data back, not about the code.
+Turns out you were mostly right. At 100 transactions per account, MCP went from 68k tokens and 0/10 correct to about 9.2k tokens and 10/10. That's roughly 94% of the gap to Code Mode, so most of the win really was just sending less data back.
 
-Code Mode was still 38% lower (5,714 tokens), mostly from one fewer model round trip and a smaller tool list. I had pre-registered "within 25%", so that hypothesis did not hold.
+Code Mode was still about 38% cheaper (5.7k tokens), mainly from one less round trip and a smaller tool list. I'd set myself a 25% margin before running it, and it missed that, so that part didn't hold.
 
-The bigger difference came when I changed the question to one the tool wasn't built for (top 3 merchants and weekend debit count). The model fell back to raw transactions: 83,132 tokens and 0/10 correct. Code Mode wrote a different script and got 10/10 with 4,230 tokens.
+The interesting part was when I asked something the tool wasn't built for: top 3 merchants and how many debits fell on a weekend. The model just went back to pulling every transaction, burned 83k tokens and got 0/10. Code Mode wrote a different script and got 10/10 on about 4.2k.
 
-So my takeaway: if you know the questions, a purpose-built MCP tool gets you most of the way without a sandbox. Code Mode pays off when you can't list the questions in advance. Write-up and data: https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/01-mcp-vs-code-mode
+My take now: if you know the questions up front, a good aggregation tool gets you most of the way and you don't need a sandbox. Code Mode makes more sense when you can't predict what will be asked.
+
+Write-up and data are in the repo:
+https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/01-mcp-vs-code-mode
 
 ## Follow-up post (optional)
 
