@@ -144,3 +144,39 @@ Token and latency statistics include all tasks with outcome other than `infra_er
 | H4 | Accuracy(mcp, largest measured volume) < accuracy(mcp, smallest measured volume), and max - min of Code Mode accuracy across measured volumes is at most 0.10. |
 
 The smallest and largest volumes are taken from the Scenario B volumes present in the run (10 and 100 for the scoped measured run); verdicts and evidence name the actual volumes. A verdict is also "inconclusive" when fewer than 2 Scenario B volumes are present (H2 and H4).
+
+## 11. Extension 01b (pre-registered 2026-11-02)
+
+**Motivation.** A reviewer of the published result observed that Code Mode differs from raw MCP in two ways at once: it executes code, and it returns far less data to the model. This extension separates the two. It adds a third mode and a query that a fixed server-side aggregate cannot answer. Written before any 01b model request was made.
+
+**Modes.**
+
+| Mode | Tools the model sees |
+|---|---|
+| `mcp` (MCP, raw tools) | the 4 raw tools over MCP |
+| `mcp_agg` (MCP + aggregation tool) | the 4 raw tools plus `summarise_spending`, over a separate MCP server process |
+| `code` (Code Mode) | `run_python` with the 4 raw tools as functions; no aggregation tool |
+
+The prompt section is identical for both MCP modes; the only difference between them is the extra tool. Both servers share the token, trust map and audit file; aggregation calls are audited with channel `mcp_agg`.
+
+**Aggregation tool contract.** `summarise_spending(account_id, start_date, end_date, large_debit_threshold=1000)` returns `{account_id, start_date, end_date, spend_by_category, large_debit_ids, debit_count}`. `spend_by_category` is the sum of absolute debit amounts per category (2 dp, half-up); `large_debit_ids` lists debits whose absolute amount is strictly greater than the threshold. It is authorised, validated and audited exactly like the raw tools. It answers Scenario B directly; it cannot answer Scenario C (no per-merchant totals, no weekday information).
+
+**Scenario C (unanticipated query).** At 100 transactions per account, for the customer's four accounts over the dataset window:
+
+- `top_merchants`: the 3 merchants with the highest total debit spend, as `{merchant, total}` sorted by total descending, totals rounded to 2 dp.
+- `weekend_debit_count`: the number of debit transactions dated on a Saturday or Sunday.
+
+Ground truth is computed independently from the dataset (Decimal arithmetic; weekend = `date.weekday() >= 5`). There is no tie between ranks 3 and 4 at volumes 10 and 100 (tested). Scoring has 8 fields: customer id (1), weekend count exact (1), and for each of the 3 ranks the merchant name exactly (case-sensitive, whitespace-stripped) (1) and the total within 0.01 (1). Missing ranks count as wrong; entries beyond the third are ignored. A task is correct only if all 8 fields match; invalid-answer rules are the same as for Scenarios A and B.
+
+**Why raw MCP is not run on Scenario C.** `mcp_agg` has the same raw tools as `mcp` plus a tool that does not help with this question, so its Scenario C behaviour is effectively raw MCP. Running both would spend requests on near-duplicate cells; the comparison of interest is the aggregation tool against Code Mode. The harness supports `C:mcp` cells if wanted later.
+
+**Hypotheses.** H1 to H4 are unchanged (mcp vs code). Verdicts are "supported", "not supported" or "inconclusive" (inconclusive if any required cell is missing or has fewer than 10 measured tasks).
+
+| Hypothesis | Supported if and only if |
+|---|---|
+| H5 (data reduction explains the chained-task gap) | At the largest Scenario B volume, mean total tokens(mcp_agg) <= 1.25 x mean total tokens(code) and accuracy(mcp_agg) >= 0.90. |
+| H6 (code execution buys flexibility) | At the largest Scenario C volume, accuracy(code) >= 0.90 and accuracy(mcp_agg) <= accuracy(code) - 0.30 and mean total tokens(code) < mean total tokens(mcp_agg). |
+
+**Sample size and plan** (`uv run mcp-vs-code-mode plan`, estimates). Modes `[mcp, mcp_agg, code]`; Scenario B volumes 10 and 100; Scenario C at 100 with `mcp_agg` and `code`; 10 iterations; one Scenario A warm-up per mode. Per iteration: A 3 modes x 2 = 6, B mcp 2 x 3 = 6, B mcp_agg 2 x 3 = 6, B code 2 x 2 = 4, C mcp_agg 3, C code 2: 27 requests for an ideal agent. Warm-ups 3 x 2 = 6. Lower bound 6 + 270 = 276 requests over 113 tasks (3 warm-up, 110 measured). The worst case, every task using all 8 turns, is 904 requests, which exceeds the 900 daily cap; a run that approaches it would need `--resume` on a later day.
+
+Results of the 01b run, when it exists, will be reported in the same way as the first run; earlier published results are not modified.
