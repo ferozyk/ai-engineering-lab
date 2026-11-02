@@ -1,8 +1,8 @@
 # 01 — MCP vs Code Mode
 
-> **Status:** Complete — measured run `20261101T203521Z-full`
-> **Experiment version:** 0.1.0
-> **Last updated:** 2026-11-02
+> **Status:** Complete — measured runs `20261101T203521Z-full` (01) and `20261102T201532Z-full` (01b)
+> **Experiment version:** 0.1.0 (01), 0.2.0 (01b)
+> **Last updated:** 2026-11-03
 
 ## 1. Overview
 
@@ -17,7 +17,7 @@ Terminology used throughout:
 - **Cell:** one (scenario, volume, mode) combination. The measured run has 6 cells.
 - **Task:** one execution of one cell.
 
-> **Extension 01b (in progress):** a third mode (MCP + aggregation tool) and a new unanticipated-query scenario were pre-registered on 2026-11-02 to separate data reduction from code execution. See [methodology section 11](benchmarks/methodology.md#11-extension-01b-pre-registered-2026-11-02). The published results below are unchanged.
+> **Extension 01b (complete):** a third mode (MCP + aggregation tool) and a new unanticipated-query scenario (Scenario C), pre-registered on 2026-11-02 to separate *returning less data to the model* from *executing code*. See [methodology section 11](benchmarks/methodology.md#11-extension-01b-pre-registered-2026-11-02) and the 01b subsections of sections 12, 13 and 15. The results of the first run are unchanged.
 
 ## 2. Research Question
 
@@ -212,6 +212,46 @@ Pre-registered hypotheses ([criteria](benchmarks/methodology.md#10-hypothesis-ev
 
 More charts (cost, accuracy, model calls, latency distribution, token breakdown) are in [`results/charts/20261101T203521Z-full/`](results/charts/20261101T203521Z-full/).
 
+
+### Extension 01b results
+
+Measured run [`20261102T201532Z-full`](results/raw/20261102T201532Z-full/) on the same model and provider, commit `41c9c16` (clean tree): 110 measured tasks (10 per row) plus 3 warm-ups, 306 model requests, 0 failed requests, 0 infrastructure errors, 76 minutes. Full report: [`results/reports/20261102T201532Z-full/report.md`](results/reports/20261102T201532Z-full/report.md). Processed data: [`results/processed/20261102T201532Z-full/`](results/processed/20261102T201532Z-full/).
+
+| Scenario | Mode | Correct | Mean total tokens | p50 latency | p95 latency | Mean model calls | Est. cost / 1,000 tasks |
+|---|---|---|---|---|---|---|---|
+| A: simple lookup | MCP (raw tools) | 10/10 | 2,210 | 1.76 s | 1.9 s | 2.0 | $0.39 |
+| A: simple lookup | MCP + aggregation tool | 10/10 | 2,941 | 1.83 s | 2.1 s | 2.0 | $0.50 |
+| A: simple lookup | Code Mode | 10/10 | 2,018 | 1.77 s | 2.2 s | 2.0 | $0.36 |
+| B: chained, 10 tx/account | MCP (raw tools) | 10/10 | 13,906 | 20.23 s | 24.1 s | 3.7 | $3.57 |
+| B: chained, 10 tx/account | MCP + aggregation tool | 10/10 | 9,319 | 10.13 s | 20.6 s | 3.4 | $2.06 |
+| B: chained, 10 tx/account | Code Mode | 10/10 | 6,532 | 6.73 s | 15.2 s | 2.3 | $1.52 |
+| B: chained, 100 tx/account | MCP (raw tools) | 0/10 | 68,012 | 145.64 s | 202.3 s | 3.7 | $20.29 |
+| B: chained, 100 tx/account | MCP + aggregation tool | 10/10 | 9,172 | 12.27 s | 16.5 s | 3.0 | $2.22 |
+| B: chained, 100 tx/account | Code Mode | 10/10 | 5,714 | 8.83 s | 31.5 s | 2.0 | $1.45 |
+| C: unanticipated query, 100 tx/account | MCP + aggregation tool | 0/10 | 83,132 | 166.59 s | 234.1 s | 3.8 | $24.09 |
+| C: unanticipated query, 100 tx/account | Code Mode | 10/10 | 4,230 | 5.93 s | 7.6 s | 2.1 | $1.00 |
+
+Same measurement rules as the first run; cost is **estimated**. Raw MCP was not run on Scenario C (see [methodology section 11](benchmarks/methodology.md#11-extension-01b-pre-registered-2026-11-02)).
+
+The raw MCP rows reproduce the first run (B100: 0/10 again, 5 cut off at the output limit and 5 with arithmetic errors; 68,012 vs 65,579 mean tokens). Of the 10 Scenario C tasks with the aggregation tool, 9 were cut off at the 32,768-token output limit and 1 answered with all three merchants right but a weekend debit count of 98 instead of 99.
+
+Pre-registered hypotheses ([H1–H4 criteria](benchmarks/methodology.md#10-hypothesis-evaluation-criteria), [H5–H6 criteria](benchmarks/methodology.md#11-extension-01b-pre-registered-2026-11-02)), computed automatically:
+
+| | Hypothesis | Verdict |
+|---|---|---|
+| H1 | Simple lookups: tokens and p50 latency within 25% | Supported (tokens −8.7%, latency +0.2%) |
+| H2 | Chained: Code Mode uses fewer tokens, gap grows with volume | Supported (gap 7,374 → 62,298 tokens) |
+| H3 | Chained: Code Mode faster at the largest volume | Supported (8.8 s vs 145.6 s at 100) |
+| H4 | MCP accuracy drops with volume; Code Mode stays stable | Supported (MCP 100% → 0%; Code Mode 100% at both) |
+| H5 | Data reduction explains the chained-task gap: MCP + aggregation tool within 1.25× of Code Mode's tokens and ≥ 90% accurate | **Not supported** (accuracy 100%, but tokens 9,172 vs 5,714, ratio 1.61) |
+| H6 | Code execution buys flexibility: on the unanticipated query Code Mode ≥ 90% accurate, ≥ 30 points ahead and cheaper in tokens | Supported (100% vs 0%; 4,230 vs 83,132 tokens) |
+
+![Total tokens per task vs transactions per account, three modes](results/charts/20261102T201532Z-full/tokens_vs_volume.png)
+
+![Unanticipated query: tokens, latency and accuracy](results/charts/20261102T201532Z-full/unanticipated_query.png)
+
+More charts for this run are in [`results/charts/20261102T201532Z-full/`](results/charts/20261102T201532Z-full/).
+
 ## 13. Analysis
 
 **Where the tokens go.** In MCP mode every tool result is appended to the conversation, so the prompt grows with the data: at 100 transactions per account the final prompt averaged 35,153 tokens. More striking is the output side: MCP tasks at that volume averaged 26,793 output tokens, of which 25,919 were reasoning tokens. The model was not just reading the transactions; it was trying to add them up in its head. In Code Mode the same rows never reach the model. The script loops, filters and sums inside the sandbox and returns a few hundred characters, so total tokens stayed flat at about 7,000 whether an account had 10 or 100 transactions.
@@ -233,6 +273,23 @@ More charts (cost, accuracy, model calls, latency distribution, token breakdown)
 
 These are complementary rather than competing: Code Mode in this experiment calls exactly the same tools, with the same authorisation, as the MCP server. The difference is only who processes the tool results: the model, or code the model wrote.
 
+
+### Extension 01b analysis
+
+**Most of the chained-task gain is data reduction.** At 100 transactions per account, raw MCP used 68,012 tokens and Code Mode 5,714, a gap of 62,298. Giving the MCP server one purpose-built tool, `summarise_spending`, closed 58,840 of that gap (94%): 9,172 tokens, and 10/10 correct instead of 0/10. Latency followed the same pattern (145.6 s → 12.3 s, against 8.8 s for Code Mode). The model used the tool as intended in every run (40 `summarise_spending` calls over 10 tasks, no `get_transactions` calls). So the reviewer's point holds: the bulk of the effect in the first run came from not sending 400 rows back to the model, not from the code itself.
+
+**But not all of it, so H5 was not supported.** Code Mode still used 38% fewer tokens than the purpose-built tool, outside the 25% margin set in advance. The difference is structural rather than about arithmetic: the MCP + aggregation agent needed one more model round trip (3.0 vs 2.0 calls: list the accounts, then fetch balances and summaries, then answer), every request carried a larger tool catalogue (the extra tool definition alone adds about 365 prompt tokens per request, visible in Scenario A: 2,941 vs 2,210 tokens), and it wrote more output (2,410 vs 1,706 tokens). In return it was more predictable: tokens ranged from 8,504 to 9,531, against 4,883 to 6,756 for Code Mode, and its p95 latency was lower (16.5 s vs 31.5 s; one Code Mode task waited 42.6 s for a 731-token provider response).
+
+**The aggregation tool only helps with the questions it was built for.** Scenario C asked for the top three merchants by spend and the number of weekend debits, which `summarise_spending` cannot answer. The model never called it there; in every run it fell back to `get_transactions` for all four accounts, and from that point behaved like raw MCP: 83,132 tokens, 166.6 s median, 9 of 10 runs cut off at the output limit, and 0/10 correct. Code Mode wrote a different script for the different question and answered 10/10 with 4,230 tokens in 5.9 s. This scenario was designed so that the fixed tool could not answer it; what it measures is what happens when a question falls outside the tools you built, not how often that happens in a real system.
+
+**What this changes in the trade-off.** Code execution is not the only way to stop raw data flooding the context. If the questions are known in advance, a server-side aggregate tool gets most of the benefit with no sandbox to build or secure. Code Mode earns its extra moving parts when the questions are open-ended, because the model can write the aggregation it needs instead of waiting for someone to ship a new tool.
+
+| Situation | Reasonable choice |
+|---|---|
+| Few calls, small results | MCP with raw tools |
+| Known, repeated aggregations over large data | MCP with purpose-built aggregate tools |
+| Open-ended analysis over large data, with a proper sandbox available | Code Mode |
+
 ## 14. Limitations
 
 
@@ -244,6 +301,8 @@ These are complementary rather than competing: Code Mode in this experiment call
 - Monty runs a Python subset.
 - Synthetic data.
 - Cost is estimated, not billed.
+- Extension 01b: one aggregation tool design (`summarise_spending`). A richer server (per-merchant totals, weekday filters, a generic query tool) would answer Scenario C; Scenario C measures the failure mode when a question is outside the tools, by construction, not its frequency.
+- Extension 01b: raw MCP was not run on Scenario C; MCP + aggregation tool there behaved like raw MCP (it never called the aggregation tool).
 
 ## 15. Conclusion
 
@@ -252,6 +311,11 @@ For a single lookup, MCP tool calling and Code Mode performed the same on tokens
 The practical takeaway is not to replace MCP, but to recognise the point where an agent stops *looking up* data and starts *processing* it. Before that point, direct tool calls are simpler. After it, letting the model write code against the same tools is cheaper, faster and more reliable, provided the code runs in a properly restricted sandbox.
 
 These results come from one model, synthetic data and 10 runs per scenario. The direction of the token and latency effect follows from the architecture and should generalise; the exact accuracy numbers are model-specific and should be re-tested with other models.
+
+
+### Extension 01b conclusion
+
+Adding one aggregation tool to the MCP server removed 94% of the token gap between raw MCP and Code Mode on the chained task and made MCP accurate again (10/10), which confirms that returning less data to the model is the main driver. Code Mode remained 38% cheaper in tokens, so the pre-registered claim that data reduction explains the gap *within 25%* (H5) was not supported. On a question the aggregation tool could not answer, MCP fell back to raw rows and failed every run (0/10, 83,132 tokens) while Code Mode answered every run (10/10, 4,230 tokens), supporting H6. The practical reading: build aggregate tools for the questions you know about; use Code Mode when you cannot enumerate the questions in advance. Same caveats as above: one model, synthetic data, 10 runs per cell.
 
 ## 16. How to Run
 

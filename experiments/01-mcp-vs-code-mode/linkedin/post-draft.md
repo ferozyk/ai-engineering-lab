@@ -115,3 +115,74 @@ I would be interested to hear how others decide between the two, or if you have 
 ## Notes for the author before posting
 - The experiment was built with AI coding assistance. If you want to mention that, it fits naturally after "So I set up a small experiment".
 - Push the repository first so the link works.
+
+---
+
+# Follow-up: extension 01b (aggregation baseline)
+
+Status: Draft for author review. Not published.
+
+Source run: `20261102T201532Z-full` (110 measured tasks, 10 per row, 0 infrastructure errors).
+Every number below comes from `results/processed/20261102T201532Z-full/cells.csv`.
+
+Suggested image (local file, gitignored): `linkedin/visual-assets/20261102T201532Z-full/linkedin-landscape.png`.
+Alternative: `results/charts/20261102T201532Z-full/unanticipated_query.png`.
+
+## Reply to the comment
+
+Good call, so I tested it. I added a third mode: the same MCP server plus one `summarise_spending` tool that returns per-category totals and large debits, so the model never sees the 400 rows.
+
+You were mostly right. At 100 transactions per account it went from 68,012 tokens and 0/10 correct (raw MCP) to 9,172 tokens and 10/10 correct. That is 94% of the gap to Code Mode, so most of the original gain was about sending less data back, not about the code.
+
+Code Mode was still 38% lower (5,714 tokens), mostly from one fewer model round trip and a smaller tool list. I had pre-registered "within 25%", so that hypothesis did not hold.
+
+The bigger difference came when I changed the question to one the tool wasn't built for (top 3 merchants and weekend debit count). The model fell back to raw transactions: 83,132 tokens and 0/10 correct. Code Mode wrote a different script and got 10/10 with 4,230 tokens.
+
+So my takeaway: if you know the questions, a purpose-built MCP tool gets you most of the way without a sandbox. Code Mode pays off when you can't list the questions in advance. Write-up and data: https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/01-mcp-vs-code-mode
+
+## Follow-up post (optional)
+
+After my MCP vs Code Mode post, someone asked a good question: how much of Code Mode's advantage comes from running code, and how much from simply sending less data back to the model? So I added a third baseline: MCP with one extra aggregation tool that does the summing on the server.
+
+Same model (Nemotron 3.5 Super, free tier on OpenRouter), same data, 10 runs per setup. I wrote down what would count as "supported" before running anything.
+
+Chained task, 100 transactions per account:
+- MCP, raw tools: 68,012 tokens, 146 s median, 0/10 correct
+- MCP + aggregation tool: 9,172 tokens, 12 s, 10/10 correct
+- Code Mode: 5,714 tokens, 9 s, 10/10 correct
+
+So most of the gain was data reduction. One well-designed tool closed 94% of the token gap. Code Mode was still 38% cheaper, which was outside the margin I had set in advance, so I am calling that part not supported.
+
+Then I asked something the tool wasn't designed for: the top three merchants by spend and the number of weekend debits.
+- MCP + aggregation tool: 83,132 tokens, 0/10 correct (it fell back to fetching every transaction)
+- Code Mode: 4,230 tokens, 10/10 correct
+
+I built that question so the tool couldn't answer it, so this shows what happens when a question falls outside your tools, not how often that happens.
+
+Where I have landed:
+- few calls, small results: plain MCP
+- known, repeated aggregations over large data: MCP with purpose-built tools, no sandbox needed
+- open-ended analysis over large data: Code Mode, with a proper sandbox
+
+One model and synthetic data, so treat the exact numbers with care. The code, raw data and pre-registered criteria are on GitHub:
+https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/01-mcp-vs-code-mode
+
+Thanks for the push to test it properly. How do you decide when a new tool is worth building versus letting the model write the code?
+
+#MCP #AIEngineering #LLM #AgenticAI
+
+## Fact check (01b, from `cells.csv` and raw records)
+
+| Claim | Value in data |
+|---|---|
+| B100 tokens: MCP / MCP + agg / Code | 68,012 / 9,172 / 5,714 |
+| B100 p50 latency | 145.64 s / 12.27 s / 8.83 s |
+| B100 accuracy | 0/10 / 10/10 / 10/10 |
+| Share of gap closed by the aggregation tool | (68,012 − 9,172) / (68,012 − 5,714) = 94.4% |
+| Code Mode vs MCP + agg tokens | −37.7% (ratio 1.61; H5 threshold 1.25) |
+| B100 model calls MCP + agg / Code | 3.0 / 2.0 |
+| Extra tool definition prompt cost | peak prompt in Scenario A 1,461 vs 1,096 tokens (+365) |
+| C100 tokens MCP + agg / Code | 83,132 / 4,230 |
+| C100 accuracy | 0/10 (9 cut off at output limit, 1 weekend count 98 vs 99) / 10/10 |
+| MCP + agg fell back to raw rows in C | raw `tool_calls.jsonl`: 40 `get_transactions`, 0 `summarise_spending` across the 10 tasks |
+| MCP + agg used the tool in B100 | 40 `summarise_spending`, 0 `get_transactions` across the 10 tasks |
