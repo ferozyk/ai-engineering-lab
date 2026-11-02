@@ -18,6 +18,7 @@ from mcp_vs_code_mode.agent import (
     run_task,
 )
 from mcp_vs_code_mode.agent.fakes import OracleChatModel
+from mcp_vs_code_mode.agent.records import Mode
 from mcp_vs_code_mode.banking import (
     AuditLog,
     BankingService,
@@ -39,7 +40,7 @@ from mcp_vs_code_mode.bench.pricing import PricingError, resolve_pricing
 from mcp_vs_code_mode.bench.runner import expected_for, task_spec_for
 from mcp_vs_code_mode.code_mode import CodeSandbox, SandboxLimits
 from mcp_vs_code_mode.mcp_server import server_parameters
-from mcp_vs_code_mode.tools import TOOL_SPECS, ToolExecutor
+from mcp_vs_code_mode.tools import AGGREGATION_TOOL_SPECS, TOOL_SPECS, ToolExecutor
 
 CheckStatus = Literal["pass", "warn", "fail"]
 _CONTEXT_MARGIN = 1.3
@@ -82,12 +83,18 @@ async def _projected_peak_prompt(config: BenchmarkConfig) -> int:
     return result.peak_prompt_tokens
 
 
-async def _mcp_tool_names(config: BenchmarkConfig) -> list[str]:
+async def _mcp_tool_names(config: BenchmarkConfig, *, aggregation: bool = False) -> list[str]:
     token = secrets.token_urlsafe(24)
     params = server_parameters(
-        token=token, trusted={token_fingerprint(token): "rm-001"}, audit_log=None
+        token=token,
+        trusted={token_fingerprint(token): "rm-001"},
+        audit_log=None,
+        aggregation=aggregation,
     )
-    async with MCPToolset.open(params, call_timeout=config.mcp_call_timeout_seconds) as toolset:
+    mode: Mode = "mcp_agg" if aggregation else "mcp"
+    async with MCPToolset.open(
+        params, mode=mode, call_timeout=config.mcp_call_timeout_seconds
+    ) as toolset:
         return [str(d["function"]["name"]) for d in toolset.tool_definitions()]
 
 
@@ -301,6 +308,20 @@ async def run_preflight(
     except Exception as exc:
         results.append(CheckResult("mcp_server", "fail", f"server did not start: {exc}"))
 
+    # mcp_agg_server
+    if "mcp_agg" in config.modes:
+        try:
+            names = await _mcp_tool_names(config, aggregation=True)
+            expected_names = [spec.name for spec in AGGREGATION_TOOL_SPECS]
+            if names == expected_names:
+                results.append(
+                    CheckResult("mcp_agg_server", "pass", f"lists {len(names)} tools: {names}")
+                )
+            else:
+                results.append(CheckResult("mcp_agg_server", "fail", f"unexpected tools: {names}"))
+        except Exception as exc:
+            results.append(CheckResult("mcp_agg_server", "fail", f"server did not start: {exc}"))
+
     # sandbox
     try:
         sandbox_result = await _sandbox_result(config)
@@ -316,7 +337,7 @@ async def run_preflight(
     # ground_truth
     try:
         dataset = generate_dataset()
-        cells = all_cells(config.volumes)
+        cells = all_cells(config)
         for cell in cells:
             expected_for(dataset, cell)
         results.append(CheckResult("ground_truth", "pass", f"computed for {len(cells)} cells"))

@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
-from mcp_vs_code_mode.scenarios.definitions import AccountSummary, AnswerA, AnswerB
+from mcp_vs_code_mode.scenarios.definitions import AccountSummary, AnswerA, AnswerB, AnswerC
 
 Outcome = Literal["correct", "incorrect", "invalid_answer"]
 
@@ -154,3 +154,33 @@ def score_answer_b(expected: AnswerB, raw_text: str) -> ScoreResult:
         total += 1
         errors.append(f"accounts: unexpected extra accounts {extras}")
     return _result(total, errors)
+
+
+def score_answer_c(expected: AnswerC, raw_text: str) -> ScoreResult:
+    """Score a scenario C answer (8 fields): customer, weekend count, 3 x (merchant, total)."""
+    parsed = _parse(AnswerC, raw_text)
+    if isinstance(parsed, str):
+        return ScoreResult("invalid_answer", 0.0, (parsed,))
+    errors: list[str] = []
+    if parsed.customer_id != expected.customer_id:
+        errors.append(f"customer_id: expected {expected.customer_id}, got {parsed.customer_id}")
+    if parsed.weekend_debit_count != expected.weekend_debit_count:
+        errors.append(
+            f"weekend_debit_count: expected {expected.weekend_debit_count}, "
+            f"got {parsed.weekend_debit_count}"
+        )
+    for rank, want in enumerate(expected.top_merchants, start=1):
+        got = parsed.top_merchants[rank - 1] if rank <= len(parsed.top_merchants) else None
+        if got is None:
+            errors.append(f"top_merchants[{rank}].merchant: expected {want.merchant}, missing")
+            errors.append(f"top_merchants[{rank}].total: expected {_fmt(want.total)}, missing")
+            continue
+        if got.merchant.strip() != want.merchant:
+            errors.append(
+                f"top_merchants[{rank}].merchant: expected {want.merchant}, got {got.merchant}"
+            )
+        if not _close(want.total, got.total):
+            errors.append(
+                f"top_merchants[{rank}].total: expected {_fmt(want.total)}, got {_fmt(got.total)}"
+            )
+    return _result(2 + 2 * len(expected.top_merchants), errors)

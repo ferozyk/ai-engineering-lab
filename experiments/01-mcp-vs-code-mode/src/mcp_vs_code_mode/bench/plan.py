@@ -22,7 +22,9 @@ class RequestPlan(BaseModel):
 
 def _ideal_requests(cell: Cell) -> int:
     """Minimum model calls for an ideal agent."""
-    if cell.scenario == "B" and cell.mode == "mcp":
+    if cell.scenario == "B" and cell.mode in ("mcp", "mcp_agg"):
+        return 3
+    if cell.scenario == "C" and cell.mode == "mcp_agg":
         return 3
     return 2
 
@@ -51,6 +53,11 @@ def format_plan(plan: RequestPlan, remaining_today: int | None, daily_cap: int =
         f"Time at the throttle, lower bound: {plan.minutes_at_rate_limit:.1f} minutes",
         f"Daily request cap for this tool: {daily_cap}",
     ]
+    if plan.worst_case_requests > daily_cap:
+        lines.append(
+            f"Note: the worst case ({plan.worst_case_requests}) exceeds the daily cap "
+            f"({daily_cap}); a run that approaches it would need --resume on a later day."
+        )
     if remaining_today is not None:
         lines.append(f"Free-model requests remaining today (provider): {remaining_today}")
     lines.append("Estimates, not measurements.")

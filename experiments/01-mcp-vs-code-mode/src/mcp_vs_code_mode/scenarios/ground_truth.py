@@ -15,6 +15,8 @@ from mcp_vs_code_mode.scenarios.definitions import (
     AccountSummary,
     AnswerA,
     AnswerB,
+    AnswerC,
+    MerchantTotal,
 )
 
 _CENT = Decimal("0.01")
@@ -75,4 +77,30 @@ def expected_answer_b(dataset: Dataset, volume: int) -> AnswerB:
         customer_id=customer_id,
         accounts=summaries,
         total_available_balance=_to_float(total),
+    )
+
+
+def expected_answer_c(dataset: Dataset, volume: int) -> AnswerC:
+    """Expected answer for scenario C: top-3 debit merchants and weekend debit count."""
+    customer_id = customer_id_for(volume)
+    account_ids = {a.account_id for a in dataset.accounts if a.customer_id == customer_id}
+    if not account_ids:
+        raise ValueError(f"Customer {customer_id} not in dataset")
+    totals: defaultdict[str, Decimal] = defaultdict(Decimal)
+    weekend = 0
+    for txn in dataset.transactions:
+        if txn.account_id not in account_ids:
+            continue
+        if not dataset.window_start <= txn.date <= dataset.window_end:
+            continue
+        if txn.amount >= 0:
+            continue
+        totals[txn.merchant] += abs(Decimal(str(txn.amount)))
+        if txn.date.weekday() >= 5:
+            weekend += 1
+    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))[:3]
+    return AnswerC(
+        customer_id=customer_id,
+        top_merchants=[MerchantTotal(merchant=m, total=_to_float(t)) for m, t in ranked],
+        weekend_debit_count=weekend,
     )

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from mcp_vs_code_mode.scenarios.definitions import ScenarioId
 
-Mode = Literal["mcp", "code"]
+Mode = Literal["mcp", "mcp_agg", "code"]
 TaskOutcome = Literal["correct", "incorrect", "invalid_answer", "max_turns", "infra_error"]
 
 

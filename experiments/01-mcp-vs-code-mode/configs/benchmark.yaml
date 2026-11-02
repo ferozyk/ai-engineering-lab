@@ -1,9 +1,13 @@
 # Benchmark configuration for experiment 01. The model id comes from LLM_MODEL (never set here).
 experiment: mcp-vs-code-mode
-experiment_version: 0.1.0
+experiment_version: 0.2.0
 iterations: 10
 warmup_tasks_per_mode: 1          # scenario A, unmeasured
-volumes: [10, 100]            # measured run scope (2026-11-02); dataset also has 50 and 200
+modes: [mcp, mcp_agg, code]       # scenarios A and B run in every mode
+volumes: [10, 100]                # scenario B volumes; dataset also has 50 and 200
+scenario_c:
+  volumes: [100]
+  modes: [mcp_agg, code]          # MCP raw has effectively the same tools for this question; see methodology
 max_turns: 8
 max_output_tokens: 32768         # raised from 4096 after canary 20261101T154924Z (see methodology §3)
 temperature: 0.0
@@ -23,4 +27,4 @@ pricing:
   reference_prompt_usd_per_million: null
   reference_completion_usd_per_million: null
 canary:
-  cells: ["A:mcp", "A:code", "B10:mcp", "B10:code", "B200:mcp"]
+  cells: ["A:mcp_agg", "B100:mcp_agg", "C100:mcp_agg", "C100:code"]

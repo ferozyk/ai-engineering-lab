@@ -54,6 +54,7 @@ class RunMetadata(BaseModel):
     order_seed: int
     llm_seed: int | None
     mcp_connect_ms: float = 0.0
+    mcp_agg_connect_ms: float | None = None
     sandbox_warmup_ms: float = 0.0
     free_model_daily_requests_before: FreeModelDailyRequests | None = None
     free_model_daily_requests_after: FreeModelDailyRequests | None = None

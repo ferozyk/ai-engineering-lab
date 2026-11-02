@@ -1,14 +1,16 @@
 """Benchmark configuration loaded from ``configs/benchmark.yaml``."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from mcp_vs_code_mode.agent.records import Mode
 from mcp_vs_code_mode.banking.dataset import VOLUMES
 from mcp_vs_code_mode.bench.paths import CONFIG_PATH
 
+MODES: tuple[str, ...] = get_args(Mode)
 _MAX_RATE_PER_MINUTE = 20
 _MAX_DAILY_REQUESTS = 1000
 
@@ -41,6 +43,23 @@ class CanaryConfig(BaseModel):
     cells: list[str]
 
 
+class ScenarioCConfig(BaseModel):
+    """Which volumes and modes run the unanticipated-query scenario (empty = not run)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    volumes: list[int] = []
+    modes: list[Mode] = []
+
+    @field_validator("volumes")
+    @classmethod
+    def _volumes_in_dataset(cls, value: list[int]) -> list[int]:
+        unknown = [v for v in value if v not in VOLUMES]
+        if unknown:
+            raise ValueError(f"scenario_c volumes must be a subset of {list(VOLUMES)}")
+        return value
+
+
 class BenchmarkConfig(BaseModel):
     """Full benchmark configuration."""
 
@@ -50,7 +69,9 @@ class BenchmarkConfig(BaseModel):
     experiment_version: str
     iterations: int = Field(ge=1)
     warmup_tasks_per_mode: int = Field(ge=0)
+    modes: list[Mode] = ["mcp", "code"]
     volumes: list[int]
+    scenario_c: ScenarioCConfig = ScenarioCConfig()
     max_turns: int = Field(ge=1)
     max_output_tokens: int = Field(ge=1)
     temperature: float = Field(ge=0.0, le=2.0)
@@ -71,6 +92,20 @@ class BenchmarkConfig(BaseModel):
         if unknown or not value:
             raise ValueError(f"volumes must be a non-empty subset of {list(VOLUMES)}")
         return value
+
+    @field_validator("modes")
+    @classmethod
+    def _modes_valid(cls, value: list[str]) -> list[str]:
+        if not value or len(set(value)) != len(value):
+            raise ValueError(f"modes must be a non-empty list of distinct values of {MODES}")
+        return value
+
+    @model_validator(mode="after")
+    def _scenario_c_modes_subset(self) -> "BenchmarkConfig":
+        unknown = [m for m in self.scenario_c.modes if m not in self.modes]
+        if unknown:
+            raise ValueError(f"scenario_c modes {unknown} are not in modes {self.modes}")
+        return self
 
     def with_overrides(self, iterations: int | None = None) -> "BenchmarkConfig":
         """Return a copy with selected values replaced (used by dry runs and tests)."""

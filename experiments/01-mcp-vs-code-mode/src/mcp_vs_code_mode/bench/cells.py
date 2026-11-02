@@ -9,8 +9,8 @@ from mcp_vs_code_mode.agent.records import Mode
 from mcp_vs_code_mode.bench.config import BenchmarkConfig
 from mcp_vs_code_mode.scenarios.definitions import ScenarioId
 
-_MODES: tuple[Mode, ...] = ("mcp", "code")
-_LABEL = re.compile(r"^(A|B(\d+)):(mcp|code)$")
+MODE_ORDER: tuple[Mode, ...] = ("mcp", "mcp_agg", "code")
+_LABEL = re.compile(r"^(A|B(\d+)|C(\d+)):(mcp_agg|mcp|code)$")
 
 
 @dataclass(frozen=True, order=True)
@@ -23,7 +23,7 @@ class Cell:
 
     @property
     def label(self) -> str:
-        """Short label such as ``A:mcp`` or ``B200:code``."""
+        """Short label such as ``A:mcp``, ``B200:code`` or ``C100:mcp_agg``."""
         return f"{self.scenario}{self.volume if self.volume is not None else ''}:{self.mode}"
 
     @property
@@ -36,18 +36,44 @@ class Cell:
         """Parse a label such as ``B200:mcp``."""
         match = _LABEL.match(text)
         if match is None:
-            raise ValueError(f"Invalid cell label {text!r}; expected e.g. 'A:mcp' or 'B200:code'")
-        mode: Mode = "mcp" if match.group(3) == "mcp" else "code"
+            raise ValueError(
+                f"Invalid cell label {text!r}; expected e.g. 'A:mcp', 'B200:code' or 'C100:mcp_agg'"
+            )
+        mode = _as_mode(match.group(4))
         if match.group(1) == "A":
             return cls("A", None, mode)
-        return cls("B", int(match.group(2)), mode)
+        if match.group(1).startswith("B"):
+            return cls("B", int(match.group(2)), mode)
+        return cls("C", int(match.group(3)), mode)
 
 
-def all_cells(volumes: Sequence[int]) -> tuple[Cell, ...]:
-    """Canonical cell order: scenario A, then scenario B per volume; mcp before code."""
-    cells = [Cell("A", None, mode) for mode in _MODES]
-    cells.extend(Cell("B", volume, mode) for volume in volumes for mode in _MODES)
+def _as_mode(text: str) -> Mode:
+    for mode in MODE_ORDER:
+        if mode == text:
+            return mode
+    raise ValueError(f"Unknown mode {text!r}")
+
+
+def cells_for(
+    modes: Sequence[str],
+    volumes: Sequence[int],
+    c_volumes: Sequence[int] = (),
+    c_modes: Sequence[str] = (),
+) -> tuple[Cell, ...]:
+    """Canonical cell order: A per mode, B per volume per mode, then C per volume per mode."""
+    ordered = [m for m in MODE_ORDER if m in modes]
+    c_ordered = [m for m in MODE_ORDER if m in c_modes]
+    cells = [Cell("A", None, mode) for mode in ordered]
+    cells.extend(Cell("B", volume, mode) for volume in volumes for mode in ordered)
+    cells.extend(Cell("C", volume, mode) for volume in c_volumes for mode in c_ordered)
     return tuple(cells)
+
+
+def all_cells(config: BenchmarkConfig) -> tuple[Cell, ...]:
+    """Every cell the configuration schedules, in canonical order."""
+    return cells_for(
+        config.modes, config.volumes, config.scenario_c.volumes, config.scenario_c.modes
+    )
 
 
 @dataclass(frozen=True)
@@ -65,10 +91,10 @@ def build_schedule(config: BenchmarkConfig) -> tuple[ScheduledTask, ...]:
     """Warm-ups first, then every cell once per iteration in a seeded shuffled order."""
     tasks: list[ScheduledTask] = []
     for n in range(1, config.warmup_tasks_per_mode + 1):
-        for mode in _MODES:
+        for mode in (m for m in MODE_ORDER if m in config.modes):
             cell = Cell("A", None, mode)
             tasks.append(ScheduledTask(f"w{n}-{cell.name}", cell, 0, True, len(tasks)))
-    base = list(all_cells(config.volumes))
+    base = list(all_cells(config))
     for iteration in range(1, config.iterations + 1):
         cells = list(base)
         random.Random(config.order_seed + iteration).shuffle(cells)

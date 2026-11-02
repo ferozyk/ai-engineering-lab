@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from mcp_vs_code_mode.banking.dataset import VOLUMES
-from mcp_vs_code_mode.bench.analysis import CellStats, Summary
+from mcp_vs_code_mode.bench.analysis import CellStats, Comparison, Summary, mode_label
 from mcp_vs_code_mode.bench.paths import EXPERIMENT_DIR
 
 RESEARCH_QUESTION = (
@@ -63,29 +63,46 @@ def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> list[str]:
     return lines
 
 
-def _scope(volume: int | None) -> str:
-    return "Scenario A" if volume is None else f"Scenario B, {volume} transactions per account"
+def _scope(scenario: str, volume: int | None) -> str:
+    if volume is None:
+        return "Scenario A"
+    if scenario == "C":
+        return f"Scenario C (unanticipated query), {volume} transactions per account"
+    return f"Scenario B, {volume} transactions per account"
+
+
+def _featured(summary: Summary, comp: Comparison) -> bool:
+    """Executive-summary comparisons: MCP vs Code Mode everywhere; the aggregation tool vs Code
+    Mode at the largest Scenario B volume and on Scenario C."""
+    if comp.mode_a == "mcp" and comp.mode_b == "code":
+        return True
+    if comp.mode_a == "mcp_agg" and comp.mode_b == "code":
+        if comp.scenario == "C":
+            return True
+        return comp.scenario == "B" and bool(summary.volumes) and comp.volume == summary.volumes[-1]
+    return False
 
 
 def _executive_bullets(summary: Summary) -> list[str]:
     bullets: list[str] = []
     for comp in summary.comparisons:
+        if not _featured(summary, comp):
+            continue
+        base = mode_label(comp.mode_a, summary)
         token_change = None if comp.tokens_reduction_pct is None else -comp.tokens_reduction_pct
         parts = [
-            f"tokens: Code Mode {_pct(token_change, signed=True)} vs MCP",
-            f"p50 latency: Code Mode {_pct(comp.latency_p50_change_pct, signed=True)} vs MCP",
-            f"accuracy: MCP {_ratio_pct(comp.accuracy_mcp)}, "
-            f"Code Mode {_ratio_pct(comp.accuracy_code)}",
+            f"tokens: Code Mode {_pct(token_change, signed=True)} vs {base}",
+            f"p50 latency: Code Mode {_pct(comp.latency_p50_change_pct, signed=True)} vs {base}",
+            f"accuracy: {base} {_ratio_pct(comp.accuracy_a)}, "
+            f"Code Mode {_ratio_pct(comp.accuracy_b)}",
         ]
-        bullets.append(f"- **{_scope(comp.volume)}** — " + "; ".join(parts))
+        bullets.append(f"- **{_scope(comp.scenario, comp.volume)}** — " + "; ".join(parts))
     return bullets + _truncation_bullets(summary)
 
 
-def _cell_name(cell: CellStats) -> str:
-    return (
-        ("A" if cell.volume is None else f"B{cell.volume}")
-        + " · "
-        + ("MCP" if cell.mode == "mcp" else "Code Mode")
+def _cell_name(cell: CellStats, summary: Summary) -> str:
+    return f"{cell.scenario}{'' if cell.volume is None else cell.volume} · " + mode_label(
+        cell.mode, summary
     )
 
 
@@ -103,7 +120,8 @@ def _truncation_bullets(summary: Summary) -> list[str]:
             continue
         tokens = "n/a" if c.tokens_mean is None else f"{c.tokens_mean:,.0f}"
         bullets.append(
-            f"- **{_cell_name(c)}**: {c.n_truncated} of {c.n_measured} tasks were cut off at the "
+            f"- **{_cell_name(c, summary)}**: {c.n_truncated} of {c.n_measured} tasks were cut "
+            "off at the "
             f"{_limit_text(summary)} while reasoning; mean {tokens} tokens per task "
             "(lower bound). These tasks count as failures, not exclusions."
         )
@@ -140,6 +158,11 @@ def _environment_rows(summary: Summary) -> list[list[str]]:
             f"captured {pricing.captured_at:%Y-%m-%d}",
         ],
         ["MCP connect time", f"{meta.mcp_connect_ms:,.0f} ms (once per run)"],
+        *(
+            [["MCP aggregation server connect time", f"{meta.mcp_agg_connect_ms:,.0f} ms (once)"]]
+            if meta.mcp_agg_connect_ms is not None
+            else []
+        ),
         ["Sandbox warm-up time", f"{meta.sandbox_warmup_ms:,.0f} ms (once per run)"],
     ]
 
@@ -171,6 +194,7 @@ _CHART_CAPTIONS = {
     "latency_distribution": "Task latency distribution per cell",
     "accuracy_by_cell": "Accuracy by scenario and volume",
     "token_breakdown": "Input and output tokens per task",
+    "unanticipated_query": "Unanticipated query: tokens, latency and accuracy",
 }
 
 
@@ -251,7 +275,8 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
     lines += _executive_bullets(summary) or ["No comparisons are available."]
     lines += [
         "",
-        "Percentages compare Code Mode with MCP; negative token change means fewer tokens.",
+        "Percentages compare Code Mode with the named baseline; negative token change means "
+        "fewer tokens.",
     ]
     lines += ["", AUTHOR_INTERPRETATION, ""]
 
@@ -262,7 +287,14 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
         "## Experimental setup",
         "",
         "- Scenario A: single balance lookup. Scenario B: chained aggregation at "
-        f"{', '.join(str(v) for v in summary.volumes)} transactions per account.",
+        f"{', '.join(str(v) for v in summary.volumes)} transactions per account."
+        + (
+            " Scenario C: unanticipated query at "
+            f"{', '.join(str(v) for v in summary.c_volumes)} transactions per account."
+            if summary.c_volumes
+            else ""
+        ),
+        "- Modes: " + ", ".join(f"`{m}` ({mode_label(m, summary)})" for m in summary.modes) + ".",
         f"- Cells: {len(summary.cells)} (scenario x volume x mode).",
         f"- Iterations per cell: {meta.iterations}; warm-up tasks per mode: "
         f"{cfg.get('warmup_tasks_per_mode', NA)} (excluded from statistics).",
@@ -282,7 +314,7 @@ def render_report(summary: Summary, chart_paths: Sequence[Path], out_path: Path)
         "",
         f"Full methodology: [benchmarks/methodology.md]({_methodology_link(out_path)}).",
         "",
-        "- Same model, temperature, turn limit, dataset and principal in both modes.",
+        "- Same model, temperature, turn limit, dataset and principal in every mode.",
         "- Cells run interleaved in a seeded shuffled order each iteration.",
         "- Ground truth is computed by plain Python; a task is correct only if every value "
         "matches.",

@@ -94,11 +94,14 @@ def _error_type_from_text(text: str) -> str:
 class MCPToolset:
     """Tools discovered from, and executed through, an MCP client session."""
 
-    mode: Mode = "mcp"
-
     def __init__(
-        self, client: Client, definitions: list[dict[str, Any]], call_timeout: float
+        self,
+        client: Client,
+        definitions: list[dict[str, Any]],
+        call_timeout: float,
+        mode: Mode = "mcp",
     ) -> None:
+        self.mode: Mode = mode
         self._client = client
         self._definitions = definitions
         self._call_timeout = call_timeout
@@ -106,7 +109,11 @@ class MCPToolset:
     @classmethod
     @asynccontextmanager
     async def open(
-        cls, target: StdioServerParameters | MCPServer, *, call_timeout: float = 10.0
+        cls,
+        target: StdioServerParameters | MCPServer,
+        *,
+        mode: Mode = "mcp",
+        call_timeout: float = 10.0,
     ) -> AsyncIterator["MCPToolset"]:
         """Connect, list tools once and yield a toolset (stdio params or in-process server)."""
         async with Client(target) as client:
@@ -122,7 +129,7 @@ class MCPToolset:
                 }
                 for tool in listed
             ]
-            yield cls(client, definitions, call_timeout)
+            yield cls(client, definitions, call_timeout, mode)
 
     def tool_definitions(self) -> list[dict[str, Any]]:
         """Tool definitions as discovered from the server."""

@@ -7,6 +7,7 @@ carries ``simulated=True`` so downstream analysis can exclude it.
 
 import json
 from collections.abc import Mapping, Sequence
+from datetime import date
 from typing import Any
 
 from mcp_vs_code_mode.agent.records import LLMResponse, LLMToolCall, Mode, Usage
@@ -130,6 +131,25 @@ for account in list_accounts("{customer_id}"):
 """
 
 
+_SCRIPT_C = """\
+import datetime
+totals = {{}}
+weekend = 0
+for account in list_accounts("{customer_id}"):
+    for txn in get_transactions(account["account_id"], "{start}", "{end}"):
+        if txn["amount"] < 0:
+            totals[txn["merchant"]] = totals.get(txn["merchant"], 0) + abs(txn["amount"])
+            if datetime.date.fromisoformat(txn["date"]).weekday() >= 5:
+                weekend += 1
+ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))[:3]
+{{
+    "customer_id": "{customer_id}",
+    "top_merchants": [{{"merchant": m, "total": round(t, 2)}} for m, t in ranked],
+    "weekend_debit_count": weekend,
+}}
+"""
+
+
 def _prompt_tokens(
     messages: Sequence[Mapping[str, Any]], tools: Sequence[Mapping[str, Any]]
 ) -> int:
@@ -170,7 +190,8 @@ class OracleChatModel:
                 code = _SCRIPT_A.format(account_id=SCENARIO_A_ACCOUNT_ID)
             else:
                 assert self._task.volume is not None
-                code = _SCRIPT_B.format(
+                script = _SCRIPT_B if self._task.scenario == "B" else _SCRIPT_C
+                code = script.format(
                     customer_id=customer_id_for(self._task.volume),
                     start=WINDOW_START.isoformat(),
                     end=WINDOW_END.isoformat(),
@@ -206,22 +227,26 @@ class OracleChatModel:
             )
         if turn == 2:
             accounts = _only(results, "list_accounts")
+            window = {
+                "start_date": WINDOW_START.isoformat(),
+                "end_date": WINDOW_END.isoformat(),
+            }
             specs: list[tuple[str, Mapping[str, Any]]] = []
             for account in accounts:
                 account_id = account["account_id"]
-                specs.append(("get_balance", {"account_id": account_id}))
-                specs.append(
-                    (
-                        "get_transactions",
-                        {
-                            "account_id": account_id,
-                            "start_date": WINDOW_START.isoformat(),
-                            "end_date": WINDOW_END.isoformat(),
-                        },
-                    )
-                )
+                if self._task.scenario == "B":
+                    specs.append(("get_balance", {"account_id": account_id}))
+                if self._task.scenario == "B" and self._mode == "mcp_agg":
+                    specs.append(("summarise_spending", {"account_id": account_id, **window}))
+                else:
+                    specs.append(("get_transactions", {"account_id": account_id, **window}))
             return self._calls(specs, turn, prompt_tokens)
-        answer = _answer_b_from_results(customer_id, results)
+        if self._task.scenario == "C":
+            answer = _answer_c_from_results(customer_id, results)
+        elif self._mode == "mcp_agg":
+            answer = _answer_b_from_summaries(customer_id, results)
+        else:
+            answer = _answer_b_from_results(customer_id, results)
         return build_response(
             content=json.dumps(answer), tool_calls=[], prompt_tokens=prompt_tokens
         )
@@ -286,4 +311,52 @@ def _answer_b_from_results(
         "customer_id": customer_id,
         "accounts": accounts,
         "total_available_balance": round(total, 2),
+    }
+
+
+def _answer_b_from_summaries(
+    customer_id: str, results: list[tuple[str, dict[str, Any], Any]]
+) -> dict[str, Any]:
+    account_ids = sorted(a["account_id"] for a in _only(results, "list_accounts"))
+    balances = {a["account_id"]: v for n, a, v in results if n == "get_balance"}
+    summaries = {a["account_id"]: v for n, a, v in results if n == "summarise_spending"}
+    accounts: list[dict[str, Any]] = []
+    total = 0.0
+    for account_id in account_ids:
+        available = balances[account_id]["available_balance"]
+        accounts.append(
+            {
+                "account_id": account_id,
+                "available_balance": available,
+                "spend_by_category": summaries[account_id]["spend_by_category"],
+                "large_debit_ids": sorted(summaries[account_id]["large_debit_ids"]),
+            }
+        )
+        total += available
+    return {
+        "customer_id": customer_id,
+        "accounts": accounts,
+        "total_available_balance": round(total, 2),
+    }
+
+
+def _answer_c_from_results(
+    customer_id: str, results: list[tuple[str, dict[str, Any], Any]]
+) -> dict[str, Any]:
+    totals: dict[str, float] = {}
+    weekend = 0
+    for name, _, transactions in results:
+        if name != "get_transactions":
+            continue
+        for txn in transactions:
+            if txn["amount"] >= 0:
+                continue
+            totals[txn["merchant"]] = totals.get(txn["merchant"], 0.0) + abs(txn["amount"])
+            if date.fromisoformat(txn["date"]).weekday() >= 5:
+                weekend += 1
+    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))[:3]
+    return {
+        "customer_id": customer_id,
+        "top_merchants": [{"merchant": m, "total": round(t, 2)} for m, t in ranked],
+        "weekend_debit_count": weekend,
     }

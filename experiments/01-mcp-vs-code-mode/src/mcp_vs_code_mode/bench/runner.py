@@ -4,7 +4,7 @@ import json
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Sequence
-from contextlib import ExitStack, suppress
+from contextlib import AsyncExitStack, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -44,11 +44,14 @@ from mcp_vs_code_mode.mcp_server import server_parameters
 from mcp_vs_code_mode.scenarios import (
     AnswerA,
     AnswerB,
+    AnswerC,
     TaskSpec,
     expected_answer_a,
     expected_answer_b,
+    expected_answer_c,
     scenario_a_task,
     scenario_b_task,
+    scenario_c_task,
 )
 from mcp_vs_code_mode.tools import ToolExecutor
 
@@ -78,15 +81,19 @@ def task_spec_for(cell: Cell) -> TaskSpec:
     if cell.scenario == "A":
         return scenario_a_task()
     assert cell.volume is not None
-    return scenario_b_task(cell.volume)
+    if cell.scenario == "B":
+        return scenario_b_task(cell.volume)
+    return scenario_c_task(cell.volume)
 
 
-def expected_for(dataset: Dataset, cell: Cell) -> AnswerA | AnswerB:
+def expected_for(dataset: Dataset, cell: Cell) -> AnswerA | AnswerB | AnswerC:
     """Ground truth for a cell, computed by plain Python."""
     if cell.scenario == "A":
         return expected_answer_a(dataset)
     assert cell.volume is not None
-    return expected_answer_b(dataset, cell.volume)
+    if cell.scenario == "B":
+        return expected_answer_b(dataset, cell.volume)
+    return expected_answer_c(dataset, cell.volume)
 
 
 def _new_metadata(
@@ -266,6 +273,9 @@ async def run_benchmark(
     trusted = {token_fingerprint(token): _PRINCIPAL_ID}
     audit_path = paths.raw / "audit.jsonl"
     params = server_parameters(token=token, trusted=trusted, audit_log=audit_path)
+    agg_params = server_parameters(
+        token=token, trusted=trusted, audit_log=audit_path, aggregation=True
+    )
     principal = authenticate_token(token, trusted)
     executor = ToolExecutor(BankingService(dataset, AuditLog(audit_path)), principal, "code_mode")
     limits = SandboxLimits(
@@ -279,95 +289,103 @@ async def run_benchmark(
     consecutive_infra = 0
     attempted_done = 0
 
-    with ExitStack() as stack:
-        connect_started = time.perf_counter()
-        async with MCPToolset.open(
-            params, call_timeout=config.mcp_call_timeout_seconds
-        ) as mcp_toolset:
+    async with AsyncExitStack() as stack:
+        toolsets: dict[str, Toolset] = {}
+        if "mcp" in config.modes:
+            connect_started = time.perf_counter()
+            toolsets["mcp"] = await stack.enter_async_context(
+                MCPToolset.open(params, mode="mcp", call_timeout=config.mcp_call_timeout_seconds)
+            )
             meta.mcp_connect_ms = (time.perf_counter() - connect_started) * 1000
-            sandbox_started = time.perf_counter()
-            sandbox = stack.enter_context(CodeSandbox(executor, limits))
-            meta.sandbox_warmup_ms = (time.perf_counter() - sandbox_started) * 1000
-            code_toolset = CodeModeToolset(sandbox)
-            toolsets: dict[str, Toolset] = {"mcp": mcp_toolset, "code": code_toolset}
+        if "mcp_agg" in config.modes:
+            agg_started = time.perf_counter()
+            toolsets["mcp_agg"] = await stack.enter_async_context(
+                MCPToolset.open(
+                    agg_params, mode="mcp_agg", call_timeout=config.mcp_call_timeout_seconds
+                )
+            )
+            meta.mcp_agg_connect_ms = (time.perf_counter() - agg_started) * 1000
+        sandbox_started = time.perf_counter()
+        sandbox = stack.enter_context(CodeSandbox(executor, limits))
+        meta.sandbox_warmup_ms = (time.perf_counter() - sandbox_started) * 1000
+        toolsets["code"] = CodeModeToolset(sandbox)
 
-            for scheduled in pending:
-                if budget.remaining < config.max_turns:
-                    halted = True
-                    halt_reason = (
-                        "daily request cap reached; resume tomorrow with: "
-                        f"run --resume {paths.run_id}"
-                    )
-                    break
-                spec = task_spec_for(scheduled.cell)
-                started_at = datetime.now(UTC)
+        for scheduled in pending:
+            if budget.remaining < config.max_turns:
+                halted = True
+                halt_reason = (
+                    f"daily request cap reached; resume tomorrow with: run --resume {paths.run_id}"
+                )
+                break
+            spec = task_spec_for(scheduled.cell)
+            started_at = datetime.now(UTC)
+            try:
+                result = await run_task(
+                    task_id=scheduled.task_id,
+                    task=spec,
+                    expected=expected[scheduled.cell],
+                    model=model_factory(scheduled, spec),
+                    toolset=toolsets[scheduled.cell.mode],
+                    max_turns=config.max_turns,
+                )
+            except BudgetExhaustedError:
+                halted = True
+                halt_reason = (
+                    "daily request cap reached mid-task; resume tomorrow with: "
+                    f"run --resume {paths.run_id}"
+                )
+                break
+            _record_task(
+                paths=paths,
+                run_id=paths.run_id,
+                scheduled=scheduled,
+                result=result,
+                started_at=started_at,
+                pricing=pricing,
+                simulated=simulated,
+            )
+            attempted_done += 1
+            position = scheduled.order_index + 1
+            progress(
+                _progress_line(
+                    position,
+                    total,
+                    scheduled,
+                    result,
+                    f"{budget.used}/{config.daily_request_cap}",
+                )
+            )
+            if result.outcome != "infra_error":
+                consecutive_infra = 0
+                continue
+            consecutive_infra += 1
+            kind_name = result.infra_error_kind or "other"
+            if kind_name in _HALT_KINDS:
+                halted, halt_reason = (
+                    True,
+                    f"infrastructure error '{kind_name}': {result.error}",
+                )
+                break
+            if kind_name == "rate_limited" and key_info is not None:
                 try:
-                    result = await run_task(
-                        task_id=scheduled.task_id,
-                        task=spec,
-                        expected=expected[scheduled.cell],
-                        model=model_factory(scheduled, spec),
-                        toolset=toolsets[scheduled.cell.mode],
-                        max_turns=config.max_turns,
-                    )
-                except BudgetExhaustedError:
+                    info = await key_info()
+                except OpenRouterError:
+                    info = None
+                daily = info.free_model_daily_requests if info is not None else None
+                if daily is not None and daily.remaining == 0:
                     halted = True
                     halt_reason = (
-                        "daily request cap reached mid-task; resume tomorrow with: "
-                        f"run --resume {paths.run_id}"
+                        "provider daily limit reached (0 free requests remaining); "
+                        f"resume tomorrow with: run --resume {paths.run_id}"
                     )
                     break
-                _record_task(
-                    paths=paths,
-                    run_id=paths.run_id,
-                    scheduled=scheduled,
-                    result=result,
-                    started_at=started_at,
-                    pricing=pricing,
-                    simulated=simulated,
+            if consecutive_infra >= _MAX_CONSECUTIVE_INFRA:
+                halted = True
+                halt_reason = (
+                    f"{_MAX_CONSECUTIVE_INFRA} consecutive infrastructure errors "
+                    f"(last: '{kind_name}')"
                 )
-                attempted_done += 1
-                position = scheduled.order_index + 1
-                progress(
-                    _progress_line(
-                        position,
-                        total,
-                        scheduled,
-                        result,
-                        f"{budget.used}/{config.daily_request_cap}",
-                    )
-                )
-                if result.outcome != "infra_error":
-                    consecutive_infra = 0
-                    continue
-                consecutive_infra += 1
-                kind_name = result.infra_error_kind or "other"
-                if kind_name in _HALT_KINDS:
-                    halted, halt_reason = (
-                        True,
-                        f"infrastructure error '{kind_name}': {result.error}",
-                    )
-                    break
-                if kind_name == "rate_limited" and key_info is not None:
-                    try:
-                        info = await key_info()
-                    except OpenRouterError:
-                        info = None
-                    daily = info.free_model_daily_requests if info is not None else None
-                    if daily is not None and daily.remaining == 0:
-                        halted = True
-                        halt_reason = (
-                            "provider daily limit reached (0 free requests remaining); "
-                            f"resume tomorrow with: run --resume {paths.run_id}"
-                        )
-                        break
-                if consecutive_infra >= _MAX_CONSECUTIVE_INFRA:
-                    halted = True
-                    halt_reason = (
-                        f"{_MAX_CONSECUTIVE_INFRA} consecutive infrastructure errors "
-                        f"(last: '{kind_name}')"
-                    )
-                    break
+                break
 
     rows = list(_latest_task_rows(paths).values())
     all_rows = load_rows(paths.raw / "tasks.jsonl", TaskRow)

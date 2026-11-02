@@ -82,6 +82,12 @@ def _build_parser() -> argparse.ArgumentParser:
     ):
         cmd = sub.add_parser(name, help=text)
         cmd.add_argument("run_id", metavar="RUN_ID")
+        if name == "report":
+            cmd.add_argument(
+                "--force",
+                action="store_true",
+                help="overwrite an existing report.md (otherwise write report.generated.md)",
+            )
     return parser
 
 
@@ -335,8 +341,15 @@ def _charts(paths: RunPaths, summary: Summary) -> list[Path]:
     return written
 
 
-def _report(paths: RunPaths, summary: Summary, charts: list[Path]) -> Path:
+def _report(paths: RunPaths, summary: Summary, charts: list[Path], *, force: bool = False) -> Path:
+    """Write ``report.md``; never overwrite an existing one (it may hold author sections)."""
     out = paths.reports / "report.md"
+    if out.exists() and not force:
+        out = paths.reports / "report.generated.md"
+        print(
+            f"Notice:  {paths.reports / 'report.md'} already exists and was left untouched; "
+            "use --force to overwrite it."
+        )
     render_report(summary, charts, out)
     print(f"Report:  {out}")
     return out
@@ -394,7 +407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "report":
             paths, summary = _load_summary(args.run_id)
-            _report(paths, summary, _existing_charts(paths))
+            _report(paths, summary, _existing_charts(paths), force=args.force)
             return 0
         if args.command == "linkedin-assets":
             paths, summary = _load_summary(args.run_id)

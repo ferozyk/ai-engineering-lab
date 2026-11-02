@@ -12,8 +12,12 @@ from mcp_vs_code_mode.agent.records import (
     ToolCallRecord,
 )
 from mcp_vs_code_mode.agent.toolsets import Toolset
-from mcp_vs_code_mode.scenarios.definitions import AnswerA, AnswerB, TaskSpec
-from mcp_vs_code_mode.scenarios.scoring import score_answer_a, score_answer_b
+from mcp_vs_code_mode.scenarios.definitions import AnswerA, AnswerB, AnswerC, TaskSpec
+from mcp_vs_code_mode.scenarios.scoring import (
+    score_answer_a,
+    score_answer_b,
+    score_answer_c,
+)
 
 MAX_TURNS = 8
 
@@ -22,7 +26,7 @@ async def run_task(
     *,
     task_id: str,
     task: TaskSpec,
-    expected: AnswerA | AnswerB,
+    expected: AnswerA | AnswerB | AnswerC,
     model: ChatModel,
     toolset: Toolset,
     max_turns: int = MAX_TURNS,
@@ -90,9 +94,12 @@ async def run_task(
         if task.scenario == "A":
             assert isinstance(expected, AnswerA)
             score = score_answer_a(expected, final_text)
-        else:
+        elif task.scenario == "B":
             assert isinstance(expected, AnswerB)
             score = score_answer_b(expected, final_text)
+        else:
+            assert isinstance(expected, AnswerC)
+            score = score_answer_c(expected, final_text)
         outcome, partial, field_errors = score.outcome, score.partial_score, score.field_errors
         break
 

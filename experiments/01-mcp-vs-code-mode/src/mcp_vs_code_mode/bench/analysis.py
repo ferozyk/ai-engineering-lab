@@ -14,7 +14,8 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, model_validator
 
-from mcp_vs_code_mode.bench.cells import Cell, all_cells
+from mcp_vs_code_mode.agent.records import Mode
+from mcp_vs_code_mode.bench.cells import Cell, cells_for
 from mcp_vs_code_mode.bench.metadata import RunMetadata
 from mcp_vs_code_mode.bench.paths import RunPaths
 from mcp_vs_code_mode.bench.records import LLMCallRow, TaskRow, load_rows
@@ -22,6 +23,17 @@ from mcp_vs_code_mode.bench.records import LLMCallRow, TaskRow, load_rows
 MIN_TASKS_FOR_VERDICT = 10
 H1_THRESHOLD = 0.25
 H4_MAX_CODE_ACCURACY_SPREAD = 0.10
+H5_MAX_TOKEN_RATIO = 1.25
+H5_MIN_ACCURACY = 0.90
+H6_MIN_CODE_ACCURACY = 0.90
+H6_MIN_ACCURACY_GAP = 0.30
+
+# Comparison pairs (baseline, challenger), in the order they are generated.
+COMPARISON_PAIRS: tuple[tuple[Mode, Mode], ...] = (
+    ("mcp", "code"),
+    ("mcp_agg", "code"),
+    ("mcp", "mcp_agg"),
+)
 
 Verdict = Literal["supported", "not supported", "inconclusive"]
 
@@ -76,22 +88,48 @@ class CellStats(BaseModel):
 
 
 class Comparison(BaseModel):
-    """Code Mode against MCP at one scenario/volume."""
+    """Mode ``mode_b`` (challenger) against mode ``mode_a`` (baseline) at one scenario/volume.
+
+    Reductions are ``(a - b) / a``: positive means the challenger used fewer tokens or less cost.
+    """
 
     scenario: str
     volume: int | None
+    mode_a: Mode = "mcp"
+    mode_b: Mode = "code"
     tokens_reduction_pct: float | None
     tokens_difference: float | None
     latency_p50_change_pct: float | None
     cost_reduction_pct: float | None
-    accuracy_mcp: float | None
-    accuracy_code: float | None
-    mcp_correct: int = 0
-    code_correct: int = 0
-    mcp_truncated: int = 0
-    code_truncated: int = 0
-    n_mcp: int = 0
-    n_code: int = 0
+    accuracy_a: float | None
+    accuracy_b: float | None
+    correct_a: int = 0
+    correct_b: int = 0
+    truncated_a: int = 0
+    truncated_b: int = 0
+    n_a: int = 0
+    n_b: int = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def _rename_legacy_fields(cls, data: object) -> object:
+        """Summaries written before 01b used ``*_mcp`` / ``*_code`` field names."""
+        if not isinstance(data, dict) or "accuracy_mcp" not in data:
+            return data
+        renames = {
+            "accuracy_mcp": "accuracy_a",
+            "accuracy_code": "accuracy_b",
+            "mcp_correct": "correct_a",
+            "code_correct": "correct_b",
+            "mcp_truncated": "truncated_a",
+            "code_truncated": "truncated_b",
+            "n_mcp": "n_a",
+            "n_code": "n_b",
+        }
+        out = {renames.get(key, key): value for key, value in data.items()}
+        out.setdefault("mode_a", "mcp")
+        out.setdefault("mode_b", "code")
+        return out
 
 
 class HypothesisResult(BaseModel):
@@ -124,17 +162,48 @@ class Summary(BaseModel):
                 return stats
         return None
 
-    def comparison(self, scenario: str, volume: int | None) -> Comparison | None:
-        """Look up the comparison at one scenario/volume."""
+    def comparison(
+        self,
+        scenario: str,
+        volume: int | None,
+        mode_a: Mode = "mcp",
+        mode_b: Mode = "code",
+    ) -> Comparison | None:
+        """Look up the comparison of ``mode_b`` against ``mode_a`` at one scenario/volume."""
         for comp in self.comparisons:
-            if comp.scenario == scenario and comp.volume == volume:
+            if (
+                comp.scenario == scenario
+                and comp.volume == volume
+                and comp.mode_a == mode_a
+                and comp.mode_b == mode_b
+            ):
                 return comp
         return None
 
     @property
     def volumes(self) -> list[int]:
         """Scenario B volumes present in the summary, ascending."""
-        return sorted({c.volume for c in self.cells if c.volume is not None})
+        return sorted({c.volume for c in self.cells if c.scenario == "B" and c.volume is not None})
+
+    @property
+    def c_volumes(self) -> list[int]:
+        """Scenario C volumes present in the summary, ascending."""
+        return sorted({c.volume for c in self.cells if c.scenario == "C" and c.volume is not None})
+
+    @property
+    def modes(self) -> list[Mode]:
+        """Modes present in the summary, in canonical order."""
+        present = {c.mode for c in self.cells}
+        return [m for m in ("mcp", "mcp_agg", "code") if m in present]
+
+
+def mode_label(mode: str, summary: "Summary") -> str:
+    """Display label of a mode; raw MCP is qualified only when the run also has ``mcp_agg``."""
+    if mode == "mcp":
+        return "MCP (raw tools)" if "mcp_agg" in summary.modes else "MCP"
+    if mode == "mcp_agg":
+        return "MCP + aggregation tool"
+    return "Code Mode"
 
 
 # --------------------------------------------------------------------------- loading
@@ -272,46 +341,49 @@ def _relative(numerator: float | None, denominator: float | None) -> float | Non
     return numerator / denominator
 
 
-def _compare(scenario: str, volume: int | None, mcp: CellStats, code: CellStats) -> Comparison:
-    reduction = _relative(
-        None
-        if mcp.tokens_mean is None or code.tokens_mean is None
-        else mcp.tokens_mean - code.tokens_mean,
-        mcp.tokens_mean,
+def _compare(scenario: str, volume: int | None, a: CellStats, b: CellStats) -> Comparison:
+    """Compare challenger ``b`` against baseline ``a``."""
+    difference = (
+        None if a.tokens_mean is None or b.tokens_mean is None else a.tokens_mean - b.tokens_mean
     )
+    reduction = _relative(difference, a.tokens_mean)
     latency = _relative(
         None
-        if mcp.latency_p50_s is None or code.latency_p50_s is None
-        else code.latency_p50_s - mcp.latency_p50_s,
-        mcp.latency_p50_s,
+        if a.latency_p50_s is None or b.latency_p50_s is None
+        else b.latency_p50_s - a.latency_p50_s,
+        a.latency_p50_s,
     )
     cost = _relative(
         None
-        if mcp.cost_usd_mean is None or code.cost_usd_mean is None
-        else mcp.cost_usd_mean - code.cost_usd_mean,
-        mcp.cost_usd_mean,
-    )
-    difference = (
-        None
-        if mcp.tokens_mean is None or code.tokens_mean is None
-        else mcp.tokens_mean - code.tokens_mean
+        if a.cost_usd_mean is None or b.cost_usd_mean is None
+        else a.cost_usd_mean - b.cost_usd_mean,
+        a.cost_usd_mean,
     )
     return Comparison(
         scenario=scenario,
         volume=volume,
+        mode_a=_mode(a.mode),
+        mode_b=_mode(b.mode),
         tokens_reduction_pct=_scaled(reduction, 100),
         tokens_difference=difference,
         latency_p50_change_pct=_scaled(latency, 100),
         cost_reduction_pct=_scaled(cost, 100),
-        accuracy_mcp=mcp.accuracy,
-        accuracy_code=code.accuracy,
-        mcp_correct=mcp.outcomes.get("correct", 0),
-        code_correct=code.outcomes.get("correct", 0),
-        mcp_truncated=mcp.n_truncated,
-        code_truncated=code.n_truncated,
-        n_mcp=mcp.n_measured,
-        n_code=code.n_measured,
+        accuracy_a=a.accuracy,
+        accuracy_b=b.accuracy,
+        correct_a=a.outcomes.get("correct", 0),
+        correct_b=b.outcomes.get("correct", 0),
+        truncated_a=a.n_truncated,
+        truncated_b=b.n_truncated,
+        n_a=a.n_measured,
+        n_b=b.n_measured,
     )
+
+
+def _mode(text: str) -> Mode:
+    for mode in ("mcp", "mcp_agg", "code"):
+        if mode == text:
+            return mode
+    raise ValueError(f"Unknown mode {text!r}")
 
 
 def _comparisons(cells: Sequence[CellStats]) -> list[Comparison]:
@@ -319,9 +391,10 @@ def _comparisons(cells: Sequence[CellStats]) -> list[Comparison]:
     keys = list(dict.fromkeys((c.scenario, c.volume) for c in cells))
     out: list[Comparison] = []
     for scenario, volume in keys:
-        mcp, code = by_key.get((scenario, volume, "mcp")), by_key.get((scenario, volume, "code"))
-        if mcp is not None and code is not None:
-            out.append(_compare(scenario, volume, mcp, code))
+        for mode_a, mode_b in COMPARISON_PAIRS:
+            a, b = by_key.get((scenario, volume, mode_a)), by_key.get((scenario, volume, mode_b))
+            if a is not None and b is not None:
+                out.append(_compare(scenario, volume, a, b))
     return out
 
 
@@ -514,15 +587,95 @@ def _h4(volumes: dict[int, tuple[CellStats | None, CellStats | None]]) -> Hypoth
     )
 
 
+_H5_STATEMENT = (
+    "Scenario B: server-side data reduction alone closes the chained-task gap. At the largest "
+    "volume, mean total tokens of MCP + aggregation tool are at most 1.25 times those of Code "
+    "Mode, and its accuracy is at least 90%."
+)
+_H6_STATEMENT = (
+    "Scenario C: code execution buys flexibility. At the largest Scenario C volume, Code Mode "
+    "accuracy is at least 90%, MCP + aggregation tool accuracy is at least 30 percentage points "
+    "lower, and Code Mode uses fewer mean total tokens."
+)
+_NOT_IN_RUN = "mode/scenario not in this run"
+
+
+def _h5(agg: CellStats | None, code: CellStats | None, volume: int | None) -> HypothesisResult:
+    if agg is None or code is None:
+        return HypothesisResult(
+            id="H5", statement=_H5_STATEMENT, verdict="inconclusive", evidence=_NOT_IN_RUN
+        )
+    if not _enough(agg, code):
+        return _inconclusive("H5", _H5_STATEMENT, [agg, code])
+    if (
+        agg.tokens_mean is None
+        or code.tokens_mean is None
+        or agg.accuracy is None
+        or code.accuracy is None
+        or code.tokens_mean == 0
+    ):
+        return _inconclusive("H5", _H5_STATEMENT, [agg, code])
+    ratio = agg.tokens_mean / code.tokens_mean
+    ok = ratio <= H5_MAX_TOKEN_RATIO + 1e-12 and agg.accuracy >= H5_MIN_ACCURACY - 1e-12
+    evidence = (
+        f"B{volume}: tokens mcp_agg {_int(agg.tokens_mean)} vs code {_int(code.tokens_mean)} "
+        f"(ratio {ratio:.2f}); accuracy mcp_agg {_pct_text(agg.accuracy)} vs "
+        f"code {_pct_text(code.accuracy)}"
+    )
+    return HypothesisResult(
+        id="H5",
+        statement=_H5_STATEMENT,
+        verdict="supported" if ok else "not supported",
+        evidence=evidence,
+    )
+
+
+def _h6(agg: CellStats | None, code: CellStats | None, volume: int | None) -> HypothesisResult:
+    if agg is None or code is None:
+        return HypothesisResult(
+            id="H6", statement=_H6_STATEMENT, verdict="inconclusive", evidence=_NOT_IN_RUN
+        )
+    if not _enough(agg, code):
+        return _inconclusive("H6", _H6_STATEMENT, [agg, code])
+    if (
+        agg.tokens_mean is None
+        or code.tokens_mean is None
+        or agg.accuracy is None
+        or code.accuracy is None
+    ):
+        return _inconclusive("H6", _H6_STATEMENT, [agg, code])
+    ok = (
+        code.accuracy >= H6_MIN_CODE_ACCURACY - 1e-12
+        and agg.accuracy <= code.accuracy - H6_MIN_ACCURACY_GAP + 1e-12
+        and code.tokens_mean < agg.tokens_mean
+    )
+    evidence = (
+        f"C{volume}: accuracy code {_pct_text(code.accuracy)} vs mcp_agg "
+        f"{_pct_text(agg.accuracy)}; tokens code {_int(code.tokens_mean)} vs "
+        f"mcp_agg {_int(agg.tokens_mean)}"
+    )
+    return HypothesisResult(
+        id="H6",
+        statement=_H6_STATEMENT,
+        verdict="supported" if ok else "not supported",
+        evidence=evidence,
+    )
+
+
 def _evaluate(cells: Sequence[CellStats]) -> list[HypothesisResult]:
     by_key = {(c.scenario, c.volume, c.mode): c for c in cells}
-    volumes = sorted({c.volume for c in cells if c.volume is not None})
+    volumes = sorted({c.volume for c in cells if c.scenario == "B" and c.volume is not None})
+    c_volumes = sorted({c.volume for c in cells if c.scenario == "C" and c.volume is not None})
     pairs = {v: (by_key.get(("B", v, "mcp")), by_key.get(("B", v, "code"))) for v in volumes}
+    b_top = max(volumes) if volumes else None
+    c_top = max(c_volumes) if c_volumes else None
     return [
         _h1(by_key.get(("A", None, "mcp")), by_key.get(("A", None, "code"))),
         _h2(list(pairs.values())),
         _h3(pairs),
         _h4(pairs),
+        _h5(by_key.get(("B", b_top, "mcp_agg")), by_key.get(("B", b_top, "code")), b_top),
+        _h6(by_key.get(("C", c_top, "mcp_agg")), by_key.get(("C", c_top, "code")), c_top),
     ]
 
 
@@ -535,9 +688,20 @@ def summarise(paths: RunPaths) -> Summary:
         (paths.raw / "run_metadata.json").read_text(encoding="utf-8")
     )
     frame, warmups, superseded = _load_frame(paths)
-    volumes = [int(v) for v in metadata.config.get("volumes", [])]
+    config = metadata.config
+    volumes = [int(v) for v in config.get("volumes", [])]
+    modes = [str(m) for m in config.get("modes", ["mcp", "code"])]
+    scenario_c = config.get("scenario_c") or {}
     truncated = truncated_task_ids(paths, frame)
-    cells = [_cell_stats(cell, frame, truncated) for cell in all_cells(volumes)]
+    cells = [
+        _cell_stats(cell, frame, truncated)
+        for cell in cells_for(
+            modes,
+            volumes,
+            [int(v) for v in scenario_c.get("volumes", [])],
+            [str(m) for m in scenario_c.get("modes", [])],
+        )
+    ]
     return Summary(
         run_id=metadata.run_id,
         simulated=metadata.simulated,

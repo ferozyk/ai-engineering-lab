@@ -1,7 +1,8 @@
 """Static charts (PNG + SVG) generated from a processed ``Summary``.
 
-Palette: MCP is blue with circle markers, Code Mode is orange with square markers. The marker
-shape is a second encoding so the modes stay distinguishable without colour.
+Palette: MCP (raw tools) is blue with circle markers, MCP + aggregation tool is green with
+triangle markers, Code Mode is orange with square markers. The green is below 3:1 contrast on
+the surface, so direct end-of-line labels and distinct marker shapes are always drawn as well.
 """
 
 import textwrap
@@ -22,7 +23,8 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
-from mcp_vs_code_mode.bench.analysis import CellStats, Summary
+from mcp_vs_code_mode.agent.records import Mode
+from mcp_vs_code_mode.bench.analysis import CellStats, Summary, mode_label
 
 SURFACE = "#fcfcfb"
 TEXT = "#0b0b0b"
@@ -30,16 +32,17 @@ TEXT_SECONDARY = "#52514e"
 GRID = "#e4e3df"
 SPINE = "#c9c8c2"
 MCP_COLOR = "#2a78d6"
+AGG_COLOR = "#1baf7a"
 CODE_COLOR = "#eb6834"
 WATERMARK = "SIMULATED DATA — NOT A RESULT"
-MODES: tuple[str, ...] = ("mcp", "code")
-MODE_LABEL = {"mcp": "MCP", "code": "Code Mode"}
-MODE_COLOR = {"mcp": MCP_COLOR, "code": CODE_COLOR}
-MODE_MARKER = {"mcp": "o", "code": "s"}
+MODES: tuple[Mode, ...] = ("mcp", "mcp_agg", "code")
+MODE_COLOR: dict[str, str] = {"mcp": MCP_COLOR, "mcp_agg": AGG_COLOR, "code": CODE_COLOR}
+MODE_MARKER: dict[str, str] = {"mcp": "o", "mcp_agg": "^", "code": "s"}
 LINE_WIDTH = 2.0
 MARKER_SIZE = 8
 BAND_ALPHA = 0.15
 MIN_LABEL_GAP = 0.075  # minimum vertical gap between direct labels, in axes fraction
+BAR_GROUP_WIDTH = 0.8  # total width of a group of bars, in x units
 MINUS = "−"
 
 _RC: dict[str, Any] = {
@@ -132,6 +135,7 @@ def n_label(cells: Sequence[CellStats | None]) -> str:
 SCENARIO_TITLES = {
     "A": "Single lookup (one account balance)",
     "B": "Chained task (4 accounts: balance, spend by category, large debits)",
+    "C": "Unanticipated query (top merchants, weekend debits)",
 }
 # Subtitle variant: the full chained title nearly fills the figure width.
 _SUBTITLE_TITLES = {**SCENARIO_TITLES, "B": "Chained task (4 accounts)"}
@@ -142,7 +146,8 @@ def group_label(scenario: str, volume: int | None, *, multiline: bool = False) -
     if scenario == "A" or volume is None:
         return "Single lookup"
     sep = "\n" if multiline else " · "
-    return f"Chained{sep}{volume} tx/account"
+    name = "Unanticipated query" if scenario == "C" else "Chained"
+    return f"{name}{sep}{volume} tx/account"
 
 
 def subtitle_text(summary: Summary, scenario: str, cells: Sequence[CellStats | None]) -> str:
@@ -181,7 +186,20 @@ def no_data(ax: Axes, message: str = "No data") -> None:
     )  # fmt: skip
 
 
-def mode_legend(ax: Axes, *, loc: Any = "best", **kwargs: Any) -> None:
+def scenario_modes(summary: Summary, scenario: str) -> list[Mode]:
+    """Modes that have a cell in ``scenario``, in canonical order."""
+    present = {c.mode for c in summary.cells if c.scenario == scenario}
+    return [m for m in MODES if m in present]
+
+
+def mode_legend(
+    ax: Axes,
+    summary: Summary,
+    modes: Sequence[str] | None = None,
+    *,
+    loc: Any = "best",
+    **kwargs: Any,
+) -> None:
     """Legend with a marker per mode (frameless)."""
     handles = [
         Line2D(
@@ -191,14 +209,44 @@ def mode_legend(ax: Axes, *, loc: Any = "best", **kwargs: Any) -> None:
             marker=MODE_MARKER[m],
             markersize=7,
             linewidth=LINE_WIDTH,
-            label=MODE_LABEL[m],
+            label=mode_label(m, summary),
         )
-        for m in MODES
+        for m in (modes if modes is not None else scenario_modes(summary, "B"))
     ]
     ax.legend(handles=handles, loc=loc, frameon=False, fontsize=9, **kwargs)
 
 
-def end_labels(ax: Axes, items: Sequence[tuple[float, str]]) -> None:
+def spread_positions(
+    ys: Sequence[float], gap: float, low: float = 0.03, high: float = 0.97
+) -> list[float]:
+    """Push sorted label positions apart so neighbours are at least ``gap`` apart.
+
+    Positions are axes fractions in the same order as ``ys`` (ascending). The group is centred
+    on its original mean, then clamped into ``[low, high]``.
+    """
+    n = len(ys)
+    if n == 0:
+        return []
+    out = list(ys)
+    for _ in range(50):
+        moved = False
+        for i in range(1, n):
+            deficit = gap - (out[i] - out[i - 1])
+            if deficit > 1e-9:
+                out[i - 1] -= deficit / 2
+                out[i] += deficit / 2
+                moved = True
+        if not moved:
+            break
+    shift = 0.0
+    if out[0] < low:
+        shift = low - out[0]
+    elif out[-1] > high:
+        shift = high - out[-1]
+    return [y + shift for y in out]
+
+
+def end_labels(ax: Axes, items: Sequence[tuple[float, str]], summary: Summary) -> None:
     """Direct labels right of the axes for each (y data, mode); nudged apart if they would touch.
 
     Labels use the primary text colour next to a small marker in the series colour.
@@ -211,11 +259,7 @@ def end_labels(ax: Axes, items: Sequence[tuple[float, str]]) -> None:
         _, y_axes = ax.transAxes.inverted().transform((0.0, y_disp))
         placed.append((float(y_axes), mode))
     placed.sort(key=lambda item: item[0])
-    ys = [y for y, _ in placed]
-    for i in range(1, len(ys)):
-        if ys[i] - ys[i - 1] < MIN_LABEL_GAP:
-            middle = (ys[i] + ys[i - 1]) / 2
-            ys[i - 1], ys[i] = middle - MIN_LABEL_GAP / 2, middle + MIN_LABEL_GAP / 2
+    ys = spread_positions([y for y, _ in placed], MIN_LABEL_GAP)
     for y, (_, mode) in zip(ys, placed, strict=True):
         ax.plot(
             [1.02],
@@ -230,7 +274,7 @@ def end_labels(ax: Axes, items: Sequence[tuple[float, str]]) -> None:
         ax.text(
             1.045,
             y,
-            MODE_LABEL[mode],
+            mode_label(mode, summary),
             transform=ax.transAxes,
             va="center",
             ha="left",
@@ -284,7 +328,7 @@ def _mark_truncated(
         frac = float(
             ax.transAxes.inverted().transform(ax.transData.transform((cell.volume, value)))[1]
         )
-        if mode == "mcp":
+        if mode in ("mcp", "mcp_agg"):
             near_edge = frac > 0.8  # no room above: put the note left of the point instead
             offset, va = ((-10, 0), "center") if near_edge else ((-8, 9), "bottom")
         else:
@@ -331,7 +375,7 @@ def draw_volume_lines(
     volume_axis(ax, summary.volumes, label=xlabel)
     any_data = False
     end_points: list[tuple[float, str]] = []
-    for mode in MODES:
+    for mode in scenario_modes(summary, "B"):
         cells = _series(summary, mode)
         xs, ys = _points(cells, getter)
         if not xs:
@@ -351,7 +395,7 @@ def draw_volume_lines(
             linewidth=LINE_WIDTH,
             markersize=MARKER_SIZE,
             zorder=3,
-            label=MODE_LABEL[mode],
+            label=mode_label(mode, summary),
         )
         if hollow is not None:
             px, py = _points(cells, hollow)
@@ -372,9 +416,9 @@ def draw_volume_lines(
     if integer_ticks:
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.figure.canvas.draw()
-    for mode in MODES:
+    for mode in scenario_modes(summary, "B"):
         _mark_truncated(ax, _series(summary, mode), getter, mode)
-    end_labels(ax, end_points)
+    end_labels(ax, end_points, summary)
     return True
 
 
@@ -404,44 +448,58 @@ def _save(fig: Figure, summary: Summary, out_dir: Path, stem: str) -> list[Path]
 
 
 def _all_b_cells(summary: Summary) -> list[CellStats | None]:
-    return [summary.cell("B", v, m) for v in summary.volumes for m in MODES]
+    return [summary.cell("B", v, m) for v in summary.volumes for m in scenario_modes(summary, "B")]
 
 
 def _annotate_gaps(ax: Axes, summary: Summary) -> None:
-    """Annotate the token change between the lines at each volume."""
+    """Annotate Code Mode's token change against each other mode, between the lines."""
+    modes = scenario_modes(summary, "B")
+    others = [m for m in modes if m != "code"]
     for volume in summary.volumes:
-        comp = summary.comparison("B", volume)
-        mcp, code = summary.cell("B", volume, "mcp"), summary.cell("B", volume, "code")
-        if (
-            comp is None
-            or comp.tokens_reduction_pct is None
-            or mcp is None
-            or code is None
-            or mcp.tokens_mean is None
-            or code.tokens_mean is None
-        ):
+        code = summary.cell("B", volume, "code")
+        if code is None or code.tokens_mean is None:
             continue
-        change = -comp.tokens_reduction_pct
-        text = f"{MINUS if change < 0 else '+'}{abs(change):.0f}%"
-        ax.plot(
-            [volume, volume],
-            [code.tokens_mean, mcp.tokens_mean],
-            color=TEXT_SECONDARY,
-            linewidth=0.8,
-            zorder=2,
-        )
-        ax.annotate(
-            text,
-            xy=(volume, (mcp.tokens_mean + code.tokens_mean) / 2),
-            xytext=(-7, 0),
-            textcoords="offset points",
-            ha="right",
-            va="center",
-            fontsize=9,
-            color=TEXT_SECONDARY,
-            bbox={"boxstyle": "round,pad=0.2", "fc": SURFACE, "ec": "none", "alpha": 0.9},
-            zorder=5,
-        )
+        for other in others:
+            comp = summary.comparison("B", volume, other, "code")
+            base = summary.cell("B", volume, other)
+            if (
+                comp is None
+                or comp.tokens_reduction_pct is None
+                or base is None
+                or base.tokens_mean is None
+            ):
+                continue
+            change = -comp.tokens_reduction_pct
+            text = f"{MINUS if change < 0 else '+'}{abs(change):.0f}%"
+            if len(others) > 1:
+                text += " vs " + ("MCP" if other == "mcp" else "agg. tool")
+            ax.plot(
+                [volume, volume],
+                [code.tokens_mean, base.tokens_mean],
+                color=TEXT_SECONDARY,
+                linewidth=0.8,
+                zorder=2,
+            )
+            first = volume == summary.volumes[0]
+            if first and len(others) > 1:
+                # Narrow gaps at the smallest volume: anchor each label at its own marker.
+                anchor = base.tokens_mean if other == "mcp" else code.tokens_mean
+                offset, align = ((9, -9) if other == "mcp" else (9, -15)), "left"
+            else:
+                anchor = (base.tokens_mean + code.tokens_mean) / 2
+                offset, align = (-7, 0), "right"
+            ax.annotate(
+                text,
+                xy=(volume, anchor),
+                xytext=offset,
+                textcoords="offset points",
+                ha=align,
+                va="center",
+                fontsize=9,
+                color=TEXT_SECONDARY,
+                bbox={"boxstyle": "round,pad=0.2", "fc": SURFACE, "ec": "none", "alpha": 0.9},
+                zorder=5,
+            )
 
 
 # --------------------------------------------------------------------------- charts
@@ -454,7 +512,7 @@ def tokens_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         "Total tokens per task vs transactions per account",
         subtitle_text(summary, "B", _all_b_cells(summary)),
         "Measured (provider-reported usage). Line = mean per cell; band = min to max; "
-        "labels between the lines = Code Mode tokens relative to MCP (mean)."
+        "labels between the lines = Code Mode tokens relative to the other mode (mean)."
         + truncation_footnote(summary),
     )
     if draw_volume_lines(
@@ -462,7 +520,7 @@ def tokens_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
     ):
         thousands(ax)
         _annotate_gaps(ax, summary)
-        mode_legend(ax)
+        mode_legend(ax, summary)
     ax.set_ylabel("Mean total tokens per task")
     return _save(fig, summary, out_dir, "tokens_vs_volume")
 
@@ -486,7 +544,7 @@ def latency_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         + truncation_footnote(summary),
     )
     if draw_volume_lines(ax, summary, lambda c: c.latency_p50_s, hollow=lambda c: c.latency_p95_s):
-        mode_legend(ax)
+        mode_legend(ax, summary)
     ax.set_ylabel("Latency per task (seconds)")
     return _save(fig, summary, out_dir, "latency_vs_volume")
 
@@ -501,7 +559,7 @@ def cost_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
     )
     if draw_volume_lines(ax, summary, lambda c: c.cost_usd_per_1k_tasks):
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: f"${v:,.4g}"))
-        mode_legend(ax)
+        mode_legend(ax, summary)
     ax.set_ylabel("Estimated cost per 1,000 tasks (USD)")
     return _save(fig, summary, out_dir, "cost_vs_volume")
 
@@ -515,13 +573,20 @@ def model_calls_vs_volume(summary: Summary, out_dir: Path) -> list[Path]:
         "Measured. Each model call is one request to the provider within a task.",
     )
     if draw_volume_lines(ax, summary, lambda c: c.model_calls_mean, integer_ticks=True):
-        mode_legend(ax)
+        mode_legend(ax, summary)
     ax.set_ylabel("Mean model calls per task")
     return _save(fig, summary, out_dir, "model_calls_vs_volume")
 
 
+def _bar_positions(count: int, width: float = BAR_GROUP_WIDTH) -> tuple[list[float], float]:
+    """Offsets of ``count`` bars centred on a group position, and the width of each bar."""
+    bar = width / max(count, 1)
+    return [(i - (count - 1) / 2) * bar for i in range(count)], bar * 0.95
+
+
 def _bar_panel(
     ax: Axes,
+    summary: Summary,
     values: dict[str, float | None],
     formatter: Callable[[float], str],
     ylabel: str,
@@ -533,7 +598,8 @@ def _bar_panel(
     if not present:
         no_data(ax)
         return
-    for index, mode in enumerate(MODES):
+    modes = list(values)
+    for index, mode in enumerate(modes):
         value = values[mode]
         if value is None:
             continue
@@ -548,8 +614,12 @@ def _bar_panel(
             fontsize=10,
             color=TEXT,
         )
-    ax.set_xticks(range(len(MODES)), labels=[MODE_LABEL[m] for m in MODES])
-    ax.set_xlim(-0.6, len(MODES) - 0.4)
+    ax.set_xticks(
+        range(len(modes)),
+        labels=[textwrap.fill(mode_label(m, summary), 14) for m in modes],
+        fontsize=8.5,
+    )
+    ax.set_xlim(-0.6, len(modes) - 0.4)
     ax.set_ylim(0, max(present) * 1.18)
     ax.set_ylabel(ylabel)
 
@@ -559,13 +629,14 @@ def _seconds_label(value: float) -> str:
     return f"{value:.2f} s" if value >= 0.1 else f"{value * 1000:.1f} ms"
 
 
-def _mode_patches() -> list[Patch]:
-    return [Patch(facecolor=MODE_COLOR[m], label=MODE_LABEL[m]) for m in MODES]
+def _mode_patches(summary: Summary, modes: Sequence[str]) -> list[Patch]:
+    return [Patch(facecolor=MODE_COLOR[m], label=mode_label(m, summary)) for m in modes]
 
 
 def scenario_a_parity(summary: Summary, out_dir: Path) -> list[Path]:
-    """Scenario A: mean tokens and p50 latency, MCP vs Code Mode (two separate panels)."""
-    cells = [summary.cell("A", None, m) for m in MODES]
+    """Scenario A: mean tokens and p50 latency for every mode (two separate panels)."""
+    modes = scenario_modes(summary, "A")
+    cells = [summary.cell("A", None, m) for m in modes]
     fig = plt.figure(figsize=(10, 6))
     left = fig.add_axes((0.09, 0.17, 0.36, 0.60))
     right = fig.add_axes((0.57, 0.17, 0.36, 0.60))
@@ -580,7 +651,8 @@ def scenario_a_parity(summary: Summary, out_dir: Path) -> list[Path]:
     )
     _bar_panel(
         left,
-        {m: (c.tokens_mean if c else None) for m, c in zip(MODES, cells, strict=True)},
+        summary,
+        {m: (c.tokens_mean if c else None) for m, c in zip(modes, cells, strict=True)},
         lambda v: f"{v:,.0f}",
         "Mean total tokens per task",
         "Tokens",
@@ -588,14 +660,15 @@ def scenario_a_parity(summary: Summary, out_dir: Path) -> list[Path]:
     thousands(left)
     _bar_panel(
         right,
-        {m: (c.latency_p50_s if c else None) for m, c in zip(MODES, cells, strict=True)},
+        summary,
+        {m: (c.latency_p50_s if c else None) for m, c in zip(modes, cells, strict=True)},
         _seconds_label,
         "p50 latency per task (seconds)",
         "Latency",
     )
     fig.legend(
-        handles=_mode_patches(), loc="upper right", bbox_to_anchor=(0.96, 0.985),
-        frameon=False, fontsize=9, ncols=2,
+        handles=_mode_patches(summary, modes), loc="upper right", bbox_to_anchor=(0.96, 0.985),
+        frameon=False, fontsize=9, ncols=len(modes),
     )  # fmt: skip
     return _save(fig, summary, out_dir, "scenario_a_parity")
 
@@ -605,26 +678,41 @@ def _groups(summary: Summary) -> list[tuple[str, str, int | None]]:
         ("A", group_label("A", None, multiline=True), None)
     ]
     groups.extend(("B", group_label("B", v, multiline=True), v) for v in summary.volumes)
+    groups.extend(("C", group_label("C", v, multiline=True), v) for v in summary.c_volumes)
     return groups
+
+
+def _group_modes(summary: Summary, scenario: str, volume: int | None) -> list[Mode]:
+    """Modes that have a cell in one scenario/volume group."""
+    return [m for m in MODES if summary.cell(scenario, volume, m) is not None]
+
+
+def _scope_text(summary: Summary) -> str:
+    """``Single lookup and chained task`` plus the unanticipated query when it is in the run."""
+    if summary.c_volumes:
+        return "Single lookup, chained task and unanticipated query"
+    return "Single lookup and chained task"
 
 
 def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -> list[Path]:
     """Box plots of task latency per cell, grouped by scenario and volume."""
-    cells = [summary.cell(s, v, m) for s, _, v in _groups(summary) for m in MODES]
+    cells = [
+        summary.cell(s, v, m) for s, _, v in _groups(summary) for m in _group_modes(summary, s, v)
+    ]
     fig, ax = _new_figure(
         summary,
         "Task latency distribution per cell",
-        f"Single lookup and chained task · {summary.model_id} · {n_label(cells)} · "
-        f"run {summary.run_id}",
+        f"{_scope_text(summary)} · {summary.model_id} · {n_label(cells)} · run {summary.run_id}",
         "Measured. Box = interquartile range, line = median, whiskers = 1.5 x IQR; outliers "
         "not drawn. Latency excludes client-side throttling.",
     )
     style_axes(ax)
-    offsets = {"mcp": -0.19, "code": 0.19}
     drawn = False
     groups = _groups(summary)
     for index, (scenario, _, volume) in enumerate(groups):
-        for mode in MODES:
+        modes = _group_modes(summary, scenario, volume)
+        shifts, bar = _bar_positions(len(modes))
+        for mode, shift in zip(modes, shifts, strict=True):
             label = f"{scenario}{volume if volume is not None else ''}:{mode}"
             if tasks.empty:
                 continue
@@ -633,7 +721,7 @@ def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -
                 continue
             values = (subset["latency_ms"] / 1000).to_numpy(dtype=float)
             box = ax.boxplot(
-                [values], positions=[index + offsets[mode]], widths=0.32, patch_artist=True,
+                [values], positions=[index + shift], widths=bar * 0.9, patch_artist=True,
                 showfliers=False, manage_ticks=False,
                 medianprops={"color": TEXT, "linewidth": 1.6},
                 whiskerprops={"color": MODE_COLOR[mode], "linewidth": 1.2},
@@ -649,7 +737,10 @@ def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -
         ax.set_ylim(bottom=0)
         ax.set_xlabel("Task type · transactions per account")
         ax.set_ylabel("Latency per task (seconds)")
-        ax.legend(handles=_mode_patches(), loc="upper left", frameon=False, fontsize=9)
+        ax.legend(
+            handles=_mode_patches(summary, summary.modes),
+            loc="upper left", frameon=False, fontsize=9,
+        )  # fmt: skip
     else:
         no_data(ax)
     return _save(fig, summary, out_dir, "latency_distribution")
@@ -658,12 +749,11 @@ def latency_distribution(summary: Summary, tasks: pd.DataFrame, out_dir: Path) -
 def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
     """Grouped bars: accuracy (% correct of measured tasks) per scenario/volume and mode."""
     groups = _groups(summary)
-    cells = [summary.cell(s, v, m) for s, _, v in groups for m in MODES]
+    cells = [summary.cell(s, v, m) for s, _, v in groups for m in _group_modes(summary, s, v)]
     fig, ax = _new_figure(
         summary,
         "Accuracy by scenario and volume",
-        f"Single lookup and chained task · {summary.model_id} · {n_label(cells)} · "
-        f"run {summary.run_id}",
+        f"{_scope_text(summary)} · {summary.model_id} · {n_label(cells)} · run {summary.run_id}",
         "Measured. Accuracy = correct answers / measured tasks (tasks with an infrastructure "
         "error are excluded and reported separately)."
         + (
@@ -673,19 +763,21 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
         ),
     )
     style_axes(ax)
-    width = 0.36
     drawn = False
     for index, (scenario, _, volume) in enumerate(groups):
-        for mode, shift in zip(MODES, (-width / 2, width / 2), strict=True):
+        modes = _group_modes(summary, scenario, volume)
+        shifts, width = _bar_positions(len(modes))
+        for mode, shift in zip(modes, shifts, strict=True):
             cell = summary.cell(scenario, volume, mode)
             if cell is None or cell.accuracy is None:
                 continue
             drawn = True
             value = cell.accuracy * 100
-            ax.bar(index + shift, value, width=width * 0.95, color=MODE_COLOR[mode], zorder=3)
+            ax.bar(index + shift, value, width=width, color=MODE_COLOR[mode], zorder=3)
             ax.annotate(
                 f"{value:.1f}%", xy=(index + shift, value), xytext=(0, 4),
-                textcoords="offset points", ha="center", va="bottom", fontsize=9, color=TEXT,
+                textcoords="offset points", ha="center", va="bottom",
+                fontsize=9 if len(modes) < 3 else 7.5, color=TEXT,
             )  # fmt: skip
             if cell.n_truncated > 0:
                 ax.annotate(
@@ -700,7 +792,10 @@ def accuracy_by_cell(summary: Summary, out_dir: Path) -> list[Path]:
         ax.set_yticks([0, 20, 40, 60, 80, 100])
         ax.set_xlabel("Task type · transactions per account")
         ax.set_ylabel("Accuracy (% of measured tasks correct)")
-        ax.legend(handles=_mode_patches(), loc="upper left", frameon=False, fontsize=9, ncols=2)
+        ax.legend(
+            handles=_mode_patches(summary, summary.modes),
+            loc="upper left", frameon=False, fontsize=9, ncols=len(summary.modes),
+        )  # fmt: skip
     else:
         no_data(ax)
     return _save(fig, summary, out_dir, "accuracy_by_cell")
@@ -713,7 +808,7 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
     panels: list[tuple[str, str, int | None]] = [("A", group_label("A", None), None)]
     if largest is not None:
         panels.append(("B", group_label("B", largest), largest))
-    cells = [summary.cell(s, v, m) for s, _, v in panels for m in MODES]
+    cells = [summary.cell(s, v, m) for s, _, v in panels for m in _group_modes(summary, s, v)]
     subtitle_scope = "Single lookup and chained task"
     if largest is not None:
         subtitle_scope += f" ({largest} tx/account)"
@@ -732,10 +827,11 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
     for ax, (scenario, name, volume) in zip(axes, panels, strict=True):
         style_axes(ax)
         ax.set_title(name, loc="left", fontsize=10.5, color=TEXT)
-        width = 0.36
+        modes = _group_modes(summary, scenario, volume)
+        shifts, width = _bar_positions(len(modes))
         values: list[float] = []
         for index, kind in enumerate(("input", "output")):
-            for mode, shift in zip(MODES, (-width / 2, width / 2), strict=True):
+            for mode, shift in zip(modes, shifts, strict=True):
                 cell = summary.cell(scenario, volume, mode)
                 value = None
                 if cell is not None:
@@ -743,7 +839,7 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
                 if value is None:
                     continue
                 values.append(value)
-                ax.bar(index + shift, value, width=width * 0.95, color=MODE_COLOR[mode], zorder=3)
+                ax.bar(index + shift, value, width=width, color=MODE_COLOR[mode], zorder=3)
                 ax.annotate(
                     f"{value:,.0f}", xy=(index + shift, value), xytext=(0, 4),
                     textcoords="offset points", ha="center", va="bottom", fontsize=9, color=TEXT,
@@ -757,12 +853,53 @@ def token_breakdown(summary: Summary, out_dir: Path) -> list[Path]:
         else:
             no_data(ax)
     fig.legend(
-        handles=_mode_patches(), loc="upper right", bbox_to_anchor=(0.96, 0.985),
-        frameon=False, fontsize=9, ncols=2,
+        handles=_mode_patches(summary, summary.modes), loc="upper right",
+        bbox_to_anchor=(0.96, 0.985), frameon=False, fontsize=8.5, ncols=len(summary.modes),
     )  # fmt: skip
     return _save(fig, summary, out_dir, "token_breakdown")
 
 
+def unanticipated_query(summary: Summary, out_dir: Path) -> list[Path]:
+    """Scenario C at its largest volume: mean tokens, p50 latency and accuracy per mode."""
+    volume = summary.c_volumes[-1]
+    modes = _group_modes(summary, "C", volume)
+    cells = [summary.cell("C", volume, m) for m in modes]
+    fig = plt.figure(figsize=(10, 6))
+    axes = [fig.add_axes((0.07 + 0.32 * i, 0.17, 0.25, 0.60)) for i in range(3)]
+    add_header(
+        fig, summary, "Unanticipated query: tokens, latency and accuracy",
+        subtitle_text(summary, "C", cells) + f" · {volume} tx/account",
+    )  # fmt: skip
+    add_footnote(
+        fig,
+        "Measured. The aggregation tool cannot answer this question directly (no per-merchant "
+        "totals, no weekday information); Code Mode has no aggregation tool either. Each panel "
+        "has its own y axis; latency is p50 wall-clock time excluding client-side throttling.",
+    )
+    getters: list[tuple[str, Callable[[CellStats], float | None], Callable[[float], str], str]] = [
+        ("Mean tokens per task", lambda c: c.tokens_mean, lambda v: f"{v:,.0f}", "Tokens"),
+        ("p50 latency (seconds)", lambda c: c.latency_p50_s, _seconds_label, "Latency"),
+        (
+            "Accuracy (% of measured tasks correct)",
+            lambda c: None if c.accuracy is None else c.accuracy * 100,
+            lambda v: f"{v:.1f}%",
+            "Accuracy",
+        ),
+    ]
+    for ax, (ylabel, getter, formatter, title) in zip(axes, getters, strict=True):
+        values: dict[str, float | None] = {
+            m: (getter(c) if c is not None else None) for m, c in zip(modes, cells, strict=True)
+        }
+        _bar_panel(ax, summary, values, formatter, ylabel, title)
+        if title == "Tokens":
+            thousands(ax)
+        if title == "Accuracy":
+            ax.set_ylim(0, 118)
+            ax.set_yticks([0, 20, 40, 60, 80, 100])
+    return _save(fig, summary, out_dir, "unanticipated_query")
+
+
+UNANTICIPATED_STEM = "unanticipated_query"
 CHART_STEMS = (
     "tokens_vs_volume",
     "latency_vs_volume",
@@ -787,4 +924,6 @@ def render_all(summary: Summary, tasks_df: pd.DataFrame, out_dir: Path) -> list[
         written += latency_distribution(summary, tasks_df, out_dir)
         written += accuracy_by_cell(summary, out_dir)
         written += token_breakdown(summary, out_dir)
+        if summary.c_volumes:
+            written += unanticipated_query(summary, out_dir)
     return written
