@@ -6,7 +6,7 @@ in Phase 3 (MCP call timeout, Monty limits), not here.
 """
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Annotated, Any, Literal
@@ -47,6 +47,14 @@ AccountIdArg = Annotated[
 ]
 StartDateArg = Annotated[date, Field(description="Inclusive start date, YYYY-MM-DD")]
 EndDateArg = Annotated[date, Field(description="Inclusive end date, YYYY-MM-DD")]
+LargeDebitThresholdArg = Annotated[
+    float,
+    Field(
+        default=1000.0,
+        gt=0,
+        description="Debits with an absolute amount greater than this are listed as large",
+    ),
+]
 
 
 def compact_json(value: JsonValue) -> str:
@@ -89,6 +97,23 @@ class GetTransactionsInput(BaseModel):
 
     @model_validator(mode="after")
     def _check_range(self) -> "GetTransactionsInput":
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must not be after end_date")
+        return self
+
+
+class SummariseSpendingInput(BaseModel):
+    """Arguments for ``summarise_spending``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: AccountIdArg
+    start_date: StartDateArg
+    end_date: EndDateArg
+    large_debit_threshold: LargeDebitThresholdArg = 1000.0
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "SummariseSpendingInput":
         if self.start_date > self.end_date:
             raise ValueError("start_date must not be after end_date")
         return self
@@ -141,22 +166,44 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
     ),
 )
 
+AGGREGATION_SPEC = ToolSpec(
+    name="summarise_spending",
+    description=(
+        "Summarise an account's debit spending between two dates (inclusive). "
+        "Returns {account_id, start_date, end_date, spend_by_category, large_debit_ids, "
+        "debit_count}: spend_by_category is the sum of absolute debit amounts per category "
+        "(2 dp); large_debit_ids lists debits whose absolute amount exceeds "
+        "large_debit_threshold."
+    ),
+    input_model=SummariseSpendingInput,
+    returns="object",
+)
+
+AGGREGATION_TOOL_SPECS: tuple[ToolSpec, ...] = (*TOOL_SPECS, AGGREGATION_SPEC)
+
 _ANY_ADAPTER: TypeAdapter[Any] = TypeAdapter(Any)
 
 
 class ToolExecutor:
     """Executes allowlisted tools for one principal on one channel."""
 
-    def __init__(self, service: BankingService, principal: Principal, channel: Channel) -> None:
+    def __init__(
+        self,
+        service: BankingService,
+        principal: Principal,
+        channel: Channel,
+        specs: Sequence[ToolSpec] = TOOL_SPECS,
+    ) -> None:
         self._service = service
         self._principal = principal
         self._channel: Channel = channel
-        self._specs_by_name = {spec.name: spec for spec in TOOL_SPECS}
+        self._specs = tuple(specs)
+        self._specs_by_name = {spec.name: spec for spec in self._specs}
 
     @property
     def specs(self) -> tuple[ToolSpec, ...]:
         """The allowlisted tool specs."""
-        return TOOL_SPECS
+        return self._specs
 
     def execute(self, name: str, arguments: Mapping[str, Any]) -> JsonValue:
         """Validate and run a tool, returning JSON-compatible data."""
@@ -201,6 +248,16 @@ class ToolExecutor:
                     parsed.account_id,
                     parsed.start_date,
                     parsed.end_date,
+                    channel=channel,
+                )
+            case "summarise_spending":
+                assert isinstance(parsed, SummariseSpendingInput)
+                return self._service.summarise_spending(
+                    principal,
+                    parsed.account_id,
+                    parsed.start_date,
+                    parsed.end_date,
+                    parsed.large_debit_threshold,
                     channel=channel,
                 )
             case _:  # pragma: no cover - guarded by the allowlist check in execute()

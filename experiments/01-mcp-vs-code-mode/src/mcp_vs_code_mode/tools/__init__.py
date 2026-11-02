@@ -8,6 +8,8 @@ from mcp_vs_code_mode.tools.errors import (
     UnknownToolError,
 )
 from mcp_vs_code_mode.tools.registry import (
+    AGGREGATION_SPEC,
+    AGGREGATION_TOOL_SPECS,
     TOOL_SPECS,
     AccountIdArg,
     CustomerIdArg,
@@ -15,14 +17,18 @@ from mcp_vs_code_mode.tools.registry import (
     GetBalanceInput,
     GetCustomerInput,
     GetTransactionsInput,
+    LargeDebitThresholdArg,
     ListAccountsInput,
     StartDateArg,
+    SummariseSpendingInput,
     ToolExecutor,
     ToolSpec,
     compact_json,
 )
 
 __all__ = [
+    "AGGREGATION_SPEC",
+    "AGGREGATION_TOOL_SPECS",
     "TOOL_SPECS",
     "AccountIdArg",
     "CustomerIdArg",
@@ -30,8 +36,10 @@ __all__ = [
     "GetBalanceInput",
     "GetCustomerInput",
     "GetTransactionsInput",
+    "LargeDebitThresholdArg",
     "ListAccountsInput",
     "StartDateArg",
+    "SummariseSpendingInput",
     "ToolAccessError",
     "ToolError",
     "ToolExecutor",

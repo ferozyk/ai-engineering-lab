@@ -8,6 +8,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from mcp_vs_code_mode.banking.audit import AuditLog, AuditOutcome, AuditRecord, Channel
 from mcp_vs_code_mode.banking.auth import Principal
@@ -16,7 +17,14 @@ from mcp_vs_code_mode.banking.errors import (
     InvalidRequestError,
     NotFoundError,
 )
-from mcp_vs_code_mode.banking.models import Account, Balance, Customer, Dataset, Transaction
+from mcp_vs_code_mode.banking.models import (
+    Account,
+    Balance,
+    Customer,
+    Dataset,
+    SpendingSummary,
+    Transaction,
+)
 
 
 def _transaction_order(txn: Transaction) -> tuple[date, str]:
@@ -137,3 +145,51 @@ class BankingService:
                 if start_date <= t.date <= end_date
             ]
             return tuple(sorted(selected, key=_transaction_order))
+
+    def summarise_spending(
+        self,
+        principal: Principal,
+        account_id: str,
+        start_date: date,
+        end_date: date,
+        large_debit_threshold: float,
+        *,
+        channel: Channel,
+    ) -> SpendingSummary:
+        """Aggregate debits in the window: spend per category and large-debit ids."""
+        arguments = {
+            "account_id": account_id,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "large_debit_threshold": str(large_debit_threshold),
+        }
+        with self._audited(principal, channel, "summarise_spending", arguments):
+            self._require_account(principal, account_id)
+            if start_date > end_date:
+                raise InvalidRequestError("start_date must not be after end_date")
+            if large_debit_threshold <= 0:
+                raise InvalidRequestError("large_debit_threshold must be greater than 0")
+            threshold = Decimal(str(large_debit_threshold))
+            totals: dict[str, Decimal] = {}
+            large: list[str] = []
+            count = 0
+            for txn in self._transactions_by_account.get(account_id, ()):
+                if not start_date <= txn.date <= end_date or txn.amount >= 0:
+                    continue
+                absolute = abs(Decimal(str(txn.amount)))
+                count += 1
+                totals[txn.category] = totals.get(txn.category, Decimal(0)) + absolute
+                if absolute > threshold:
+                    large.append(txn.transaction_id)
+            cent = Decimal("0.01")
+            return SpendingSummary(
+                account_id=account_id,
+                start_date=start_date,
+                end_date=end_date,
+                spend_by_category={
+                    category: float(total.quantize(cent, rounding=ROUND_HALF_UP))
+                    for category, total in sorted(totals.items())
+                },
+                large_debit_ids=sorted(large),
+                debit_count=count,
+            )

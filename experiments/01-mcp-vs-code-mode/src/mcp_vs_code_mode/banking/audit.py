@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 AuditOutcome = Literal["allowed", "denied", "not_found", "invalid", "error"]
-Channel = Literal["mcp", "code_mode", "test"]
+Channel = Literal["mcp", "mcp_agg", "code_mode", "test"]
 
 
 class AuditRecord(BaseModel):

@@ -20,10 +20,11 @@ from mcp_vs_code_mode.banking import (
     generate_dataset,
 )
 from mcp_vs_code_mode.tools import (
-    TOOL_SPECS,
+    AGGREGATION_TOOL_SPECS,
     AccountIdArg,
     CustomerIdArg,
     EndDateArg,
+    LargeDebitThresholdArg,
     StartDateArg,
     ToolError,
     ToolExecutor,
@@ -33,6 +34,7 @@ from mcp_vs_code_mode.tools import (
 TOKEN_ENV = "BANK_SESSION_TOKEN"
 TRUSTED_ENV = "BANK_TRUSTED_SESSIONS"
 AUDIT_ENV = "BANK_AUDIT_LOG"
+AGGREGATION_ENV = "BANK_ENABLE_AGGREGATION"
 
 
 def _run(executor: ToolExecutor, name: str, arguments: dict[str, object]) -> str:
@@ -43,7 +45,7 @@ def _run(executor: ToolExecutor, name: str, arguments: dict[str, object]) -> str
 
 
 def build_server(executor: ToolExecutor) -> MCPServer:
-    """Register one wrapper per ``ToolSpec``, in registry order."""
+    """Register one wrapper per spec allowlisted on ``executor``, in registry order."""
     server = MCPServer(name="synthetic-bank", log_level="WARNING")
 
     def get_customer(customer_id: CustomerIdArg) -> str:
@@ -64,13 +66,31 @@ def build_server(executor: ToolExecutor) -> MCPServer:
             {"account_id": account_id, "start_date": start_date, "end_date": end_date},
         )
 
+    def summarise_spending(
+        account_id: AccountIdArg,
+        start_date: StartDateArg,
+        end_date: EndDateArg,
+        large_debit_threshold: LargeDebitThresholdArg = 1000.0,
+    ) -> str:
+        return _run(
+            executor,
+            "summarise_spending",
+            {
+                "account_id": account_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "large_debit_threshold": large_debit_threshold,
+            },
+        )
+
     wrappers: dict[str, Callable[..., str]] = {
         "get_customer": get_customer,
         "list_accounts": list_accounts,
         "get_balance": get_balance,
         "get_transactions": get_transactions,
+        "summarise_spending": summarise_spending,
     }
-    for spec in TOOL_SPECS:
+    for spec in executor.specs:
         server.add_tool(
             wrappers[spec.name],
             name=spec.name,
@@ -81,10 +101,16 @@ def build_server(executor: ToolExecutor) -> MCPServer:
 
 
 def server_parameters(
-    *, token: str, trusted: Mapping[str, str], audit_log: Path | None
+    *,
+    token: str,
+    trusted: Mapping[str, str],
+    audit_log: Path | None,
+    aggregation: bool = False,
 ) -> StdioServerParameters:
     """Parameters to spawn this server as a stdio subprocess with only the BANK_* variables."""
     env = {TOKEN_ENV: token, TRUSTED_ENV: json.dumps(dict(trusted))}
+    if aggregation:
+        env[AGGREGATION_ENV] = "1"
     if audit_log is not None:
         env[AUDIT_ENV] = str(audit_log)
     return StdioServerParameters(
@@ -118,5 +144,8 @@ def main() -> None:
     audit_path = os.environ.get(AUDIT_ENV)
     audit = AuditLog(Path(audit_path) if audit_path else None)
     service = BankingService(generate_dataset(), audit)
-    executor = ToolExecutor(service, principal, "mcp")
+    if os.environ.get(AGGREGATION_ENV) == "1":
+        executor = ToolExecutor(service, principal, "mcp_agg", AGGREGATION_TOOL_SPECS)
+    else:
+        executor = ToolExecutor(service, principal, "mcp")
     build_server(executor).run("stdio")

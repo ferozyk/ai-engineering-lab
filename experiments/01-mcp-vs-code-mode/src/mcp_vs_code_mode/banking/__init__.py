@@ -36,6 +36,7 @@ from mcp_vs_code_mode.banking.models import (
     Customer,
     Dataset,
     SpendCategory,
+    SpendingSummary,
     Transaction,
     TransactionCategory,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "Principal",
     "SessionStore",
     "SpendCategory",
+    "SpendingSummary",
     "Transaction",
     "TransactionCategory",
     "account_ids_for",

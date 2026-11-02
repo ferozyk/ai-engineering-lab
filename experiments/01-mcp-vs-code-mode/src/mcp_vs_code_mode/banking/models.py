@@ -82,3 +82,14 @@ class Dataset(_Frozen):
     def checksum(self) -> str:
         """Return the sha256 hex digest of the canonical JSON serialisation."""
         return hashlib.sha256(self.model_dump_json().encode("utf-8")).hexdigest()
+
+
+class SpendingSummary(_Frozen):
+    """Server-side aggregate of an account's debits over a date window."""
+
+    account_id: str
+    start_date: date
+    end_date: date
+    spend_by_category: dict[str, float]
+    large_debit_ids: list[str]
+    debit_count: int
