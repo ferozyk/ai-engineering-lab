@@ -1,0 +1,122 @@
+{
+  "run_id": "20261102T200538Z-canary",
+  "kind": "canary",
+  "simulated": false,
+  "experiment": "mcp-vs-code-mode",
+  "experiment_version": "0.2.0",
+  "git_sha": "90f0e63061cbaeadf5ae5b90ba526f85047277d3",
+  "git_dirty": false,
+  "started_at": "2026-11-02T20:05:38.421571Z",
+  "finished_at": "2026-11-02T20:08:12.826605Z",
+  "hardware": {
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_count": "8",
+    "memory_gb": "16.0"
+  },
+  "os": "macOS-15.0.1-arm64-arm-64bit",
+  "python_version": "3.12.12",
+  "provider": "openrouter",
+  "model_id": "nvidia/nemotron-3.5-super-vl:free",
+  "models_served": [
+    "nvidia/nemotron-3.5-super-vl:free"
+  ],
+  "providers_served": [
+    "Nvidia"
+  ],
+  "dataset_version": "1.1.0",
+  "dataset_checksum": "ad579f7026dd30417869520cc9b159715625e6eea05deabaf6e8faf9dab96d96",
+  "config": {
+    "experiment": "mcp-vs-code-mode",
+    "experiment_version": "0.2.0",
+    "iterations": 10,
+    "warmup_tasks_per_mode": 1,
+    "modes": [
+      "mcp",
+      "mcp_agg",
+      "code"
+    ],
+    "volumes": [
+      10,
+      100
+    ],
+    "scenario_c": {
+      "volumes": [
+        100
+      ],
+      "modes": [
+        "mcp_agg",
+        "code"
+      ]
+    },
+    "max_turns": 8,
+    "max_output_tokens": 32768,
+    "temperature": 0.0,
+    "order_seed": 20261101,
+    "llm_seed": null,
+    "rate_limit_per_minute": 15,
+    "daily_request_cap": 900,
+    "request_timeout_seconds": 600.0,
+    "mcp_call_timeout_seconds": 10.0,
+    "sandbox": {
+      "max_duration_secs": 5.0,
+      "max_memory_mb": 128,
+      "max_host_calls": 100
+    },
+    "pricing": {
+      "reference_model_label": null,
+      "reference_prompt_usd_per_million": null,
+      "reference_completion_usd_per_million": null
+    },
+    "canary": {
+      "cells": [
+        "A:mcp_agg",
+        "B100:mcp_agg",
+        "C100:mcp_agg",
+        "C100:code"
+      ]
+    }
+  },
+  "iterations": 10,
+  "tasks_planned": 4,
+  "tasks_completed": 4,
+  "failed_requests": 0,
+  "requests_sent": 12,
+  "infra_errors": 0,
+  "package_versions": {
+    "mcp": "2.3.0",
+    "openai": "3.42.0",
+    "pydantic-monty": "1.4.0",
+    "pandas": "3.1.0",
+    "matplotlib": "3.11.2",
+    "httpx": "0.28.1"
+  },
+  "pricing": {
+    "source": "paid_variant",
+    "priced_model": "nvidia/nemotron-3.5-super-vl",
+    "prompt_usd_per_token": 1.5e-7,
+    "completion_usd_per_token": 5e-7,
+    "captured_at": "2026-11-02T20:05:35.114140Z",
+    "note": "Estimated at the paid variant's list price (nvidia/nemotron-3.5-super-vl) captured 2026-11-02"
+  },
+  "max_turns": 8,
+  "rate_limit_per_minute": 15,
+  "daily_request_cap": 900,
+  "order_seed": 20261101,
+  "llm_seed": null,
+  "mcp_connect_ms": 318.29650001600385,
+  "mcp_agg_connect_ms": 314.00150002446026,
+  "sandbox_warmup_ms": 5.606417078524828,
+  "free_model_daily_requests_before": {
+    "used": 0,
+    "limit": 1000,
+    "remaining": 1000
+  },
+  "free_model_daily_requests_after": {
+    "used": 9,
+    "limit": 1000,
+    "remaining": 991
+  },
+  "halted": false,
+  "halt_reason": null
+}
