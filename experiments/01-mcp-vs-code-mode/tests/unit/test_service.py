@@ -109,3 +109,71 @@ def test_unexpected_error_audited_as_error(
     with pytest.raises(KeyError):
         service.get_balance(principal, "ACC-0050-1", channel="test")
     assert [r.outcome for r in audit_log.records] == ["error"]
+
+
+WINDOW = (date(2026, 7, 3), date(2026, 10, 1))
+
+
+def test_summarise_spending_matches_hand_computation(
+    service: BankingService, principal: Principal, dataset: Dataset
+) -> None:
+    summary = service.summarise_spending(principal, "ACC-0050-1", *WINDOW, 1000.0, channel="test")
+    debits = [t for t in dataset.transactions if t.account_id == "ACC-0050-1" and t.amount < 0]
+    assert summary.debit_count == len(debits)
+    assert sum(summary.spend_by_category.values()) == pytest.approx(
+        sum(-t.amount for t in debits), abs=0.01
+    )
+    assert summary.large_debit_ids == sorted(t.transaction_id for t in debits if -t.amount > 1000)
+    assert summary.large_debit_ids  # the dataset plants large debits in every account
+    assert "income" not in summary.spend_by_category
+
+
+def test_summarise_spending_threshold_is_exclusive_and_window_is_inclusive(
+    service: BankingService, principal: Principal, dataset: Dataset
+) -> None:
+    debit = next(t for t in dataset.transactions if t.account_id == "ACC-0050-1" and t.amount < 0)
+    just_inside = service.summarise_spending(
+        principal, "ACC-0050-1", debit.date, debit.date, -debit.amount - 0.01, channel="test"
+    )
+    assert debit.transaction_id in just_inside.large_debit_ids
+    at_threshold = service.summarise_spending(
+        principal, "ACC-0050-1", debit.date, debit.date, -debit.amount, channel="test"
+    )
+    assert debit.transaction_id not in at_threshold.large_debit_ids
+    assert at_threshold.debit_count >= 1
+
+
+def test_summarise_spending_errors(service: BankingService, principal: Principal) -> None:
+    with pytest.raises(AuthorizationError):
+        service.summarise_spending(principal, "ACC-9999-1", *WINDOW, 1000.0, channel="test")
+    with pytest.raises(NotFoundError):
+        service.summarise_spending(principal, "ACC-0001-1", *WINDOW, 1000.0, channel="test")
+    with pytest.raises(InvalidRequestError):
+        service.summarise_spending(
+            principal, "ACC-0050-1", date(2026, 9, 1), date(2026, 8, 1), 1000.0, channel="test"
+        )
+    for threshold in (0.0, -5.0):
+        with pytest.raises(InvalidRequestError):
+            service.summarise_spending(principal, "ACC-0050-1", *WINDOW, threshold, channel="test")
+
+
+def test_summarise_spending_audit_one_record_per_call(
+    service: BankingService, principal: Principal, audit_log: AuditLog
+) -> None:
+    service.summarise_spending(principal, "ACC-0050-1", *WINDOW, 1000.0, channel="mcp_agg")
+    with pytest.raises(AuthorizationError):
+        service.summarise_spending(principal, "ACC-9999-1", *WINDOW, 1000.0, channel="mcp_agg")
+    with pytest.raises(InvalidRequestError):
+        service.summarise_spending(principal, "ACC-0050-1", *WINDOW, 0.0, channel="mcp_agg")
+    records = audit_log.records
+    assert [(r.operation, r.outcome, r.channel) for r in records] == [
+        ("summarise_spending", "allowed", "mcp_agg"),
+        ("summarise_spending", "denied", "mcp_agg"),
+        ("summarise_spending", "invalid", "mcp_agg"),
+    ]
+    assert records[0].arguments == {
+        "account_id": "ACC-0050-1",
+        "start_date": "2026-07-03",
+        "end_date": "2026-10-01",
+        "large_debit_threshold": "1000.0",
+    }

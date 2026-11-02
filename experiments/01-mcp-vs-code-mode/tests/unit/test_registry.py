@@ -6,6 +6,8 @@ from typing import Any
 import pytest
 
 from mcp_vs_code_mode.tools import (
+    AGGREGATION_SPEC,
+    AGGREGATION_TOOL_SPECS,
     TOOL_SPECS,
     ToolAccessError,
     ToolExecutor,
@@ -99,3 +101,68 @@ def test_results_are_json_with_iso_dates(executor: ToolExecutor) -> None:
     assert isinstance(first, dict)
     assert isinstance(first["date"], str)
     assert len(first["date"]) == 10
+
+
+AGG_ARGS = {"account_id": "ACC-0050-1", "start_date": "2026-07-03", "end_date": "2026-10-01"}
+
+
+def test_raw_tool_specs_unchanged_and_aggregation_is_additional() -> None:
+    assert len(TOOL_SPECS) == 4
+    assert (*TOOL_SPECS, AGGREGATION_SPEC) == AGGREGATION_TOOL_SPECS
+    assert AGGREGATION_SPEC.name == "summarise_spending"
+    assert AGGREGATION_SPEC.description == (
+        "Summarise an account's debit spending between two dates (inclusive). Returns "
+        "{account_id, start_date, end_date, spend_by_category, large_debit_ids, debit_count}: "
+        "spend_by_category is the sum of absolute debit amounts per category (2 dp); "
+        "large_debit_ids lists debits whose absolute amount exceeds large_debit_threshold."
+    )
+    for field in AGGREGATION_SPEC.input_model.model_fields.values():
+        assert field.description
+
+
+def test_code_mode_executor_rejects_aggregation_tool(service: Any, principal: Any) -> None:
+    code_executor = ToolExecutor(service, principal, "code_mode")
+    assert code_executor.specs == TOOL_SPECS
+    with pytest.raises(UnknownToolError):
+        code_executor.execute("summarise_spending", AGG_ARGS)
+
+
+def test_aggregation_executor_runs_the_tool(service: Any, principal: Any) -> None:
+    agg = ToolExecutor(service, principal, "mcp_agg", AGGREGATION_TOOL_SPECS)
+    result = agg.execute("summarise_spending", AGG_ARGS)
+    json.dumps(result)
+    assert isinstance(result, dict)
+    assert set(result) == {
+        "account_id",
+        "start_date",
+        "end_date",
+        "spend_by_category",
+        "large_debit_ids",
+        "debit_count",
+    }
+    assert result["start_date"] == "2026-07-03"
+    assert agg.execute("get_balance", {"account_id": "ACC-0050-1"})  # raw tools still work
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {**AGG_ARGS, "start_date": "2026-10-02"},
+        {**AGG_ARGS, "large_debit_threshold": 0},
+        {**AGG_ARGS, "large_debit_threshold": -1},
+        {**AGG_ARGS, "extra": 1},
+        {"account_id": "ACC-0050-1"},
+    ],
+)
+def test_aggregation_invalid_inputs(service: Any, principal: Any, arguments: Any) -> None:
+    agg = ToolExecutor(service, principal, "mcp_agg", AGGREGATION_TOOL_SPECS)
+    with pytest.raises(ToolInputError):
+        agg.execute("summarise_spending", arguments)
+
+
+def test_aggregation_denied_and_not_found(service: Any, principal: Any) -> None:
+    agg = ToolExecutor(service, principal, "mcp_agg", AGGREGATION_TOOL_SPECS)
+    with pytest.raises(ToolAccessError):
+        agg.execute("summarise_spending", {**AGG_ARGS, "account_id": "ACC-9999-1"})
+    with pytest.raises(ToolNotFoundError):
+        agg.execute("summarise_spending", {**AGG_ARGS, "account_id": "ACC-0001-1"})

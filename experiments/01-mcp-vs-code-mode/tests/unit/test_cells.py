@@ -9,6 +9,7 @@ from mcp_vs_code_mode.bench.cells import (
     all_cells,
     build_canary_schedule,
     build_schedule,
+    cells_for,
 )
 from mcp_vs_code_mode.bench.config import load_config
 
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_ten_cells_in_canonical_order() -> None:
-    cells = all_cells([10, 50, 100, 200])
+    cells = cells_for(["mcp", "code"], [10, 50, 100, 200])
     assert [c.label for c in cells] == [
         "A:mcp",
         "A:code",
@@ -31,19 +32,38 @@ def test_ten_cells_in_canonical_order() -> None:
     ]
 
 
+def test_configured_cells_include_aggregation_and_scenario_c() -> None:
+    config = load_config()
+    assert [c.label for c in all_cells(config)] == [
+        "A:mcp",
+        "A:mcp_agg",
+        "A:code",
+        "B10:mcp",
+        "B10:mcp_agg",
+        "B10:code",
+        "B100:mcp",
+        "B100:mcp_agg",
+        "B100:code",
+        "C100:mcp_agg",
+        "C100:code",
+    ]
+
+
 def test_parse_round_trip() -> None:
-    for cell in all_cells([10, 50, 100, 200]):
+    every = cells_for(["mcp", "mcp_agg", "code"], [10, 50, 100, 200], [10, 100], ["mcp", "code"])
+    for cell in every:
         assert Cell.parse(cell.label) == cell
-    with pytest.raises(ValueError):
-        Cell.parse("C:mcp")
+    for bad in ("C:mcp", "D100:mcp", "A:other", "B10:"):
+        with pytest.raises(ValueError):
+            Cell.parse(bad)
 
 
 def test_schedule_shape_and_ids() -> None:
     config = load_config()
     schedule = build_schedule(config)
-    assert len(schedule) == 2 + config.iterations * 6
-    assert [t.task_id for t in schedule[:2]] == ["w1-A-mcp", "w1-A-code"]
-    assert all(t.warmup and t.iteration == 0 for t in schedule[:2])
+    assert len(schedule) == 3 + config.iterations * 11
+    assert [t.task_id for t in schedule[:3]] == ["w1-A-mcp", "w1-A-mcp_agg", "w1-A-code"]
+    assert all(t.warmup and t.iteration == 0 for t in schedule[:3])
     assert [t.order_index for t in schedule] == list(range(len(schedule)))
     assert len({t.task_id for t in schedule}) == len(schedule)
 
@@ -53,7 +73,7 @@ def test_each_cell_once_per_iteration() -> None:
     schedule = build_schedule(config)
     for iteration in range(1, config.iterations + 1):
         labels = Counter(t.cell.label for t in schedule if t.iteration == iteration)
-        assert set(labels) == {c.label for c in all_cells(config.volumes)}
+        assert set(labels) == {c.label for c in all_cells(config)}
         assert set(labels.values()) == {1}
 
 
@@ -68,5 +88,5 @@ def test_canary_schedule_matches_config() -> None:
     config = load_config()
     schedule = build_canary_schedule(config)
     assert [t.cell.label for t in schedule] == config.canary.cells
-    assert schedule[2].task_id == "c-B10-mcp"
+    assert schedule[2].task_id == "c-C100-mcp_agg"
     assert not any(t.warmup for t in schedule)

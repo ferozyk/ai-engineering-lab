@@ -197,6 +197,8 @@ class SyntheticRuns:
         simulated: bool = True,
         llm_calls: Sequence[LLMCallRow] = (),
         volumes: Sequence[int] = (10, 50, 100, 200),
+        modes: Sequence[str] | None = None,
+        scenario_c: Mapping[str, Sequence[object]] | None = None,
     ) -> RunPaths:
         """Write ``rows`` and matching metadata under a fresh results directory."""
         self._count += 1
@@ -207,6 +209,16 @@ class SyntheticRuns:
             append_row(paths.raw / "llm_calls.jsonl", call)
         for row in rows:
             append_row(paths.raw / "tasks.jsonl", row.model_copy(update={"run_id": run_id}))
+        config: dict[str, object] = {
+            "volumes": list(volumes),
+            "temperature": 0.0,
+            "warmup_tasks_per_mode": 1,
+            "max_output_tokens": 32768,
+        }
+        if modes is not None:  # runs from before 01b carry neither key
+            config["modes"] = list(modes)
+        if scenario_c is not None:
+            config["scenario_c"] = {k: list(v) for k, v in scenario_c.items()}
         meta = RunMetadata(
             run_id=run_id,
             kind="dry-run",
@@ -224,12 +236,7 @@ class SyntheticRuns:
             model_id="test-model",
             dataset_version="d1",
             dataset_checksum="abc",
-            config={
-                "volumes": list(volumes),
-                "temperature": 0.0,
-                "warmup_tasks_per_mode": 1,
-                "max_output_tokens": 32768,
-            },
+            config=config,
             iterations=3,
             tasks_planned=len(rows),
             package_versions={"mcp": "1"},

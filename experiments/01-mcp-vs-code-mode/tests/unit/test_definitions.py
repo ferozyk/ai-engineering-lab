@@ -2,7 +2,7 @@
 
 import pytest
 
-from mcp_vs_code_mode.scenarios import scenario_a_task, scenario_b_task
+from mcp_vs_code_mode.scenarios import scenario_a_task, scenario_b_task, scenario_c_task
 
 pytestmark = pytest.mark.unit
 
@@ -29,3 +29,23 @@ def test_scenario_b_prompt(volume: int) -> None:
 def test_invalid_volume() -> None:
     with pytest.raises(ValueError, match="volume"):
         scenario_b_task(30)
+
+
+_EXPECTED_C_PROMPT = """\
+For customer CUST-0100, analyse the period 2026-07-03 to 2026-10-01 (inclusive), across all of the customer's accounts.
+Report:
+- "top_merchants": the 3 merchants with the highest total debit spend (sum of absolute amounts of debit transactions, i.e. negative amounts), as a list of {"merchant": ..., "total": ...} sorted by total descending, totals rounded to 2 decimal places.
+- "weekend_debit_count": the number of debit transactions dated on a Saturday or Sunday.
+Respond with only a JSON object of this shape:
+{"customer_id": "...", "top_merchants": [{"merchant": "...", "total": 0.0}], "weekend_debit_count": 0}"""  # noqa: E501
+
+
+def test_scenario_c_prompt_is_verbatim_template() -> None:
+    task = scenario_c_task(100)
+    assert (task.scenario, task.volume) == ("C", 100)
+    assert task.user_prompt == _EXPECTED_C_PROMPT
+
+
+def test_scenario_c_invalid_volume() -> None:
+    with pytest.raises(ValueError, match="volume"):
+        scenario_c_task(30)

@@ -1,6 +1,8 @@
 """Unit tests for ground-truth computation."""
 
+from collections import defaultdict
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -14,7 +16,7 @@ from mcp_vs_code_mode.banking import (
     account_ids_for,
     customer_id_for,
 )
-from mcp_vs_code_mode.scenarios import expected_answer_a, expected_answer_b
+from mcp_vs_code_mode.scenarios import expected_answer_a, expected_answer_b, expected_answer_c
 
 pytestmark = pytest.mark.unit
 
@@ -135,3 +137,75 @@ def test_real_dataset_ground_truth(dataset: Dataset, volume: int) -> None:
     for summary in answer.accounts:
         assert len(summary.large_debit_ids) == max(1, volume // 25)
         assert "income" not in summary.spend_by_category
+
+
+def _merchant_txn(
+    txn_id: str, account_id: str, day: date, amount: float, merchant: str
+) -> Transaction:
+    return _txn(txn_id, account_id, day, amount, "income" if amount > 0 else "shopping").model_copy(
+        update={"merchant": merchant}
+    )
+
+
+def _scenario_c_dataset() -> Dataset:
+    """Window 2026-07-05..2026-09-30. 2026-07-05, 07-11 and 08-01 are weekend days."""
+    base = _tiny_dataset()
+    return base.model_copy(
+        update={
+            "transactions": (
+                # Saturday but before the window: excluded everywhere.
+                _merchant_txn("T1", "ACC-0010-1", date(2026, 7, 4), -500.00, "Alpha"),
+                # Alpha: 10.005 (Sunday) + 20.004 (Monday) = 30.009 -> 30.01
+                _merchant_txn("T2", "ACC-0010-1", date(2026, 7, 5), -10.005, "Alpha"),
+                _merchant_txn("T3", "ACC-0010-1", date(2026, 7, 6), -20.004, "Alpha"),
+                # Beta: 100.00 (Saturday) + 50.00 (Monday) = 150.00; Sunday credit is ignored.
+                _merchant_txn("T4", "ACC-0010-1", date(2026, 7, 11), -100.00, "Beta"),
+                _merchant_txn("T5", "ACC-0010-1", date(2026, 7, 12), 900.00, "Beta"),
+                _merchant_txn("T6", "ACC-0010-1", date(2026, 7, 13), -50.00, "Beta"),
+                # Gamma (second account): 40.00 (Saturday) + 60.005 (Monday) = 100.005 -> 100.01
+                _merchant_txn("T7", "ACC-0010-2", date(2026, 8, 1), -40.00, "Gamma"),
+                _merchant_txn("T8", "ACC-0010-2", date(2026, 8, 3), -60.005, "Gamma"),
+                # Fourth merchant, not reported.
+                _merchant_txn("T9", "ACC-0010-2", date(2026, 8, 5), -5.00, "Delta"),
+                # After the window.
+                _merchant_txn("T10", "ACC-0010-2", date(2026, 10, 3), -9999.00, "Delta"),
+            )
+        }
+    )
+
+
+def test_expected_answer_c_hand_made() -> None:
+    answer = expected_answer_c(_scenario_c_dataset(), 10)
+    assert answer.model_dump() == {
+        "customer_id": "CUST-0010",
+        "top_merchants": [
+            {"merchant": "Beta", "total": 150.00},
+            {"merchant": "Gamma", "total": 100.01},
+            {"merchant": "Alpha", "total": 30.01},
+        ],
+        "weekend_debit_count": 3,
+    }
+
+
+def test_expected_answer_c_unknown_volume_raises() -> None:
+    with pytest.raises(ValueError, match="CUST-0050"):
+        expected_answer_c(_scenario_c_dataset(), 50)
+
+
+@pytest.mark.parametrize("volume", [10, 100])
+def test_real_dataset_scenario_c_has_no_tie_at_rank_three(dataset: Dataset, volume: int) -> None:
+    accounts = set(account_ids_for(volume))
+    totals: defaultdict[str, Decimal] = defaultdict(Decimal)
+    for txn in dataset.transactions:
+        in_window = dataset.window_start <= txn.date <= dataset.window_end
+        if txn.account_id in accounts and txn.amount < 0 and in_window:
+            totals[txn.merchant] += abs(Decimal(str(txn.amount)))
+    ranked = sorted(totals.values(), reverse=True)
+    assert len(ranked) >= 4
+    assert ranked[2] != ranked[3]
+    assert ranked[2].quantize(Decimal("0.01")) != ranked[3].quantize(Decimal("0.01"))
+    answer = expected_answer_c(dataset, volume)
+    assert [m.total for m in answer.top_merchants] == [
+        float(v.quantize(Decimal("0.01"))) for v in ranked[:3]
+    ]
+    assert answer.weekend_debit_count > 0

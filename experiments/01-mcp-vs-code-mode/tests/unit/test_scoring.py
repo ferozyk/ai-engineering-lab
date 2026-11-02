@@ -9,9 +9,12 @@ from mcp_vs_code_mode.scenarios import (
     AccountSummary,
     AnswerA,
     AnswerB,
+    AnswerC,
+    MerchantTotal,
     extract_json_object,
     score_answer_a,
     score_answer_b,
+    score_answer_c,
 )
 
 pytestmark = pytest.mark.unit
@@ -171,3 +174,84 @@ def test_invalid_answers(text: str) -> None:
         assert result.outcome == "invalid_answer"
         assert result.partial_score == 0.0
         assert len(result.field_errors) == 1
+
+
+EXPECTED_C = AnswerC(
+    customer_id="CUST-0100",
+    top_merchants=[
+        MerchantTotal(merchant="Beta", total=150.00),
+        MerchantTotal(merchant="Gamma", total=100.01),
+        MerchantTotal(merchant="Alpha", total=30.01),
+    ],
+    weekend_debit_count=3,
+)
+
+
+def _c(**changes: Any) -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(EXPECTED_C.model_dump_json())
+    data.update(changes)
+    return data
+
+
+def _score_c(data: Any) -> Any:
+    return score_answer_c(EXPECTED_C, json.dumps(data))
+
+
+def test_c_exact_answer_correct() -> None:
+    result = _score_c(_c())
+    assert (result.outcome, result.partial_score, result.field_errors) == ("correct", 1.0, ())
+
+
+def test_c_tolerance_whitespace_and_extras() -> None:
+    merchants = [
+        {"merchant": " Beta ", "total": 150.0049},
+        {"merchant": "Gamma", "total": 100.02},
+        {"merchant": "Alpha", "total": 30.01},
+        {"merchant": "Delta", "total": 1.0},  # a fourth entry is ignored
+    ]
+    assert _score_c(_c(top_merchants=merchants, extra="x")).outcome == "correct"
+
+
+def test_c_each_wrong_field_costs_one_of_eight() -> None:
+    cases = {
+        "customer_id": _c(customer_id="CUST-0050"),
+        "weekend_debit_count": _c(weekend_debit_count=4),
+        "merchant name": _c(
+            top_merchants=[
+                {"merchant": "beta", "total": 150.0},  # case-sensitive
+                *_c()["top_merchants"][1:],
+            ]
+        ),
+        "total": _c(
+            top_merchants=[
+                {"merchant": "Beta", "total": 150.02},  # beyond +-0.01
+                *_c()["top_merchants"][1:],
+            ]
+        ),
+    }
+    for name, data in cases.items():
+        result = _score_c(data)
+        assert result.outcome == "incorrect", name
+        assert result.partial_score == pytest.approx(7 / 8), name
+        assert len(result.field_errors) == 1, name
+
+
+def test_c_wrong_order_and_missing_ranks() -> None:
+    swapped = _c(top_merchants=list(reversed(_c()["top_merchants"])))
+    result = _score_c(swapped)
+    assert result.outcome == "incorrect"
+    assert result.partial_score == pytest.approx(4 / 8)  # rank 2 happens to match, 1 and 3 not
+    short = _score_c(_c(top_merchants=_c()["top_merchants"][:1]))
+    assert short.outcome == "incorrect"
+    assert short.partial_score == pytest.approx(4 / 8)
+    none = _score_c(_c(top_merchants=[]))
+    assert none.partial_score == pytest.approx(2 / 8)
+
+
+def test_c_invalid_answers() -> None:
+    assert score_answer_c(EXPECTED_C, "no json here").outcome == "invalid_answer"
+    missing = _c()
+    del missing["weekend_debit_count"]
+    result = _score_c(missing)
+    assert result.outcome == "invalid_answer"
+    assert result.partial_score == 0.0

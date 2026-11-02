@@ -182,3 +182,12 @@ def test_warm_up_returns_duration(sandbox: CodeSandbox) -> None:
 def test_run_requires_context_manager(module_executor: ToolExecutor) -> None:
     with pytest.raises(RuntimeError):
         CodeSandbox(module_executor).run("1")
+
+
+def test_aggregation_tool_is_not_callable_in_code_mode(sandbox: CodeSandbox) -> None:
+    result = sandbox.run(
+        'summarise_spending("ACC-0050-1", start_date="2026-07-03", end_date="2026-10-01")'
+    )
+    assert result.error_type == "runtime_error"
+    assert "NameError" in (result.error_message or "")
+    assert "summarise_spending" in (result.error_message or "")

@@ -7,7 +7,7 @@ import pytest
 
 from mcp_vs_code_mode import cli
 from mcp_vs_code_mode.bench import paths as paths_module
-from mcp_vs_code_mode.bench.charts import CHART_STEMS
+from mcp_vs_code_mode.bench.charts import CHART_STEMS, UNANTICIPATED_STEM
 
 pytestmark = pytest.mark.integration
 
@@ -25,19 +25,20 @@ def test_dry_run_publishes_everything(
     processed = run_dir / "processed"
     summary = json.loads((processed / "summary.json").read_text(encoding="utf-8"))
     assert summary["simulated"] is True
-    assert len(summary["cells"]) == 6
+    assert len(summary["cells"]) == 11
     for cell in summary["cells"]:
         assert cell["n_measured"] == 2
         assert cell["accuracy"] == 1.0  # the oracle always answers correctly
-    assert summary["excluded_warmup_tasks"] == 2
+    assert summary["excluded_warmup_tasks"] == 3
     assert (processed / "cells.csv").exists()
     assert (processed / "comparisons.csv").exists()
 
-    for stem in CHART_STEMS:
+    for stem in (*CHART_STEMS, UNANTICIPATED_STEM):
         assert (run_dir / "charts" / f"{stem}.png").stat().st_size > 0
         assert (run_dir / "charts" / f"{stem}.svg").stat().st_size > 0
     report = (run_dir / "reports" / "report.md").read_text(encoding="utf-8")
     assert report.startswith("# SIMULATED — Benchmark report")
+    assert [h["id"] for h in summary["hypotheses"]] == ["H1", "H2", "H3", "H4", "H5", "H6"]
     for name in ("linkedin-landscape.png", "linkedin-portrait.png"):
         assert (run_dir / "linkedin" / name).stat().st_size > 0
 

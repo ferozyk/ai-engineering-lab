@@ -174,7 +174,10 @@ def test_hypotheses_supported(synthetic: Any) -> None:
         "H2": "supported",
         "H3": "supported",
         "H4": "supported",
+        "H5": "inconclusive",
+        "H6": "inconclusive",
     }
+    assert summary.hypotheses[4].evidence == "mode/scenario not in this run"
     h1 = summary.hypotheses[0]
     assert "tokens mcp 1,000 vs code 1,100 (+10.0%)" in h1.evidence
     assert "p50 latency mcp 1.00 s vs code 1.10 s (+10.0%)" in h1.evidence
@@ -193,6 +196,8 @@ def test_hypotheses_not_supported(synthetic: Any) -> None:
         "H2": "not supported",  # code uses more tokens
         "H3": "not supported",  # code is slower
         "H4": "not supported",  # MCP accuracy does not decrease
+        "H5": "inconclusive",  # no aggregation-tool cells in this run
+        "H6": "inconclusive",  # no scenario C in this run
     }
 
 
@@ -279,9 +284,9 @@ def test_truncated_and_completed_counts(synthetic: Any) -> None:
     assert (code.n_truncated, code.completed) == (0, 1)
     comp = summary.comparison("B", 200)
     assert comp is not None
-    assert (comp.mcp_correct, comp.code_correct) == (1, 1)
-    assert (comp.mcp_truncated, comp.code_truncated) == (1, 0)
-    assert (comp.n_mcp, comp.n_code) == (4, 1)
+    assert (comp.correct_a, comp.correct_b) == (1, 1)
+    assert (comp.truncated_a, comp.truncated_b) == (1, 0)
+    assert (comp.n_a, comp.n_b) == (4, 1)
 
 
 def test_truncation_counts_in_outputs(synthetic: Any) -> None:
@@ -296,7 +301,7 @@ def test_truncation_counts_in_outputs(synthetic: Any) -> None:
     assert "n_truncated" in header
     assert "completed" in header
     comparison_header = (paths.processed / "comparisons.csv").read_text().splitlines()[0]
-    assert "mcp_truncated" in comparison_header
+    assert "truncated_a" in comparison_header
 
 
 def test_no_llm_calls_file_means_no_truncation(synthetic: Any) -> None:
@@ -335,6 +340,8 @@ def test_two_volume_scope_hypotheses_supported(synthetic: Any) -> None:
         "H2": "supported",
         "H3": "supported",
         "H4": "supported",
+        "H5": "inconclusive",
+        "H6": "inconclusive",
     }
     h3 = summary.hypotheses[2]
     assert "largest measured volume (100)" in h3.statement

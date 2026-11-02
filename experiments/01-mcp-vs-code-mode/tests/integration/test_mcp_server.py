@@ -17,7 +17,12 @@ from mcp_vs_code_mode.banking import (
     token_fingerprint,
 )
 from mcp_vs_code_mode.mcp_server import server_parameters
-from mcp_vs_code_mode.tools import TOOL_SPECS, ToolExecutor, compact_json
+from mcp_vs_code_mode.tools import (
+    AGGREGATION_TOOL_SPECS,
+    TOOL_SPECS,
+    ToolExecutor,
+    compact_json,
+)
 
 pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
@@ -38,10 +43,21 @@ def _strip_titles(value: Any) -> Any:
     return value
 
 
-def _params(tmp_path: Path, token: str | None = None, trusted_for: str | None = None) -> Any:
+def _params(
+    tmp_path: Path,
+    token: str | None = None,
+    trusted_for: str | None = None,
+    *,
+    aggregation: bool = False,
+) -> Any:
     token = token or secrets.token_urlsafe(16)
     trusted = {token_fingerprint(trusted_for or token): "rm-001"}
-    return server_parameters(token=token, trusted=trusted, audit_log=tmp_path / "audit.jsonl")
+    return server_parameters(
+        token=token,
+        trusted=trusted,
+        audit_log=tmp_path / "audit.jsonl",
+        aggregation=aggregation,
+    )
 
 
 async def test_lists_tools_in_registry_order(tmp_path: Path) -> None:
@@ -107,3 +123,78 @@ def test_server_parameters_only_bank_vars(tmp_path: Path) -> None:
         "BANK_TRUSTED_SESSIONS",
         "BANK_AUDIT_LOG",
     }
+
+
+_AGG_CASES: list[tuple[str, dict[str, Any]]] = [
+    *_CASES,
+    (
+        "summarise_spending",
+        {"account_id": "ACC-0050-1", "start_date": "2026-07-03", "end_date": "2026-10-01"},
+    ),
+    (
+        "summarise_spending",
+        {
+            "account_id": "ACC-0050-2",
+            "start_date": "2026-08-01",
+            "end_date": "2026-09-15",
+            "large_debit_threshold": 250.5,
+        },
+    ),
+]
+
+
+async def test_without_flag_lists_four_tools(tmp_path: Path) -> None:
+    async with Client(_params(tmp_path)) as client:
+        names = [t.name for t in (await client.list_tools()).tools]
+        assert names == [s.name for s in TOOL_SPECS]
+        unknown = await client.call_tool("summarise_spending", {})
+        assert unknown.is_error
+
+
+async def test_aggregation_server_lists_five_tools_matching_registry(tmp_path: Path) -> None:
+    async with Client(_params(tmp_path, aggregation=True)) as client:
+        tools = (await client.list_tools()).tools
+    assert [t.name for t in tools] == [s.name for s in AGGREGATION_TOOL_SPECS]
+    assert len(tools) == 5
+    for tool, spec in zip(tools, AGGREGATION_TOOL_SPECS, strict=True):
+        assert tool.description == spec.description
+        schema = spec.input_model.model_json_schema()
+        assert _strip_titles(tool.input_schema["properties"]) == _strip_titles(schema["properties"])
+        assert tool.input_schema.get("required") == schema.get("required")
+
+
+async def test_aggregation_results_byte_identical_and_audited_as_mcp_agg(tmp_path: Path) -> None:
+    executor = ToolExecutor(
+        BankingService(generate_dataset(), AuditLog()),
+        benchmark_principal(),
+        "test",
+        AGGREGATION_TOOL_SPECS,
+    )
+    async with Client(_params(tmp_path, aggregation=True)) as client:
+        for name, args in _AGG_CASES:
+            result = await client.call_tool(name, args, read_timeout_seconds=10.0)
+            assert not result.is_error
+            assert result.content[0].text == compact_json(executor.execute(name, args))  # type: ignore[union-attr]
+        bad = await client.call_tool(
+            "summarise_spending",
+            {
+                "account_id": "ACC-0050-1",
+                "start_date": "2026-07-03",
+                "end_date": "2026-10-01",
+                "large_debit_threshold": 0,
+            },
+        )
+        assert bad.is_error
+        denied = await client.call_tool(
+            "summarise_spending",
+            {"account_id": "ACC-9999-1", "start_date": "2026-07-03", "end_date": "2026-10-01"},
+        )
+        assert denied.is_error
+        assert "access_denied" in denied.content[0].text  # type: ignore[union-attr]
+    lines = (tmp_path / "audit.jsonl").read_text().splitlines()
+    assert {json.loads(line)["channel"] for line in lines} == {"mcp_agg"}
+
+
+def test_aggregation_flag_in_server_parameters(tmp_path: Path) -> None:
+    assert _params(tmp_path, aggregation=True).env["BANK_ENABLE_AGGREGATION"] == "1"
+    assert "BANK_ENABLE_AGGREGATION" not in _params(tmp_path).env

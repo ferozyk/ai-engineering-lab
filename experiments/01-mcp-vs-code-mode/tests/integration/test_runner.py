@@ -87,17 +87,17 @@ async def test_dry_run_writes_all_files() -> None:
     outcome = await _run()
     raw = outcome.paths.raw
     assert not outcome.halted
-    assert outcome.completed == 8
+    assert outcome.completed == 14
 
     tasks = load_rows(raw / "tasks.jsonl", TaskRow)
     llm = load_rows(raw / "llm_calls.jsonl", LLMCallRow)
     tools = load_rows(raw / "tool_calls.jsonl", ToolCallRow)
-    assert len(tasks) == 8
-    assert sum(1 for t in tasks if t.warmup) == 2
+    assert len(tasks) == 14
+    assert sum(1 for t in tasks if t.warmup) == 3
     assert all(t.outcome == "correct" and t.simulated for t in tasks)
     assert len(llm) == sum(t.model_calls for t in tasks)
     assert len(tools) == sum(t.tool_call_count for t in tasks)
-    assert len(list((raw / "transcripts").glob("*.json"))) == 8
+    assert len(list((raw / "transcripts").glob("*.json"))) == 14
     transcript = json.loads((raw / "transcripts" / f"{tasks[0].task_id}.json").read_text())
     assert transcript["task_id"] == tasks[0].task_id
     assert transcript["messages"][0]["role"] == "system"
@@ -111,10 +111,12 @@ async def test_dry_run_writes_all_files() -> None:
 
     meta = RunMetadata.model_validate_json((raw / "run_metadata.json").read_text())
     assert meta.simulated
-    assert meta.tasks_planned == 8
-    assert meta.tasks_completed == 8
+    assert meta.tasks_planned == 14
+    assert meta.tasks_completed == 14
     assert meta.finished_at is not None
     assert meta.mcp_connect_ms > 0
+    assert meta.mcp_agg_connect_ms is not None
+    assert meta.mcp_agg_connect_ms > 0
     assert meta.sandbox_warmup_ms > 0
     assert meta.providers_served == ["simulated"]
     assert outcome.paths.raw.parent.parent.name == "dry-run"
@@ -133,17 +135,17 @@ async def test_resume_reattempts_only_infra_errors() -> None:
     assert first.infra_errors == 1
     assert not first.halted
     rows = load_rows(first.paths.raw / "tasks.jsonl", TaskRow)
-    assert len(rows) == 8
+    assert len(rows) == 14
     assert [r.task_id for r in rows if r.outcome == "infra_error"] == ["01-B10-code"]
 
     second = await _run(run_id=first.run_id)
     rows = load_rows(second.paths.raw / "tasks.jsonl", TaskRow)
-    assert len(rows) == 9
+    assert len(rows) == 15
     assert rows[-1].task_id == "01-B10-code"
     assert rows[-1].outcome == "correct"
-    assert second.completed == 8
+    assert second.completed == 14
     meta = RunMetadata.model_validate_json((second.paths.raw / "run_metadata.json").read_text())
-    assert meta.tasks_completed == 8
+    assert meta.tasks_completed == 14
     assert meta.infra_errors == 1
 
 
@@ -154,7 +156,7 @@ async def test_halt_on_daily_limit() -> None:
     assert "daily_limit" in outcome.halt_reason
     rows = load_rows(outcome.paths.raw / "tasks.jsonl", TaskRow)
     assert rows[-1].task_id == "01-A-mcp"
-    assert len(rows) < 10
+    assert len(rows) < 15
 
 
 async def test_halt_when_budget_below_max_turns() -> None:
@@ -200,3 +202,21 @@ async def test_three_consecutive_infra_errors_halt() -> None:
     outcome = await _run(factory)
     assert outcome.halted
     assert outcome.infra_errors == 3
+
+
+async def test_every_scheduled_cell_is_answered_correctly_by_the_oracle() -> None:
+    """Real MCP servers (raw and aggregation) and Monty: all 11 cells end 'correct'."""
+    outcome = await _run()
+    rows = load_rows(outcome.paths.raw / "tasks.jsonl", TaskRow)
+    measured = {r.cell: r.outcome for r in rows if not r.warmup}
+    assert set(measured) == {
+        "A:mcp", "A:mcp_agg", "A:code", "B10:mcp", "B10:mcp_agg", "B10:code",
+        "B100:mcp", "B100:mcp_agg", "B100:code", "C100:mcp_agg", "C100:code",
+    }  # fmt: skip
+    assert set(measured.values()) == {"correct"}
+    tools = load_rows(outcome.paths.raw / "tool_calls.jsonl", ToolCallRow)
+    assert any(t.mode == "mcp_agg" and t.name == "summarise_spending" for t in tools)
+    assert not [t for t in tools if t.mode in ("mcp", "code") and t.name == "summarise_spending"]
+    audit = (outcome.paths.raw / "audit.jsonl").read_text().splitlines()
+    channels = {json.loads(line)["channel"] for line in audit}
+    assert channels == {"mcp", "mcp_agg", "code_mode"}

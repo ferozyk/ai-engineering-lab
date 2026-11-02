@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_vs_code_mode.agent import CodeModeToolset, MCPToolset, TaskResult, run_task
+from mcp_vs_code_mode.agent import CodeModeToolset, MCPToolset, Mode, TaskResult, run_task
 from mcp_vs_code_mode.agent.fakes import OracleChatModel
 from mcp_vs_code_mode.banking import (
     AuditLog,
@@ -20,8 +20,10 @@ from mcp_vs_code_mode.scenarios import (
     TaskSpec,
     expected_answer_a,
     expected_answer_b,
+    expected_answer_c,
     scenario_a_task,
     scenario_b_task,
+    scenario_c_task,
 )
 from mcp_vs_code_mode.tools import ToolExecutor
 
@@ -33,6 +35,8 @@ _TASKS = {
     "B50": scenario_b_task(50),
     "B100": scenario_b_task(100),
     "B200": scenario_b_task(200),
+    "C10": scenario_c_task(10),
+    "C100": scenario_c_task(100),
 }
 
 
@@ -40,7 +44,9 @@ def _expected(dataset: Dataset, task: TaskSpec):  # type: ignore[no-untyped-def]
     if task.scenario == "A":
         return expected_answer_a(dataset)
     assert task.volume is not None
-    return expected_answer_b(dataset, task.volume)
+    if task.scenario == "B":
+        return expected_answer_b(dataset, task.volume)
+    return expected_answer_c(dataset, task.volume)
 
 
 def _assert_clean(result: TaskResult, token: str, model_calls: int) -> None:
@@ -52,25 +58,34 @@ def _assert_clean(result: TaskResult, token: str, model_calls: int) -> None:
     assert all(call.simulated for call in result.llm_calls)
 
 
+@pytest.mark.parametrize("mode", ["mcp", "mcp_agg"])
 @pytest.mark.parametrize("name", _TASKS)
-async def test_mcp_mode(name: str, dataset: Dataset, tmp_path: Path) -> None:
+async def test_mcp_modes(mode: Mode, name: str, dataset: Dataset, tmp_path: Path) -> None:
     task = _TASKS[name]
     token = secrets.token_urlsafe(24)
     params = server_parameters(
-        token=token, trusted={token_fingerprint(token): "rm-001"}, audit_log=tmp_path / "a.jsonl"
+        token=token,
+        trusted={token_fingerprint(token): "rm-001"},
+        audit_log=tmp_path / "a.jsonl",
+        aggregation=mode == "mcp_agg",
     )
-    async with MCPToolset.open(params) as toolset:
+    async with MCPToolset.open(params, mode=mode) as toolset:
         result = await run_task(
             task_id=name,
             task=task,
             expected=_expected(dataset, task),
-            model=OracleChatModel(task, "mcp"),
+            model=OracleChatModel(task, mode),
             toolset=toolset,
         )
     _assert_clean(result, token, 2 if task.scenario == "A" else 3)
-    assert result.mode == "mcp"
+    assert result.mode == mode
     if task.scenario == "B":
         assert result.llm_calls[1].tool_call_count == 8
+    if task.scenario == "C":
+        assert result.llm_calls[1].tool_call_count == 4
+        assert {t.name for t in result.tool_calls} == {"list_accounts", "get_transactions"}
+    used_aggregation = any(t.name == "summarise_spending" for t in result.tool_calls)
+    assert used_aggregation == (mode == "mcp_agg" and task.scenario == "B")
 
 
 @pytest.mark.parametrize("name", _TASKS)
@@ -90,5 +105,5 @@ async def test_code_mode(name: str, dataset: Dataset) -> None:
         )
     _assert_clean(result, token, 2)
     assert result.mode == "code"
-    assert result.tool_calls[0].host_calls == (1 if task.scenario == "A" else 9)
+    assert result.tool_calls[0].host_calls == {"A": 1, "B": 9, "C": 5}[task.scenario]
     assert {r.channel for r in audit.records} == {"code_mode"}
