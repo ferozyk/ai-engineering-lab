@@ -17,6 +17,8 @@ Terminology used throughout:
 - **Cell:** one (scenario, volume, mode) combination. The measured run has 6 cells.
 - **Task:** one execution of one cell.
 
+> **Extension 01b (in progress):** a third mode (MCP + aggregation tool) and a new unanticipated-query scenario were pre-registered on 2026-11-02 to separate data reduction from code execution. See [methodology section 11](benchmarks/methodology.md#11-extension-01b-pre-registered-2026-11-02). The published results below are unchanged.
+
 ## 2. Research Question
 
 For an equivalent multi-step tool workflow, how do MCP-based tool calling and Code Mode differ in context overhead, token consumption, latency, reliability and security posture, and at what workflow shape and data volume does the difference become material?

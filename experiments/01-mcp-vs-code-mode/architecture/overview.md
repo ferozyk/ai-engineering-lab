@@ -52,6 +52,8 @@ Single source of truth for 4 tools. Each tool has a name, description, Pydantic 
 | `get_balance` | `account_id` | account_id, available_balance, ledger_balance, currency, as_of |
 | `get_transactions` | `account_id, start_date, end_date` | list of transactions |
 
+**Aggregation tool (extension 01b).** The registry also defines a fifth, server-side tool, `summarise_spending(account_id, start_date, end_date, large_debit_threshold=1000)`, kept apart as `AGGREGATION_SPEC` / `AGGREGATION_TOOL_SPECS`. It returns per-category debit sums, the ids of debits above the threshold and the debit count. It goes through the same authorisation, validation and audit path as the raw tools (`BankingService.summarise_spending`). A `ToolExecutor` carries an explicit allowlist of specs: the raw MCP server and Code Mode use the 4 raw tools; the aggregation MCP server (spawned with `BANK_ENABLE_AGGREGATION=1`, audit channel `mcp_agg`) uses all 5. Code Mode never gets the aggregation tool, so the third mode (`mcp_agg`) differs from raw MCP only by that one extra tool.
+
 Both modes derive their tool interface from the registry: MCP tool schemas and Code Mode function stubs are generated from the same names, descriptions and models. This guarantees parity. The fifth business capability, "generate customer account summary", is the agent's final answer, not a tool.
 
 ### LLM client
@@ -123,11 +125,11 @@ sequenceDiagram
 |---|---|---|
 | Authentication | Scoped session token resolved at server start | Host-side principal binding |
 | Authorization | Banking service checks principal on every call | Banking service checks principal on every call |
-| Tool allowlist | Only the 4 registry tools exist on the server | Only 4 external functions are exposed to Monty |
+| Tool allowlist | Per executor: the 4 registry tools on the raw MCP server; those 4 plus `summarise_spending` on the aggregation MCP server (`BANK_ENABLE_AGGREGATION=1`) | Only the 4 raw functions are exposed to Monty; `summarise_spending` is never available |
 | Input validation | Pydantic input models | Same Pydantic input models |
 | Timeouts | Per tool call | Per tool call, plus sandbox execution limit |
 | Error handling | Typed errors returned to the model as tool errors | Typed errors returned to the model as tool errors |
-| Audit logging | Same JSONL audit log, `channel = mcp` | Same JSONL audit log, `channel = code_mode` |
+| Audit logging | Same JSONL audit log, `channel = mcp` (or `mcp_agg` on the aggregation server) | Same JSONL audit log, `channel = code_mode` |
 | Credential exposure | Never in prompts or tool results | Never in prompts, tool results or sandbox |
 | Code execution isolation | N/A (no model-generated code) | Monty: no filesystem, network or environment |
 
