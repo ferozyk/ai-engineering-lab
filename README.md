@@ -16,6 +16,7 @@ A learning journey and engineering portfolio. This repository holds small, repro
 | # | Experiment | Status |
 |---|---|---|
 | 01 | [MCP vs Code Mode](experiments/01-mcp-vs-code-mode/) | Complete |
+| 02 | [RAG architecture comparison](experiments/02-rag-architecture-comparison/) | In design |
 
 ## Repository layout
 

@@ -1,0 +1,187 @@
+# 02 — RAG Architecture Comparison
+
+> **Status:** In design (Stage 1)
+> **Experiment version:** 0.1.0
+> **Last updated:** 2026-11-08
+
+## 1. Overview
+
+This experiment builds an API knowledge assistant that answers questions about a set of synthetic OpenAPI 3.1 specifications for a fictional bank, "Lab Bank". Four retrieval architectures are built one at a time against the same corpus and the same questions. Retrieval quality and answer quality are measured separately, so a wrong answer can be traced to either the retriever or the generator.
+
+Terminology used throughout (see [docs/rag-fundamentals.md](docs/rag-fundamentals.md) for the full explanation):
+
+- **Chunk:** a small piece of a spec (for example, the parameters of one operation) that is embedded and retrieved on its own.
+- **Retrieval:** finding the chunks most relevant to a question.
+- **Generation:** asking the language model to answer using only the retrieved chunks.
+- **Architecture A, B, C, D:** the four retrieval strategies compared (section 8).
+
+## 2. Research Question
+
+How do different retrieval strategies and agentic orchestration approaches affect the accuracy, relevance, latency and cost of Retrieval-Augmented Generation over API specifications, and when is the added complexity justified?
+
+## 3. Why This Matters
+
+- API documentation mixes prose with exact identifiers: paths, header names, error codes and field names.
+- Dense (embedding) retrieval is good at meaning and can be weak at exact strings. A developer asking about `RATE-001` wants that code, not something that merely sounds similar.
+- Teams often add hybrid search, rerankers and agents by default. Each adds components, latency and cost. This experiment measures what each one actually buys on one concrete task.
+
+## 4. Hypotheses
+
+Draft. Frozen before the first measured run of each architecture; recorded in [docs/evaluation-methodology.md](docs/evaluation-methodology.md) section 8. All hypotheses are *unverified*.
+
+- **HA1** (*unverified*): baseline dense retrieval reaches Hit@5 of at least 0.80 on `semantic` and `endpoint_discovery` questions.
+- **HA2** (*unverified*): baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` questions.
+- **HA3** (*unverified*): when retrieval hits, answer correctness is at least 0.80; when it misses, correctness is at most 0.20.
+- **HA4** (*unverified*): the correct-refusal rate on unanswerable questions is at least 0.80.
+- **HB, HC, HD** (*unverified*): placeholders for the hybrid, rerank and agentic milestones, defined in the methodology document.
+
+## 5. Objectives
+
+1. Understand each RAG building block: embeddings, vector search, chunking, context construction, reranking and agentic retrieval.
+2. Build a reproducible baseline and evaluate it before adding anything.
+3. Measure what each additional component changes, one component at a time.
+4. Separate retrieval metrics from answer metrics and from guardrail metrics (abstention).
+5. Report latency and cost per stage, labelling estimates as estimates.
+6. Decide, with evidence, when each architecture is worth its complexity.
+
+## 6. Scope
+
+### In scope
+
+- The four architectures (A to D).
+- Synthetic specifications written for this experiment.
+- English only.
+- A single generation model, selected through configuration.
+- Local embedding and reranking models.
+
+### Out of scope
+
+- Production serving.
+- A Qdrant server or cloud deployment.
+- Fine-tuning.
+- Multilingual retrieval.
+- A user interface.
+- Real or confidential specifications.
+- LLM-as-judge scoring as the primary metric.
+
+## 7. Architecture
+
+The pipeline has two paths. Indexing parses the specs into chunks, embeds them and stores them in a local vector store. Querying embeds the question, retrieves the nearest chunks, builds a prompt and asks the model to answer with citations. Retrieval and generation are separately callable, so retrieval can be evaluated without any model request. The full design is in [docs/architecture.md](docs/architecture.md).
+
+```mermaid
+flowchart TB
+    subgraph Indexing["Indexing (once per corpus version)"]
+        Specs["Lab Bank OpenAPI specs"] --> Parser["Spec parser"]
+        Parser --> Chunker["Structure-aware chunker"]
+        Chunker --> Embed1["Embedding model<br/>(BGE-M3)"]
+        Embed1 --> Store[("Qdrant local mode")]
+    end
+    subgraph Query["Query (architecture A)"]
+        Q["Question"] --> Embed2["Embed query"]
+        Embed2 --> Search["Top-K similarity search"]
+        Store --> Search
+        Search --> Ctx["Context builder"]
+        Ctx --> Gen["Generator<br/>(OpenRouter model)"]
+        Gen --> Ans["Answer + cited chunk ids"]
+    end
+```
+
+## 8. Implementation Approaches
+
+Each architecture adds one piece to the previous one.
+
+| Architecture | Adds | Status |
+|---|---|---|
+| A. Baseline | Dense vector retrieval over structure-aware chunks | Planned for Stage 2 |
+| B. Hybrid | BM25 keyword search combined with dense search by Reciprocal Rank Fusion | Later milestone |
+| C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Later milestone |
+| D. Agentic | A LangGraph agent that plans, searches, checks the evidence and searches again | Later milestone |
+
+These are composable capabilities, not exclusive categories: architecture D can use C's retriever as its tool.
+
+## 9. Technology Stack
+
+| Component | Choice | Why | Needed in |
+|---|---|---|---|
+| Embeddings | `BAAI/bge-m3` via sentence-transformers and PyTorch | Strong open model, 1,024-dimension dense vectors, runs locally | A |
+| Vector store | Qdrant local mode (`qdrant-client`) | In-process, no server, persists to a folder | A |
+| Generation | OpenRouter through the `openai` SDK; model set by `LLM_MODEL` | Same access path as experiment 01; never hardcoded | A |
+| Keyword search | Hand-written BM25 (about 40 lines) | Small enough to read end to end | B |
+| Reranker | `BAAI/bge-reranker-v2-m3` cross-encoder | Same runtime as the embedding model | C |
+| Agent orchestration | LangGraph | Only when the agentic milestone needs it | D |
+
+Size implications (from the model card and documentation; exact figures are to be measured in Stage 2):
+
+- BGE-M3 has about 568M parameters and about 2.3 GB of weights at fp32. Expect a few GB of memory while embedding.
+- Weights download to the Hugging Face cache and are never committed.
+- CPU is the default for reproducibility. Apple GPU (MPS) is optional through configuration.
+- PyTorch is a large dependency. It is introduced in Stage 2, not now.
+
+## 10. Experimental Methodology
+
+Every architecture runs the same corpus, the same questions, the same generation model, temperature 0, the same prompt version and the same top-K. Retrieval is evaluated first, with no model requests. Generation is repeated three times per question to see variance. Hypotheses are written down before each architecture's measured run.
+
+Full details: [docs/evaluation-methodology.md](docs/evaluation-methodology.md). Dataset design: [docs/dataset-design.md](docs/dataset-design.md).
+
+## 11. Evaluation Metrics
+
+| Group | Metrics | Measured or estimated |
+|---|---|---|
+| Retrieval | Hit@K, Recall@K, Precision@K, MRR for K in 1, 3, 5, 10 | Measured, no model requests |
+| Answer | Correctness against key facts, groundedness (unsupported and invented identifiers), citation validity, answer relevance (manual) | Measured |
+| Guardrail | Correct-refusal rate and made-up-answer rate on unanswerable questions | Measured |
+| Performance | Latency per stage (p50, p95), tokens, success and failure rates | Measured |
+| Cost | Cost per question | **Estimated** |
+| Indexing | Chunk count, embedding time | Measured, reported separately |
+
+Definitions and caveats are in [docs/evaluation-methodology.md](docs/evaluation-methodology.md). See also the [benchmarking standards](../../docs/standards/benchmarking-standards.md).
+
+## 12. Results
+
+> Results pending. Do not fill in until benchmarks have been run.
+
+## 13. Analysis
+
+> Results pending. Do not fill in until benchmarks have been run.
+
+## 14. Limitations
+
+- Small, synthetic, self-authored corpus and question set.
+- A single generation model.
+- Qdrant local-mode latency does not represent a Qdrant server.
+- Free-model routing variance on OpenRouter.
+- Deterministic groundedness covers identifiers only, not prose claims.
+- BGE-M3 is larger than an English corpus of this size needs.
+- The sample size is small, so results are reported per question rather than as statistically significant differences.
+
+## 15. Conclusion
+
+> Results pending. Do not fill in until benchmarks have been run.
+
+## Milestones
+
+1. Stage 1: design documentation (this stage).
+2. Stage 2: baseline A (parser, chunker, embeddings, Qdrant, generator, CLI), then measured evaluation of A.
+3. Architecture B (hybrid), then evaluation.
+4. Architecture C (rerank), then evaluation.
+5. Architecture D (agentic), then evaluation.
+6. Comparison report and LinkedIn content.
+
+Each architecture stops for review before the next begins.
+
+## 16. How to Run
+
+Pending: the CLI is implemented in Stage 2.
+
+## 17. References
+
+- Lewis et al., 2020, "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks", arXiv:2005.11401.
+- Chen et al., 2024, "BGE M3-Embedding", arXiv:2402.03216. Model card: <https://huggingface.co/BAAI/bge-m3>.
+- Robertson and Zaragoza, 2009, "The Probabilistic Relevance Framework: BM25 and Beyond".
+- Cormack, Clarke and Büttcher, 2009, "Reciprocal Rank Fusion outperforms Condorcet and individual rank learning methods", SIGIR.
+- Nogueira and Cho, 2019, "Passage Re-ranking with BERT", arXiv:1901.04085.
+- Qdrant documentation: <https://qdrant.tech/documentation/>. Python client and local mode: <https://github.com/qdrant/qdrant-client>.
+- Sentence Transformers documentation: <https://sbert.net>.
+- OpenAPI Specification 3.1.0: <https://spec.openapis.org/oas/v3.1.0>.
+- RFC 6901, JavaScript Object Notation (JSON) Pointer.
+- LangGraph documentation (milestone D): <https://langchain-ai.github.io/langgraph/>.

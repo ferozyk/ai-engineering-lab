@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "question.schema.json",
+  "title": "Evaluation question",
+  "description": "One evaluation question for the RAG architecture comparison. When constraints.must_abstain is true, relevant_sources and relevant_document_ids may be empty because no spec element answers the question.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "question",
+    "category",
+    "expected_answer",
+    "key_facts",
+    "relevant_sources",
+    "relevant_document_ids",
+    "constraints",
+    "paraphrase_of",
+    "notes"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^Q[0-9]{2,3}$",
+      "description": "Stable question id, for example Q07."
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "semantic",
+        "exact_identifier",
+        "endpoint_discovery",
+        "authentication",
+        "schema",
+        "multi_endpoint",
+        "comparison",
+        "unanswerable"
+      ]
+    },
+    "expected_answer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "key_facts": {
+      "type": "array",
+      "description": "Facts that must all appear in a correct answer. Empty only for questions that must be abstained from.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "relevant_sources": {
+      "type": "array",
+      "description": "Labelled spec elements as '{document_id}#{RFC 6901 JSON Pointer}', the pointer in plain string form (not percent-encoded).",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+#/"
+      }
+    },
+    "relevant_document_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Document ids of the specs containing the evidence; must equal the set of document ids used in relevant_sources (checked in Stage 2)."
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "must_cite",
+        "must_abstain"
+      ],
+      "properties": {
+        "must_cite": {
+          "type": "boolean"
+        },
+        "must_abstain": {
+          "type": "boolean"
+        }
+      }
+    },
+    "paraphrase_of": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^Q[0-9]{2,3}$",
+      "description": "Id of the question this one rephrases, or null."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "if": {
+    "properties": {
+      "constraints": {
+        "properties": {
+          "must_abstain": {
+            "const": false
+          }
+        },
+        "required": [
+          "must_abstain"
+        ]
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "relevant_sources": {
+        "minItems": 1
+      },
+      "relevant_document_ids": {
+        "minItems": 1
+      },
+      "key_facts": {
+        "minItems": 1
+      }
+    }
+  }
+}
