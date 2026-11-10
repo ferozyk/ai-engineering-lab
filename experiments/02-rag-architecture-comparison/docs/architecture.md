@@ -134,8 +134,8 @@ Target machine: Apple M1, 16 GB RAM.
 
 | Technology | Why | Alternatives considered | Size and hardware | Milestone |
 |---|---|---|---|---|
-| sentence-transformers + PyTorch | Standard way to run BGE-M3 locally and the same runtime for the reranker | Ollama (see below); ONNX runtimes | Large dependency. Size to be measured in Stage 2. | A |
-| BGE-M3 (`BAAI/bge-m3`) | Strong open embedding model with 1,024-dimension dense vectors | `bge-small-en-v1.5`; hosted embedding APIs | About 568M parameters, about 2.3 GB of weights at fp32 (model card). Memory use of a few GB while embedding expected; to be measured in Stage 2. | A |
+| sentence-transformers + PyTorch | Standard way to run BGE-M3 locally and the same runtime for the reranker | Ollama (see below); ONNX runtimes | Large dependency. Measured: `.venv` grew from 336 MB to 1.3 GB (`du -sh .venv`, macOS arm64) after adding sentence-transformers, torch, qdrant-client and numpy. | A |
+| BGE-M3 (`BAAI/bge-m3`) | Strong open embedding model with 1,024-dimension dense vectors | `bge-small-en-v1.5`; hosted embedding APIs | About 568M parameters, about 2.3 GB of weights at fp32 (model card). Measured: the pinned revision's `pytorch_model.bin` is 2.27 GB in the Hugging Face cache; the library also fetched an auto-converted `model.safetensors` of 2.27 GB from a separate Hub revision, so the cache holds 4.56 GB of unique files. All 391 tensors in the two files were compared and are bit-identical; the config now sets `use_safetensors: false` so only the pinned revision's file is loaded. Memory use while embedding is still to be measured. | A |
 | Qdrant local mode | In-process, no server, persists to a folder, same client API as a Qdrant server | Chroma; FAISS; pgvector | Small for a few hundred chunks. | A |
 | OpenRouter via the `openai` SDK | Same access path as experiment 01; model chosen by `LLM_MODEL` | Direct provider SDKs | No local resources. | A |
 | BM25, hand-written | About 40 lines; easy to read and test | `rank_bm25` library | Negligible. | B |

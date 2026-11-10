@@ -4,3 +4,17 @@ questions_dev: datasets/evaluation/questions-dev.jsonl
 questions_measured: datasets/evaluation/questions-measured.jsonl
 chunking:
   max_chunk_chars: 2400
+embedding:
+  model_id: BAAI/bge-m3
+  revision: 5617a9f61b028005a4858fdac845db406aefb181  # BAAI/bge-m3 commit downloaded on 2026-11-11
+  device: cpu             # cpu | mps
+  batch_size: 16
+  max_seq_length: 1024
+  normalize: true
+  use_safetensors: false   # load pytorch_model.bin from the pinned snapshot only
+index:
+  dir: .index             # relative to the experiment folder; gitignored
+  collection_prefix: lab-bank
+retrieval:
+  top_k_eval: 10          # retrieval metrics computed at K in {1, 3, 5, 10}
+  top_k_generation: 5     # used from stage 2c onwards

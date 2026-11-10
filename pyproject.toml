@@ -58,12 +58,13 @@ select = [
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests", "experiments/01-mcp-vs-code-mode/tests", "experiments/02-rag-architecture-comparison/tests"]
-addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not live"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not live and not local_model"]
 markers = [
     "unit: fast, isolated tests with no I/O",
     "integration: tests across components using mocked providers",
     "evaluation: model-quality evaluations (mocked unless marked live)",
     "live: calls real external model providers; opt-in via `pytest -m live`",
+    "local_model: needs a downloaded local model (embeddings or reranker); opt-in via 'pytest -m local_model'",
 ]
 
 [tool.mypy]
@@ -81,3 +82,13 @@ warn_required_dynamic_aliases = true
 
 [tool.uv.workspace]
 members = ["experiments/01-mcp-vs-code-mode", "experiments/02-rag-architecture-comparison"]
+
+# CPU-only torch on Linux (CI): the default Linux wheel pulls gigabytes of CUDA libraries.
+# macOS keeps the regular PyPI wheel.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]

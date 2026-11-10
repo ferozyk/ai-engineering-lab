@@ -34,6 +34,9 @@ htmlcov/
 experiments/*/results/tmp/
 experiments/*/results/dry-run/
 
+# Local vector index and embedding cache (rebuilt from the corpus)
+experiments/*/.index/
+
 # OS / editors
 .DS_Store
 .idea/

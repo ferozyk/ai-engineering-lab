@@ -1,5 +1,7 @@
 """Fixtures and helpers shared by the experiment 02 tests."""
 
+import hashlib
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -147,3 +149,35 @@ def tiny_spec_path(tmp_path: Path) -> Path:
     path = tmp_path / "tiny.yaml"
     path.write_text(TINY_SPEC, encoding="utf-8")
     return path
+
+
+ChunkFactory = Callable[..., Chunk]
+
+
+@pytest.fixture
+def make_chunk() -> ChunkFactory:
+    """Build a small ``Chunk`` from a chunk id, text and source pointer."""
+
+    def build(
+        chunk_id: str,
+        content: str = "text",
+        source_reference: str = "#/paths/~1x/get",
+        document_id: str = "doc",
+    ) -> Chunk:
+        return Chunk(
+            document_id=document_id,
+            document_name="Doc",
+            chunk_id=chunk_id,
+            chunk_type="operation",
+            api_path="/x",
+            http_method="GET",
+            operation_id=None,
+            tags=(),
+            content=content,
+            source_reference=source_reference,
+            refs=(),
+            spec_version="1.0.0",
+            content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        )
+
+    return build

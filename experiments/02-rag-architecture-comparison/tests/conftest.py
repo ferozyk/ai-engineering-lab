@@ -30,3 +30,4 @@ corpus = _support.corpus
 experiment_config = _support.experiment_config
 header_names = _support.header_names
 tiny_spec_path = _support.tiny_spec_path
+make_chunk = _support.make_chunk

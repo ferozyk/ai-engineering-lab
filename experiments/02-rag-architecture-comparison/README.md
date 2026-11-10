@@ -1,6 +1,6 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** Stage 2 in progress (corpus and chunking)
+> **Status:** Stage 2 in progress (retrieval evaluated; generation pending)
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-08
 
@@ -110,12 +110,12 @@ These are composable capabilities, not exclusive categories: architecture D can 
 | Reranker | `BAAI/bge-reranker-v2-m3` cross-encoder | Same runtime as the embedding model | C |
 | Agent orchestration | LangGraph | Only when the agentic milestone needs it | D |
 
-Size implications (from the model card and documentation; exact figures are to be measured in Stage 2):
+Size implications (the model card figures are listed first; the measured installation and weights sizes are in [architecture.md](docs/architecture.md) section 6):
 
 - BGE-M3 has about 568M parameters and about 2.3 GB of weights at fp32. Expect a few GB of memory while embedding.
 - Weights download to the Hugging Face cache and are never committed.
 - CPU is the default for reproducibility. Apple GPU (MPS) is optional through configuration.
-- PyTorch is a large dependency. It is introduced in Stage 2, not now.
+- PyTorch is a large dependency, introduced with the embedding model in Stage 2.
 
 ## 10. Experimental Methodology
 
@@ -171,18 +171,28 @@ Each architecture stops for review before the next begins.
 
 ## 16. How to Run
 
-Corpus, question sets and chunking exist. Embeddings, retrieval and answering come in later phases.
+Corpus, question sets, chunking, embeddings, the local Qdrant index and dense retrieval exist. Answering comes in a later phase. Retrieval evaluation makes no LLM requests and needs no API key.
 
 ```bash
 make install
 uv run rag-experiment chunks
 uv run rag-experiment show-chunk accounts-api:getAccountBalances:operation
 uv run rag-experiment validate-dataset
+uv run rag-experiment index                       # first run downloads BAAI/bge-m3 (about 2.3 GB)
+uv run rag-experiment retrieve --question-id Q01 -k 5
+uv run rag-experiment evaluate-retrieval --set dev
+uv run rag-experiment evaluate-retrieval --set measured
+make test-models                                  # tests that load the real embedding model
 ```
 
 - `chunks` lists every chunk with its type, size and source (`--document`, `--type`, `--full` narrow or expand it).
 - `show-chunk` prints one chunk with its metadata.
 - `validate-dataset` loads the corpus, chunks it and validates both question files; it exits with 1 if it finds a problem.
+- `index` embeds the chunks and builds the local Qdrant index under `.index/` (gitignored). It is idempotent (`--rebuild` forces a rebuild).
+- `retrieve` prints the top chunks for a question; `--question-id` takes the text from a question set and marks the relevant chunks, `--show` prints the top chunk.
+- `evaluate-retrieval` retrieves every question of a set twice (determinism check) and writes the run under `results/raw`, `results/processed` and `results/reports`.
+- `--fake-embeddings` on these commands uses a deterministic stand-in embedder for a dry run; its output goes to `results/dry-run/` and is not a measurement.
+- Only one process can open the local index at a time. The default test run never downloads a model.
 
 ## 17. References
 

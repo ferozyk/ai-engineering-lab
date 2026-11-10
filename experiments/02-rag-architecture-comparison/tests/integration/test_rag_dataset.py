@@ -166,7 +166,11 @@ def test_cli_validate_dataset_fails_on_a_broken_file(
     config.write_text(
         f"experiment_version: 0.1.0\ncorpus_dir: {experiment_config.corpus_dir}\n"
         f"questions_dev: {experiment_config.questions_dev}\nquestions_measured: {broken}\n"
-        "chunking:\n  max_chunk_chars: 2400\n",
+        "chunking:\n  max_chunk_chars: 2400\n"
+        "embedding: {model_id: m/x, device: cpu, batch_size: 4, max_seq_length: 64, "
+        "normalize: true}\n"
+        "index: {dir: .index, collection_prefix: p}\n"
+        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n",
         encoding="utf-8",
     )
     assert main(["--config", str(config), "validate-dataset"]) == 1

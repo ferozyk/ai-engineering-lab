@@ -7,8 +7,12 @@ license = "MIT"
 authors = [{ name = "Feroz Khatri" }]
 dependencies = [
     "ai-engineering-lab",
+    "numpy>=2.5.4",
     "pydantic>=2.9",
     "pyyaml>=6.0.3",
+    "qdrant-client>=1.20.0",
+    "sentence-transformers>=6.2.0",
+    "torch>=2.15.0",
 ]
 
 [project.scripts]

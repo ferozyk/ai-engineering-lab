@@ -1,5 +1,22 @@
-"""Future home of benchmark result models and timing instrumentation.
+"""Shared benchmarking helpers: environment collection and statistics.
 
-Covers run metadata and latency/token metrics. Populated when the first experiment produces
-benchmark data.
+Result models and instrumentation are added when an experiment needs them.
 """
+
+from ai_lab.benchmarking.environment import (
+    EnvironmentInfo,
+    collect_environment,
+    git_state,
+    memory_gb,
+    package_versions,
+)
+from ai_lab.benchmarking.stats import percentile
+
+__all__ = [
+    "EnvironmentInfo",
+    "collect_environment",
+    "git_state",
+    "memory_gb",
+    "package_versions",
+    "percentile",
+]

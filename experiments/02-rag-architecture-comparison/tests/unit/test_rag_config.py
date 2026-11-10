@@ -50,3 +50,42 @@ def test_bad_chunk_size_and_shape(tmp_path: Path) -> None:
     path.write_text("- just\n- a list\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="mapping"):
         load_config(path)
+
+
+def _embedding_yaml(extra: str = "") -> str:
+    return (
+        "experiment_version: x\ncorpus_dir: c\nquestions_dev: d\nquestions_measured: m\n"
+        "chunking: {max_chunk_chars: 10}\n"
+        "embedding: {model_id: m/x, revision: null, device: cpu, batch_size: 4, "
+        "max_seq_length: 64, normalize: true}\n"
+        "index: {dir: .index, collection_prefix: p}\n"
+        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n" + extra
+    )
+
+
+def _write(tmp_path: Path, text: str) -> Path:
+    (tmp_path / "configs").mkdir(exist_ok=True)
+    path = tmp_path / "configs" / "experiment.yaml"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_retrieval_config_is_loaded(tmp_path: Path) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert config.embedding.model_id == "m/x" and config.embedding.revision is None
+    assert config.index_dir == (tmp_path / ".index").resolve()
+    assert config.results_dir == tmp_path.resolve() / "results"
+    assert config.retrieval.top_k_generation == 5
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("device: cpu", "device: cuda"),
+        ("batch_size: 4", "batch_size: 0"),
+        ("top_k_generation: 5", "top_k_generation: 11"),
+    ],
+)
+def test_invalid_retrieval_settings(tmp_path: Path, old: str, new: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))

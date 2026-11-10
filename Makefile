@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-live check clean
+.PHONY: help install lint format typecheck test test-live test-models check clean
 
 .DEFAULT_GOAL := help
 
@@ -24,6 +24,9 @@ test: ## Run the default test suite (no live calls)
 
 test-live: ## Run tests that call real providers (needs credentials)
 	uv run pytest -m live || [ $$? -eq 5 ]  # exit code 5 = no live tests collected yet
+
+test-models: ## Run tests that need downloaded local models
+	uv run pytest -m local_model
 
 check: lint typecheck test ## Run lint, typecheck and tests
 
