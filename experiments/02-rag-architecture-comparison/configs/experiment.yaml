@@ -1,0 +1,6 @@
+experiment_version: 0.1.0
+corpus_dir: datasets/corpus
+questions_dev: datasets/evaluation/questions-dev.jsonl
+questions_measured: datasets/evaluation/questions-measured.jsonl
+chunking:
+  max_chunk_chars: 2400

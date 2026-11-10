@@ -1,6 +1,6 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** In design (Stage 1)
+> **Status:** Stage 2 in progress (corpus and chunking)
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-08
 
@@ -171,7 +171,18 @@ Each architecture stops for review before the next begins.
 
 ## 16. How to Run
 
-Pending: the CLI is implemented in Stage 2.
+Corpus, question sets and chunking exist. Embeddings, retrieval and answering come in later phases.
+
+```bash
+make install
+uv run rag-experiment chunks
+uv run rag-experiment show-chunk accounts-api:getAccountBalances:operation
+uv run rag-experiment validate-dataset
+```
+
+- `chunks` lists every chunk with its type, size and source (`--document`, `--type`, `--full` narrow or expand it).
+- `show-chunk` prints one chunk with its metadata.
+- `validate-dataset` loads the corpus, chunks it and validates both question files; it exits with 1 if it finds a problem.
 
 ## 17. References
 

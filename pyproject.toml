@@ -16,10 +16,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "jsonschema>=4.23",
     "mypy>=1.13",
     "pandas-stubs>=3.1.0.261029",
     "pytest>=8.3",
     "ruff>=0.8",
+    "types-jsonschema",
     "types-PyYAML>=6.0",
 ]
 
@@ -33,7 +35,7 @@ packages = ["shared/src/ai_lab"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests"]
+src = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests", "experiments/02-rag-architecture-comparison/src", "experiments/02-rag-architecture-comparison/tests"]
 
 [tool.ruff.lint]
 select = [
@@ -55,7 +57,7 @@ select = [
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests", "experiments/01-mcp-vs-code-mode/tests"]
+testpaths = ["tests", "experiments/01-mcp-vs-code-mode/tests", "experiments/02-rag-architecture-comparison/tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not live"]
 markers = [
     "unit: fast, isolated tests with no I/O",
@@ -67,9 +69,9 @@ markers = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests"]
-mypy_path = "shared/src:experiments/01-mcp-vs-code-mode/src"
-exclude = ["/__main__\\.py$"]
+files = ["shared/src", "tests", "experiments/01-mcp-vs-code-mode/src", "experiments/01-mcp-vs-code-mode/tests", "experiments/02-rag-architecture-comparison/src", "experiments/02-rag-architecture-comparison/tests"]
+mypy_path = "shared/src:experiments/01-mcp-vs-code-mode/src:experiments/02-rag-architecture-comparison/src"
+exclude = ["/__main__\\.py$", "experiments/02-rag-architecture-comparison/tests/conftest\\.py$"]
 plugins = ["pydantic.mypy"]
 
 [tool.pydantic-mypy]
@@ -78,4 +80,4 @@ init_typed = true
 warn_required_dynamic_aliases = true
 
 [tool.uv.workspace]
-members = ["experiments/01-mcp-vs-code-mode"]
+members = ["experiments/01-mcp-vs-code-mode", "experiments/02-rag-architecture-comparison"]

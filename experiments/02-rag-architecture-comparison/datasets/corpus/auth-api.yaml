@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Authentication API
+  version: 1.0.0
+  description: "Issues, revokes and introspects the OAuth 2.0 access tokens used by the other Lab Bank APIs. The scopes are customers:read, customers:write, accounts:read, statements:read and payments:write. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution."
+servers:
+  - url: https://api.labbank.example
+tags:
+  - name: Authentication
+    description: "Access token lifecycle."
+paths:
+  /oauth/token:
+    post:
+      operationId: issueAccessToken
+      summary: Issue an access token
+      description: "Exchanges client credentials for a bearer access token using the client credentials grant. The client authenticates with HTTP Basic, or by sending client_id and client_secret in the form body, and asks for scopes as a space-separated list."
+      tags: [Authentication]
+      security:
+        - clientBasic: []
+      requestBody:
+        required: true
+        description: "Form-encoded token request."
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+      responses:
+        "200":
+          description: "The access token was issued."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: "The grant or the requested scope was refused. The Problem `code` is `AUTH-003`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /oauth/revoke:
+    post:
+      operationId: revokeToken
+      summary: Revoke an access token
+      description: "Invalidates an access token before it expires. The call succeeds with an empty body even when the token was already invalid."
+      tags: [Authentication]
+      security:
+        - clientBasic: []
+      requestBody:
+        required: true
+        description: "Form-encoded revocation request."
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/TokenReference"
+      responses:
+        "200":
+          description: "The token was revoked."
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /oauth/introspect:
+    post:
+      operationId: introspectToken
+      summary: Introspect an access token
+      description: "Tells a resource server whether an access token is still active and which scopes it carries."
+      tags: [Authentication]
+      security:
+        - clientBasic: []
+      requestBody:
+        required: true
+        description: "Form-encoded introspection request."
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/TokenReference"
+      responses:
+        "200":
+          description: "The introspection result."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntrospectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+components:
+  securitySchemes:
+    clientBasic:
+      type: http
+      scheme: basic
+      description: "Client authentication with the client identifier and secret issued to the application, sent as HTTP Basic credentials. The token endpoint also accepts client_id and client_secret in the form body."
+    bearerAuth:
+      type: oauth2
+      description: "Reference definition of the access token accepted by the other Lab Bank APIs, obtained from the token endpoint with the client credentials grant. The token is sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs."
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            "customers:read": "Read customer profiles, linked accounts and consents."
+            "customers:write": "Change customer contact details."
+            "accounts:read": "Read accounts, balances and transactions."
+            "statements:read": "Read and request account statements."
+            "payments:write": "Initiate, read and cancel payments."
+  responses:
+    BadRequest:
+      description: "The request is malformed or fails validation. The Problem `code` is `VAL-001`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: "The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: "Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again."
+      headers:
+        Retry-After:
+          description: "Number of seconds to wait before retrying."
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    TokenRequest:
+      type: object
+      description: "Form fields of a token request."
+      required: [grant_type]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+          description: "The grant type. Only client_credentials is supported."
+        client_id:
+          type: string
+          description: "Client identifier. Optional when HTTP Basic credentials are sent."
+        client_secret:
+          type: string
+          description: "Client secret. Optional when HTTP Basic credentials are sent."
+        scope:
+          type: string
+          description: "Space-separated list of requested scopes, for example accounts:read statements:read."
+    TokenResponse:
+      type: object
+      description: "A newly issued access token."
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: "The bearer token to send in the Authorization header."
+        token_type:
+          type: string
+          enum: [Bearer]
+          description: "Always Bearer."
+        expires_in:
+          type: integer
+          example: 3600
+          description: "Lifetime of the token in seconds."
+        scope:
+          type: string
+          description: "Space-separated list of the scopes granted."
+    TokenReference:
+      type: object
+      description: "Form fields that identify one token."
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: "The access token to act on."
+    IntrospectionResponse:
+      type: object
+      description: "Current state of an access token."
+      required: [active]
+      properties:
+        active:
+          type: boolean
+          description: "Whether the token is currently valid."
+        scope:
+          type: string
+          description: "Space-separated list of the scopes the token carries."
+        client_id:
+          type: string
+          description: "Client the token was issued to."
+        exp:
+          type: integer
+          description: "Expiry time as seconds since the Unix epoch."
+    Problem:
+      type: object
+      description: "Error body returned for every failed call, with the application/problem+json media type."
+      required: [type, title, status, code, detail]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: "URI that identifies the kind of problem."
+        title:
+          type: string
+          description: "Short, human-readable summary of the problem."
+        status:
+          type: integer
+          description: "HTTP status code of the response."
+        code:
+          type: string
+          description: "Lab Bank error code, for example AUTH-001."
+        detail:
+          type: string
+          description: "Explanation specific to this occurrence of the problem."
+        correlationId:
+          type: string
+          description: "Correlation identifier of the failed call."

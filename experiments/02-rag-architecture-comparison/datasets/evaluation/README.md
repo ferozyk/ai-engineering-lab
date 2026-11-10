@@ -2,7 +2,10 @@
 
 Questions used to evaluate every architecture. One JSON object per line in a `.jsonl` file, validated against [question.schema.json](question.schema.json).
 
-`examples.jsonl` holds three illustrative records (Q02, Q07, Q14). They show the format only. Final pointers are fixed when the corpus is written in Stage 2.
+Two files:
+
+- `questions-dev.jsonl`: the 15 development questions (Q01 to Q15), used to build and debug the pipeline.
+- `questions-measured.jsonl`: 40 questions (Q101 to Q140), disjoint from the development set, with 6 paraphrase pairs and 6 unanswerable questions. **Frozen** at version 1.0.0 (2026-11-11) after maintainer review. Its checksum is recorded in `../manifest.json` and a test fails if the file changes; any change needs a new version.
 
 ## How questions are written
 
@@ -26,3 +29,7 @@ Chunk IDs change whenever chunking changes. Pointers do not, so the same questio
 ## Unanswerable questions
 
 Questions with `constraints.must_abstain: true` may have an empty `relevant_sources`. They are excluded from retrieval metrics and scored separately for abstention.
+
+## Validation
+
+`uv run rag-experiment validate-dataset` checks that every source resolves in the corpus, that each source has at least one relevant chunk, that every key fact appears in the relevant chunks, that `relevant_document_ids` match the sources, that abstention fields are consistent and that `paraphrase_of` points to a question in the same file.

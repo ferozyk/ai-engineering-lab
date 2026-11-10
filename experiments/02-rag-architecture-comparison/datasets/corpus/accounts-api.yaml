@@ -1,0 +1,436 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Accounts API
+  version: 1.0.0
+  description: "Reads accounts, balances and transactions. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution."
+servers:
+  - url: https://api.labbank.example
+tags:
+  - name: Accounts
+    description: "Account details."
+  - name: Balances
+    description: "Account balances."
+  - name: Transactions
+    description: "Booked transactions."
+paths:
+  /v1/accounts/{accountId}:
+    get:
+      operationId: getAccount
+      summary: Get an account (version 1)
+      description: "Returns the basic details of one account. This operation is deprecated; use GET /v2/accounts/{accountId}, which returns the same fields plus the balance figures."
+      tags: [Accounts]
+      deprecated: true
+      security:
+        - bearerAuth: ["accounts:read"]
+          apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: "The account."
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v2/accounts/{accountId}:
+    get:
+      operationId: getAccountV2
+      summary: Get an account (version 2)
+      description: "Returns the details of one account together with its available balance and overdraft limit. It replaces the deprecated version 1 operation."
+      tags: [Accounts]
+      security:
+        - bearerAuth: ["accounts:read"]
+          apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: "The account with its balance figures."
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountV2"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/accounts/{accountId}/balances:
+    get:
+      operationId: getAccountBalances
+      summary: Get account balances
+      description: "Returns the booked and the available balance of an account at the moment of the call."
+      tags: [Balances]
+      security:
+        - bearerAuth: ["accounts:read"]
+          apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: "The current balances."
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Balances"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/accounts/{accountId}/transactions:
+    get:
+      operationId: listTransactions
+      summary: List transactions
+      description: "Returns the booked transactions of an account, newest first, optionally restricted to a date range. Results are paged with a cursor: pass the nextCursor of one page as the cursor of the next call."
+      tags: [Transactions]
+      security:
+        - bearerAuth: ["accounts:read"]
+          apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: fromDate
+          in: query
+          required: false
+          description: "Earliest booking date to include."
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: false
+          description: "Latest booking date to include."
+          schema:
+            type: string
+            format: date
+        - name: cursor
+          in: query
+          required: false
+          description: "Opaque cursor returned as nextCursor by the previous page."
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: "Maximum number of transactions on a page."
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        "200":
+          description: "A page of transactions."
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/accounts/{accountId}/transactions/{transactionId}:
+    get:
+      operationId: getTransaction
+      summary: Get a transaction
+      description: "Returns one booked transaction of an account."
+      tags: [Transactions]
+      security:
+        - bearerAuth: ["accounts:read"]
+          apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - name: transactionId
+          in: path
+          required: true
+          description: "Identifier of the transaction."
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: "The transaction."
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: "OAuth 2.0 access token obtained from the token endpoint with the client credentials grant. The token is sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs."
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            "customers:read": "Read customer profiles, linked accounts and consents."
+            "customers:write": "Change customer contact details."
+            "accounts:read": "Read accounts, balances and transactions."
+            "statements:read": "Read and request account statements."
+            "payments:write": "Initiate, read and cancel payments."
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: "Key identifying the consuming application. It is required on every call in addition to the bearer token."
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: "Optional identifier chosen by the caller to trace a call across systems. It is echoed in the X-Correlation-Id response header and in the Problem correlationId field."
+      schema:
+        type: string
+        maxLength: 64
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: "Identifier of the account."
+      schema:
+        type: string
+  headers:
+    CorrelationId:
+      description: "The correlation identifier of the call. It repeats the caller's value, or a generated one when none was sent."
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: "The request is malformed or fails validation. The Problem `code` is `VAL-001`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: "The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: "The access token is valid but does not carry the scope the operation requires. The Problem `code` is `AUTH-002`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: "The account or transaction does not exist. The Problem `code` is `ACC-404`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: "Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again."
+      headers:
+        Retry-After:
+          description: "Number of seconds to wait before retrying."
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Amount:
+      type: object
+      description: "A monetary amount in a single currency."
+      required: [value, currency]
+      properties:
+        value:
+          type: string
+          description: "Decimal amount as a string, for example 125.40, to avoid rounding errors."
+        currency:
+          type: string
+          description: "ISO 4217 currency code, for example EUR."
+    Account:
+      type: object
+      description: "Basic details of an account (version 1)."
+      required: [accountId, customerId, iban, currency, productName, status]
+      properties:
+        accountId:
+          type: string
+          description: "Identifier of the account."
+        customerId:
+          type: string
+          description: "Identifier of the customer who holds the account."
+        iban:
+          type: string
+          description: "International bank account number."
+        currency:
+          type: string
+          description: "ISO 4217 currency code of the account."
+        productName:
+          type: string
+          description: "Name of the account product."
+        status:
+          type: string
+          enum: [OPEN, BLOCKED]
+          description: "Whether the account can be used."
+        openedDate:
+          type: string
+          format: date
+          description: "Date the account was opened."
+    AccountV2:
+      type: object
+      description: "Details of an account (version 2), including balance figures."
+      required: [accountId, customerId, iban, currency, productName, status, availableBalance, overdraftLimit]
+      properties:
+        accountId:
+          type: string
+          description: "Identifier of the account."
+        customerId:
+          type: string
+          description: "Identifier of the customer who holds the account."
+        iban:
+          type: string
+          description: "International bank account number."
+        currency:
+          type: string
+          description: "ISO 4217 currency code of the account."
+        productName:
+          type: string
+          description: "Name of the account product."
+        status:
+          type: string
+          enum: [OPEN, BLOCKED]
+          description: "Whether the account can be used."
+        openedDate:
+          type: string
+          format: date
+          description: "Date the account was opened."
+        availableBalance:
+          $ref: "#/components/schemas/Amount"
+        overdraftLimit:
+          $ref: "#/components/schemas/Amount"
+    Balances:
+      type: object
+      description: "The balances of an account at a point in time."
+      required: [accountId, bookedBalance, availableBalance, asOf]
+      properties:
+        accountId:
+          type: string
+          description: "Identifier of the account."
+        bookedBalance:
+          $ref: "#/components/schemas/Amount"
+        availableBalance:
+          $ref: "#/components/schemas/Amount"
+        asOf:
+          type: string
+          format: date-time
+          description: "Moment the balances were read."
+    Transaction:
+      type: object
+      description: "A booked transaction."
+      required: [transactionId, bookingDate, amount, currency, creditDebitIndicator]
+      properties:
+        transactionId:
+          type: string
+          description: "Identifier of the transaction."
+        bookingDate:
+          type: string
+          format: date
+          description: "Date the transaction was booked."
+        valueDate:
+          type: string
+          format: date
+          description: "Date from which the amount counts towards the available balance."
+        amount:
+          type: string
+          description: "Decimal amount as a string."
+        currency:
+          type: string
+          description: "ISO 4217 currency code."
+        creditDebitIndicator:
+          type: string
+          enum: [CREDIT, DEBIT]
+          description: "Whether money came in or went out."
+        description:
+          type: string
+          description: "Free-text description shown to the account holder."
+        merchantName:
+          type: string
+          description: "Name of the merchant, for card payments."
+    TransactionPage:
+      type: object
+      description: "One page of transactions."
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+          description: "The transactions on this page."
+        nextCursor:
+          type: [string, "null"]
+          description: "Cursor for the next page, or null on the last page."
+    Problem:
+      type: object
+      description: "Error body returned for every failed call, with the application/problem+json media type."
+      required: [type, title, status, code, detail]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: "URI that identifies the kind of problem."
+        title:
+          type: string
+          description: "Short, human-readable summary of the problem."
+        status:
+          type: integer
+          description: "HTTP status code of the response."
+        code:
+          type: string
+          description: "Lab Bank error code, for example AUTH-001."
+        detail:
+          type: string
+          description: "Explanation specific to this occurrence of the problem."
+        correlationId:
+          type: string
+          description: "Correlation identifier of the failed call."

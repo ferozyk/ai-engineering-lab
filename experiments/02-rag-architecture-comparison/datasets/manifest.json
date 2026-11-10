@@ -1,0 +1,8 @@
+{
+  "corpus_version": "1.0.0",
+  "corpus_checksum": "72063d1be60b13a9e9a5105f04b081a161fa010cb11d210d0be3589b8726c0e6",
+  "eval_dev_version": "0.1.0",
+  "eval_measured_version": "1.0.0",
+  "eval_measured_status": "frozen",
+  "eval_measured_checksum": "28d846ec119f105cbb6d6b36b5b00bda0dd7b7a1b16d4b43179c359f5432cede"
+}
