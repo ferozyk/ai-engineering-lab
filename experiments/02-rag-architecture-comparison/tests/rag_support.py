@@ -6,8 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from ai_lab.llm import Usage
 from rag_experiment.config import ExperimentConfig, default_config_path, load_config
 from rag_experiment.corpus import Corpus, load_corpus
+from rag_experiment.evaluation.answer_run import AnswerRecord
 from rag_experiment.evaluation.facts import corpus_header_names
 from rag_experiment.ingestion.chunker import Chunk, chunk_corpus
 
@@ -181,3 +183,64 @@ def make_chunk() -> ChunkFactory:
         )
 
     return build
+
+
+RecordFactory = Callable[..., AnswerRecord]
+
+
+@pytest.fixture
+def make_record() -> RecordFactory:
+    """Build an ``AnswerRecord`` of an answered, correct, answerable attempt; override fields."""
+
+    def build(**overrides: object) -> AnswerRecord:
+        data: dict[str, object] = {
+            "run_id": "run",
+            "attempt_id": "Q01-r1",
+            "question_id": "Q01",
+            "repetition": 1,
+            "category": "semantic",
+            "paraphrase_of": None,
+            "must_abstain": False,
+            "context_chunk_ids": ("c1",),
+            "context_hit": True,
+            "relevant_chunk_ids": ("c1",),
+            "outcome": "answered",
+            "answer": "answer",
+            "cited_chunk_ids": ("c1",),
+            "insufficient_context": False,
+            "parse_error": None,
+            "finish_reason": "stop",
+            "correct": True,
+            "missing_key_facts": (),
+            "false_refusal": False,
+            "correct_refusal": None,
+            "made_up_answer": None,
+            "unsupported_identifiers": (),
+            "invented_identifiers": (),
+            "citations_valid": True,
+            "cites_relevant": True,
+            "mentions_endpoint": False,
+            "embed_ms": 10.0,
+            "search_ms": 2.0,
+            "generation_ms": 1000.0,
+            "total_ms": 1012.0,
+            "client_wait_ms": 0.0,
+            "attempts": 1,
+            "usage": Usage(prompt_tokens=100, completion_tokens=20, total_tokens=120),
+            "model_served": "test/model",
+            "provider": "TestProvider",
+            "request_id": "req-1",
+            "simulated": False,
+            "error_kind": None,
+            "error_message": None,
+        }
+        data.update(overrides)
+        return AnswerRecord.model_validate(data)
+
+    return build
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Run anyio-marked tests on asyncio only."""
+    return "asyncio"

@@ -18,3 +18,9 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove configuration env vars so a developer's shell never influences test results."""
     for name in _ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Run anyio-marked tests on asyncio only."""
+    return "asyncio"

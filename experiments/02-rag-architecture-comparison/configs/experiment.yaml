@@ -18,3 +18,19 @@ index:
 retrieval:
   top_k_eval: 10          # retrieval metrics computed at K in {1, 3, 5, 10}
   top_k_generation: 5     # used from stage 2c onwards
+generation:
+  prompt_version: a-1.0
+  temperature: 0.0
+  max_output_tokens: 16384     # reasoning models spend output tokens thinking; cut-offs are recorded, not hidden
+  llm_seed: null               # sent only if not null
+  request_timeout_seconds: 300
+run:
+  repetitions: 3
+  order_seed: 20261111
+  rate_limit_per_minute: 15    # provider limit is 20
+  daily_request_cap: 900       # hard stop for this tool (provider limit 1,000)
+  canary_question_ids: [Q01, Q05, Q14]   # dev set, 1 repetition
+pricing:
+  reference_label: null        # used only if no paid variant price is found
+  reference_prompt_usd_per_million: null
+  reference_completion_usd_per_million: null

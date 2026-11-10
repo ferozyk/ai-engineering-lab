@@ -59,7 +59,13 @@ def _embedding_yaml(extra: str = "") -> str:
         "embedding: {model_id: m/x, revision: null, device: cpu, batch_size: 4, "
         "max_seq_length: 64, normalize: true}\n"
         "index: {dir: .index, collection_prefix: p}\n"
-        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n" + extra
+        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n"
+        "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
+        "llm_seed: null, request_timeout_seconds: 30}\n"
+        "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
+        "daily_request_cap: 900, canary_question_ids: [Q01]}\n"
+        "pricing: {reference_label: null, reference_prompt_usd_per_million: null, "
+        "reference_completion_usd_per_million: null}\n" + extra
     )
 
 
@@ -89,3 +95,47 @@ def test_retrieval_config_is_loaded(tmp_path: Path) -> None:
 def test_invalid_retrieval_settings(tmp_path: Path, old: str, new: str) -> None:
     with pytest.raises(ConfigError):
         load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))
+
+
+def test_generation_run_and_pricing_config(
+    tmp_path: Path, experiment_config: ExperimentConfig
+) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert config.generation.prompt_version == "a-1.0" and config.generation.llm_seed is None
+    assert config.run.canary_question_ids == ("Q01",) and config.run.daily_request_cap == 900
+    assert config.pricing_reference.prompt_usd_per_million is None
+    shipped = experiment_config
+    assert shipped.generation.temperature == 0.0 and shipped.generation.max_output_tokens == 16384
+    assert shipped.run.repetitions == 3 and shipped.run.rate_limit_per_minute == 15
+    assert shipped.run.canary_question_ids == ("Q01", "Q05", "Q14")
+    assert shipped.run.rate_limit_per_minute < 20 and shipped.run.daily_request_cap < 1000
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("temperature: 0.0", "temperature: 2.5"),
+        ("temperature: 0.0", "temperature: -0.1"),
+        ("max_output_tokens: 100", "max_output_tokens: 0"),
+        ("request_timeout_seconds: 30", "request_timeout_seconds: 0"),
+        ("repetitions: 3", "repetitions: 0"),
+        ("rate_limit_per_minute: 15", "rate_limit_per_minute: -1"),
+        ("daily_request_cap: 900", "daily_request_cap: 0"),
+        ("canary_question_ids: [Q01]", "canary_question_ids: []"),
+        ("reference_label: null", "reference_label: x, surprise: 1"),
+        ("reference_prompt_usd_per_million: null", "reference_prompt_usd_per_million: -1"),
+    ],
+)
+def test_invalid_generation_settings(tmp_path: Path, old: str, new: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))
+
+
+def test_missing_generation_section_is_rejected(tmp_path: Path) -> None:
+    text = "".join(
+        line
+        for line in _embedding_yaml().splitlines(keepends=True)
+        if not line.startswith("generation:")
+    )
+    with pytest.raises(ConfigError, match="generation"):
+        load_config(_write(tmp_path, text))

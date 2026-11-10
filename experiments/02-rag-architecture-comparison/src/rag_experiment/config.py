@@ -6,6 +6,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from ai_lab.benchmarking import PricingReference
+
 
 class ConfigError(Exception):
     """Raised when the configuration file is missing or invalid."""
@@ -62,6 +64,40 @@ class RetrievalConfig(BaseModel):
         return self
 
 
+class GenerationConfig(BaseModel):
+    """Generation settings. The model id is not here: it comes from ``LLM_MODEL``."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    prompt_version: str = Field(min_length=1)
+    temperature: float = Field(ge=0.0, le=2.0)
+    max_output_tokens: int = Field(gt=0)
+    llm_seed: int | None = None
+    request_timeout_seconds: int = Field(gt=0)
+
+
+class RunConfig(BaseModel):
+    """How an answer run is scheduled and throttled."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    repetitions: int = Field(gt=0)
+    order_seed: int
+    rate_limit_per_minute: int = Field(gt=0)
+    daily_request_cap: int = Field(gt=0)
+    canary_question_ids: tuple[str, ...] = Field(min_length=1)
+
+
+class PricingConfig(BaseModel):
+    """Fallback price, used only when no list price can be found for the model."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    reference_label: str | None = None
+    reference_prompt_usd_per_million: float | None = Field(default=None, ge=0.0)
+    reference_completion_usd_per_million: float | None = Field(default=None, ge=0.0)
+
+
 class ExperimentConfig(BaseModel):
     """Paths and settings shared by every command. Paths are resolved against ``root``."""
 
@@ -75,7 +111,19 @@ class ExperimentConfig(BaseModel):
     embedding: EmbeddingConfig
     index: IndexConfig
     retrieval: RetrievalConfig
+    generation: GenerationConfig
+    run: RunConfig
+    pricing: PricingConfig
     root: Path
+
+    @property
+    def pricing_reference(self) -> PricingReference:
+        """The configured fallback price in the shared pricing type."""
+        return PricingReference(
+            label=self.pricing.reference_label,
+            prompt_usd_per_million=self.pricing.reference_prompt_usd_per_million,
+            completion_usd_per_million=self.pricing.reference_completion_usd_per_million,
+        )
 
     @property
     def index_dir(self) -> Path:

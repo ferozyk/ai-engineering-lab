@@ -1,4 +1,4 @@
-"""Command-line interface: inspect chunks and validate the dataset."""
+"""Command-line interface: inspect chunks, evaluate retrieval, run and analyse generation."""
 
 import argparse
 import json
@@ -12,6 +12,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ai_lab.benchmarking import PricingError
+from ai_lab.config import ConfigurationError, Settings, load_settings
+from ai_lab.llm import OpenRouterError
+from rag_experiment import answer_commands
+from rag_experiment.answer_commands import PreparedRetrieval, RunError
 from rag_experiment.config import ConfigError, ExperimentConfig, default_config_path, load_config
 from rag_experiment.corpus import Corpus, load_corpus, load_manifest
 from rag_experiment.embeddings.fake import FakeEmbeddingProvider
@@ -21,6 +26,7 @@ from rag_experiment.embeddings.provider import (
     EmbeddingProvider,
     SentenceTransformerProvider,
 )
+from rag_experiment.evaluation.answer_run import AnswerRunMetadata, find_run
 from rag_experiment.evaluation.dataset import (
     Question,
     load_questions,
@@ -36,6 +42,7 @@ from rag_experiment.evaluation.retrieval_run import (
     run_questions,
     write_run,
 )
+from rag_experiment.generation.prompts import PromptVersionError
 from rag_experiment.ingestion.chunker import Chunk, chunk_corpus
 from rag_experiment.ingestion.parser import SpecError
 from rag_experiment.retrieval.store import (
@@ -93,6 +100,24 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     evaluate.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
     evaluate.add_argument("--fake-embeddings", action="store_true", help=fake_help)
+
+    retrieval_help = "committed retrieval run id (default: newest of the question set)"
+    preflight = sub.add_parser("preflight", help="check everything a generation run needs")
+    preflight.add_argument(
+        "--live", action="store_true", help="also check the provider (sends 1 model request)"
+    )
+    preflight.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    canary = sub.add_parser("canary", help="run the canary questions of the dev set once")
+    canary.add_argument("--fake", action="store_true", help="simulate the model (no network)")
+    canary.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    run = sub.add_parser("run", help="generate and score answers for a question set")
+    run.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
+    run.add_argument("--resume", metavar="RUN_ID", help="continue an interrupted run")
+    run.add_argument("--fake", action="store_true", help="simulate the model (no network)")
+    run.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    analyse = sub.add_parser("analyse", help="rebuild summary, report and charts (no requests)")
+    analyse.add_argument("run_id")
+    analyse.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
     return parser
 
 
@@ -378,6 +403,98 @@ def _cmd_evaluate(config: ExperimentConfig, set_name: str, fake: bool) -> int:
     return 0
 
 
+# ------------------------------------------------------------------------- answer commands
+
+
+def _settings(config: ExperimentConfig) -> Settings:
+    """Settings from the environment and the repository's ``.env`` (tests replace this)."""
+    return load_settings(config.root.parents[1] / ".env")
+
+
+def _prepare_retrieval(
+    config: ExperimentConfig, questions: Sequence[Question], fake: bool
+) -> PreparedRetrieval:
+    """Retrieve the context of every question once (twice, to check determinism)."""
+    k = config.retrieval.top_k_generation
+    with _session(config, fake) as session:
+        if fake:
+            _ingest(session, rebuild=False)
+        elif session.store.count() != len(session.chunks):
+            raise ValueError("the local index is missing or out of date; run: rag-experiment index")
+        retriever = DenseRetriever(session.provider, session.store)
+        results = {}
+        deterministic = True
+        for question in questions:
+            first = retriever.retrieve(question.question, k)
+            second = retriever.retrieve(question.question, k)
+            if [c.chunk.chunk_id for c in first.chunks] != [
+                c.chunk.chunk_id for c in second.chunks
+            ]:
+                deterministic = False
+            results[question.id] = first
+        return PreparedRetrieval(
+            corpus=session.corpus,
+            chunks=session.chunks,
+            retriever_name=retriever.name,
+            results=results,
+            model_id=session.provider.model_id,
+            revision=session.provider.revision,
+            dimension=session.provider.dimension,
+            collection=session.store.collection,
+            deterministic=deterministic,
+        )
+
+
+def _cmd_answers(
+    config: ExperimentConfig,
+    *,
+    set_name: str,
+    canary: bool,
+    fake: bool,
+    resume: str | None,
+    retrieval_run: str | None,
+) -> int:
+    results_base = _results_root_base(config)
+    if not fake:  # fail on missing credentials before loading the embedding model
+        settings = _settings(config)
+        settings.require_llm_model()
+        settings.require_openrouter_api_key()
+    question_ids: list[str] | None = None
+    if resume is not None:
+        paths = find_run(results_base, resume)
+        meta = AnswerRunMetadata.model_validate_json(paths.metadata.read_text(encoding="utf-8"))
+        if meta.question_set != set_name:
+            raise RunError(f"run {resume!r} used the {meta.question_set!r} set, not {set_name!r}")
+        question_ids = meta.question_ids
+        canary = meta.is_canary
+    elif canary:
+        question_ids = list(config.run.canary_question_ids)
+    needed = answer_commands.select_questions(config, set_name, question_ids)
+    everything = answer_commands.select_questions(config, set_name, None)
+    retrieval = _prepare_retrieval(config, needed, fake)
+    return answer_commands.execute_run(
+        config=config,
+        settings_loader=lambda: _settings(config),
+        results_base=results_base,
+        results_root=_results_root(config, fake),
+        retrieval=retrieval,
+        set_name=set_name,
+        question_ids=question_ids,
+        is_canary=canary,
+        fake=fake,
+        resume=resume,
+        retrieval_run=retrieval_run,
+        all_questions=everything,
+    )
+
+
+def _cmd_preflight(config: ExperimentConfig, live: bool, retrieval_run: str | None) -> int:
+    corpus, chunks = _load(config)
+    return answer_commands.preflight(
+        config, _settings(config), corpus, chunks, _results_root_base(config), retrieval_run, live
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point; returns the process exit code."""
     args = _build_parser().parse_args(argv)
@@ -395,7 +512,43 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         if args.command == "evaluate-retrieval":
             return _cmd_evaluate(config, args.question_set, args.fake_embeddings)
+        if args.command == "preflight":
+            return _cmd_preflight(config, args.live, args.retrieval_run)
+        if args.command == "canary":
+            return _cmd_answers(
+                config,
+                set_name="dev",
+                canary=True,
+                fake=args.fake,
+                resume=None,
+                retrieval_run=args.retrieval_run,
+            )
+        if args.command == "run":
+            return _cmd_answers(
+                config,
+                set_name=args.question_set,
+                canary=False,
+                fake=args.fake,
+                resume=args.resume,
+                retrieval_run=args.retrieval_run,
+            )
+        if args.command == "analyse":
+            return answer_commands.analyse_run(
+                config, _results_root_base(config), args.run_id, args.retrieval_run
+            )
         return _cmd_validate(config)
-    except (ConfigError, SpecError, ValueError, OSError, EmbeddingError, IndexLockedError) as exc:
+    except (
+        ConfigError,
+        ConfigurationError,
+        SpecError,
+        ValueError,
+        OSError,
+        EmbeddingError,
+        IndexLockedError,
+        RunError,
+        PricingError,
+        OpenRouterError,
+        PromptVersionError,
+    ) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2

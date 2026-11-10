@@ -38,6 +38,12 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
+[package.optional-dependencies]
+llm = [
+    { name = "httpx" },
+    { name = "openai" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "jsonschema" },
@@ -51,11 +57,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", marker = "extra == 'llm'", specifier = ">=0.28.1" },
+    { name = "openai", marker = "extra == 'llm'", specifier = ">=3.42.0" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+provides-extras = ["llm"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2190,7 +2199,8 @@ name = "rag-architecture-comparison"
 version = "0.1.0"
 source = { editable = "experiments/02-rag-architecture-comparison" }
 dependencies = [
-    { name = "ai-engineering-lab" },
+    { name = "ai-engineering-lab", extra = ["llm"] },
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -2202,7 +2212,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ai-engineering-lab", editable = "." },
+    { name = "ai-engineering-lab", extras = ["llm"], editable = "." },
+    { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pyyaml", specifier = ">=6.0.3" },

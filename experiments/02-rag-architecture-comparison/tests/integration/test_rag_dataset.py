@@ -170,7 +170,12 @@ def test_cli_validate_dataset_fails_on_a_broken_file(
         "embedding: {model_id: m/x, device: cpu, batch_size: 4, max_seq_length: 64, "
         "normalize: true}\n"
         "index: {dir: .index, collection_prefix: p}\n"
-        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n",
+        "retrieval: {top_k_eval: 10, top_k_generation: 5}\n"
+        "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
+        "request_timeout_seconds: 30}\n"
+        "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
+        "daily_request_cap: 900, canary_question_ids: [Q01]}\n"
+        "pricing: {}\n",
         encoding="utf-8",
     )
     assert main(["--config", str(config), "validate-dataset"]) == 1

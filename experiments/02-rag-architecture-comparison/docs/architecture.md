@@ -116,7 +116,20 @@ Generator.generate(question: str, chunks: list[RetrievedChunk]) -> GeneratedAnsw
 GeneratedAnswer = {answer, cited_chunk_ids, insufficient_context, usage, latency}
 ```
 
-The model is asked for a structured JSON response, which Pydantic validates. A malformed response is a recorded failure, not silently repaired.
+The model is asked for one JSON object with exactly these fields:
+
+```json
+{"answer": "<text>", "cited_chunk_ids": ["<excerpt id>", "..."], "insufficient_context": false}
+```
+
+Each retrieved chunk is placed in the prompt as an `<excerpt id="{chunk_id}">` block in rank order, so the model can cite by id. Parse rules:
+
+1. Whitespace and one surrounding code fence are stripped.
+2. The whole text is tried as JSON; if that fails, the first balanced `{...}` (counting braces outside JSON strings) is tried.
+3. `answer` must be a string, `cited_chunk_ids` a list of strings (empty if missing) and `insufficient_context` a boolean (required).
+4. Anything else is a recorded parse failure with a short reason. No other repair is attempted.
+
+A malformed response is a recorded failure (`invalid_answer`, or `cut_off` when the output was truncated), never an exception and never silently repaired. Provider failures after retries are a separate, recorded `infra_error`.
 
 ## 5. Qdrant local-mode design
 

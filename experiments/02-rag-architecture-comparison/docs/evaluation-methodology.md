@@ -126,6 +126,47 @@ Reported separately from accuracy, as a guardrail metric.
 
 At this question-set size, every answer is reviewed manually against a three-level rubric: answers the question, partially, or not. An LLM judge is added later only if needed, with its model, prompt, limitations and cost documented.
 
+### Operational definitions (implementation)
+
+These are the exact rules the code applies. They refine, and do not change, the definitions above.
+
+**Structured answer.** The model replies with `{"answer", "cited_chunk_ids", "insufficient_context"}`. Refusal is read from the `insufficient_context` flag, never from the wording of the answer. Every deterministic check below reads the `answer` field only, not the citations.
+
+**Outcome.** One per attempt, the first rule that applies:
+
+1. `infra_error`: the provider failed after retries.
+2. `cut_off`: the finish reason is `length` and no parseable answer was returned.
+3. `invalid_answer`: the reply could not be parsed into the structure above.
+4. `refused`: `insufficient_context` is true.
+5. `answered`: otherwise.
+
+Only a fence around the JSON or prose around it is tolerated when parsing; nothing else is repaired. `infra_error` attempts are counted and reported but excluded from every quality denominator.
+
+**Correctness (answerable questions).** Correct means the outcome is `answered` and every *required* key fact is present under the matching rules in the Correctness section. A key fact that already appears in the question is not required, because a correct answer need not repeat the question ("What is the maximum value of `pageSize`?" is answered by "100"); if every key fact appears in the question, all stay required. This rule was added on 2026-11-11, before any generation was measured; it affects 9 questions (Q07, Q09, Q103, Q105, Q107, Q113, Q117, Q119, Q127), each of which keeps at least one required fact. `refused`, `invalid_answer` and `cut_off` attempts are incorrect; a refusal on an answerable question is also counted as a **false refusal** and reported separately.
+
+**Abstention (`must_abstain` questions).** A correct refusal is the outcome `refused`; a made-up answer is the outcome `answered`. Invalid answers, cut-offs and infrastructure errors are neither, and are reported as counts. A diagnostic field, `mentions_endpoint`, records whether the answer names any method and path; it is not scored.
+
+**Identifier kinds.** Extracted from the answer text with fixed patterns:
+
+| Kind | Pattern (summary) |
+|---|---|
+| `endpoint` | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) followed by a path; `{...}` is masked to `{}`, a trailing `.` or `:` and any query string are dropped, and the path ends at whitespace, a backtick, a quote, `,`, `;`, `)`, `*`, `]`, `>` or `|` |
+| `path` | A bare `/v<N>/...` or `/oauth/...` path that is not part of an endpoint, normalised the same way |
+| `error_code` | `[A-Z]{2,5}-\d{3}` |
+| `scope` | `[a-z]+:(read\|write)` |
+| `header` | `X-...`, `Idempotency-Key`, `Retry-After`, `Authorization`, `Location`, matched as written and compared case-insensitively |
+| `name` | A backticked identifier, or a bare camelCase token; covers schema, field, parameter and operation names |
+
+**Vocabularies.** The *corpus vocabulary* is built from every chunk plus every operation, parameter, schema and field name in the parsed specs. The *context vocabulary* is built from only the chunks in the prompt. An endpoint also makes its bare path known. A `name` counts as known when the word appears anywhere in the text, because reference text rarely wraps names in backticks. The other kinds must have been extracted from the text with the same patterns.
+
+**Question-identifier exclusion.** Identifiers that appear in the question text are removed from both checks, because repeating the question's own words is not a grounding failure.
+
+**Groundedness.** For attempts with outcome `answered` or `refused`: *unsupported* identifiers are those in the answer but not in the context vocabulary; *invented* identifiers are those not in the corpus vocabulary. Both lists are recorded; the reported rates are the share of such attempts with at least one of each.
+
+**Citations.** For `must_cite` questions with outcome `answered`: citations are valid when every cited id was among the chunks in the prompt, and relevant when at least one cited id is a relevant chunk.
+
+**Context hit.** An attempt has a context hit when at least one of the top-5 chunks in the prompt is relevant. HA3 splits answerable attempts by this flag.
+
 ## 6. Performance metrics
 
 - **Latency per stage:** query embedding, retrieval, rerank (architecture C), generation and total. Report p50 and p95. With a few dozen questions and three repetitions, p95 rests on a handful of observations, and the report says so.

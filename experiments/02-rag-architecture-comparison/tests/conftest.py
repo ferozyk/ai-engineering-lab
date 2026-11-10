@@ -31,3 +31,5 @@ experiment_config = _support.experiment_config
 header_names = _support.header_names
 tiny_spec_path = _support.tiny_spec_path
 make_chunk = _support.make_chunk
+make_record = _support.make_record
+anyio_backend = _support.anyio_backend

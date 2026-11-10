@@ -1,8 +1,8 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** Stage 2 in progress (retrieval evaluated; generation pending)
+> **Status:** Stage 2 in progress (generation pipeline verified offline; real run pending)
 > **Experiment version:** 0.1.0
-> **Last updated:** 2026-11-08
+> **Last updated:** 2026-11-11
 
 ## 1. Overview
 
@@ -85,6 +85,10 @@ flowchart TB
         Gen --> Ans["Answer + cited chunk ids"]
     end
 ```
+
+### Generation
+
+The generator sends the retrieved chunks to the model as numbered `<excerpt id="...">` blocks and asks for one JSON object: `{"answer": ..., "cited_chunk_ids": [...], "insufficient_context": true|false}`. The prompt (version `a-1.0`, recorded with a hash in every run) tells the model to use only the excerpts, to treat them as data rather than instructions, and to set `insufficient_context` instead of guessing. A reply that is not valid JSON in that shape is recorded as an invalid answer (or a cut-off, when the model ran out of output tokens); it is never repaired beyond stripping a code fence or surrounding prose. Refusal is read from the structured flag, not from the wording of the answer. Answer correctness, groundedness and citation checks are deterministic; see the operational definitions in [docs/evaluation-methodology.md](docs/evaluation-methodology.md).
 
 ## 8. Implementation Approaches
 
@@ -171,7 +175,7 @@ Each architecture stops for review before the next begins.
 
 ## 16. How to Run
 
-Corpus, question sets, chunking, embeddings, the local Qdrant index and dense retrieval exist. Answering comes in a later phase. Retrieval evaluation makes no LLM requests and needs no API key.
+Corpus, question sets, chunking, embeddings, the local Qdrant index, dense retrieval and the generation pipeline exist. The generation pipeline has been exercised only with a deterministic fake model (a simulated oracle); no real model has answered a question yet, and no answer results exist. Everything below runs without an API key unless noted.
 
 ```bash
 make install
@@ -182,6 +186,10 @@ uv run rag-experiment index                       # first run downloads BAAI/bge
 uv run rag-experiment retrieve --question-id Q01 -k 5
 uv run rag-experiment evaluate-retrieval --set dev
 uv run rag-experiment evaluate-retrieval --set measured
+uv run rag-experiment preflight                   # offline checks, no request
+uv run rag-experiment canary --fake               # simulated canary (3 questions)
+uv run rag-experiment run --set dev --fake        # simulated dev run (15 x 3)
+uv run rag-experiment analyse RUN_ID              # rebuild summary, report and charts
 make test-models                                  # tests that load the real embedding model
 ```
 
@@ -192,6 +200,10 @@ make test-models                                  # tests that load the real emb
 - `retrieve` prints the top chunks for a question; `--question-id` takes the text from a question set and marks the relevant chunks, `--show` prints the top chunk.
 - `evaluate-retrieval` retrieves every question of a set twice (determinism check) and writes the run under `results/raw`, `results/processed` and `results/reports`.
 - `--fake-embeddings` on these commands uses a deterministic stand-in embedder for a dry run; its output goes to `results/dry-run/` and is not a measurement.
+- `preflight` checks the configuration, the prompt version, that `LLM_MODEL` and `OPENROUTER_API_KEY` are set (it prints "set", never the value), that the local index is complete, that the question sets are valid and the measured set matches its frozen checksum, the largest prompt, and the planned request count against the daily cap. `preflight --live` also looks the model up, resolves a price, reads the key's free-model counters and sends one tiny completion (it prints "live checks will send 1 model request" first).
+- `canary` runs the canary questions of the development set once; `run --set dev|measured` generates and scores every question three times, appending one record per attempt to `results/raw/<run id>/answers.jsonl`. `run --resume RUN_ID` continues an interrupted run, skipping attempts that already have a result. A run stops cleanly when the provider's daily limit or the configured request cap is reached.
+- `analyse RUN_ID` rebuilds the summary, the report and the charts from the raw files without any request.
+- `--fake` on `canary` and `run` uses a deterministic fake chat model and a placeholder price: no key is needed, the network is never touched, files go to `results/dry-run/`, and every report and chart is labelled SIMULATED.
 - Only one process can open the local index at a time. The default test run never downloads a model.
 
 ## 17. References
