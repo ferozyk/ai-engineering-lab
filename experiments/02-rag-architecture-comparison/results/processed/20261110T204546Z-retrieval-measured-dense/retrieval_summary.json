@@ -1,0 +1,275 @@
+{
+  "run_id": "20261110T204546Z-retrieval-measured-dense",
+  "question_set": "measured",
+  "n_questions": 40,
+  "n_excluded": 6,
+  "overall": {
+    "n": 34,
+    "hit": {
+      "1": 0.5588235294117647,
+      "3": 0.9411764705882353,
+      "5": 0.9411764705882353,
+      "10": 1.0
+    },
+    "recall": {
+      "1": 0.4852941176470588,
+      "3": 0.8039215686274509,
+      "5": 0.8431372549019608,
+      "10": 0.9441176470588236
+    },
+    "precision": {
+      "1": 0.5588235294117647,
+      "3": 0.3431372549019608,
+      "5": 0.2235294117647059,
+      "10": 0.13529411764705884
+    },
+    "mrr": 0.7475490196078431
+  },
+  "by_category": {
+    "authentication": {
+      "n": 5,
+      "hit": {
+        "1": 0.8,
+        "3": 0.8,
+        "5": 0.8,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.7,
+        "3": 0.7,
+        "5": 0.7,
+        "10": 0.82
+      },
+      "precision": {
+        "1": 0.8,
+        "3": 0.26666666666666666,
+        "5": 0.16,
+        "10": 0.13999999999999999
+      },
+      "mrr": 0.825
+    },
+    "comparison": {
+      "n": 3,
+      "hit": {
+        "1": 0.3333333333333333,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.16666666666666666,
+        "3": 0.611111111111111,
+        "5": 0.8888888888888888,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.3333333333333333,
+        "3": 0.4444444444444444,
+        "5": 0.4000000000000001,
+        "10": 0.2333333333333333
+      },
+      "mrr": 0.6666666666666666
+    },
+    "endpoint_discovery": {
+      "n": 5,
+      "hit": {
+        "1": 0.6,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.6,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.6,
+        "3": 0.3333333333333333,
+        "5": 0.2,
+        "10": 0.1
+      },
+      "mrr": 0.8
+    },
+    "exact_identifier": {
+      "n": 6,
+      "hit": {
+        "1": 0.6666666666666666,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.6666666666666666,
+        "3": 0.9166666666666666,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.6666666666666666,
+        "3": 0.3333333333333333,
+        "5": 0.23333333333333336,
+        "10": 0.11666666666666668
+      },
+      "mrr": 0.8333333333333334
+    },
+    "multi_endpoint": {
+      "n": 4,
+      "hit": {
+        "1": 0.5,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.25,
+        "3": 0.625,
+        "5": 0.625,
+        "10": 0.75
+      },
+      "precision": {
+        "1": 0.5,
+        "3": 0.41666666666666663,
+        "5": 0.25,
+        "10": 0.15000000000000002
+      },
+      "mrr": 0.75
+    },
+    "schema": {
+      "n": 5,
+      "hit": {
+        "1": 0.4,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.3,
+        "3": 0.9,
+        "5": 0.9,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.4,
+        "3": 0.4,
+        "5": 0.24000000000000005,
+        "10": 0.14
+      },
+      "mrr": 0.6666666666666667
+    },
+    "semantic": {
+      "n": 6,
+      "hit": {
+        "1": 0.5,
+        "3": 0.8333333333333334,
+        "5": 0.8333333333333334,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.5,
+        "3": 0.75,
+        "5": 0.75,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.5,
+        "3": 0.27777777777777773,
+        "5": 0.16666666666666666,
+        "10": 0.11666666666666668
+      },
+      "mrr": 0.6597222222222222
+    }
+  },
+  "ha1_group": {
+    "numerator": 10,
+    "denominator": 11,
+    "value": 0.9090909090909091
+  },
+  "ha2_group": {
+    "numerator": 6,
+    "denominator": 6,
+    "value": 1.0
+  },
+  "paraphrase_pairs": [
+    {
+      "original": "Q103",
+      "paraphrase": "Q104",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 8
+    },
+    {
+      "original": "Q105",
+      "paraphrase": "Q106",
+      "original_first_relevant_rank": 3,
+      "paraphrase_first_relevant_rank": 2
+    },
+    {
+      "original": "Q107",
+      "paraphrase": "Q108",
+      "original_first_relevant_rank": 2,
+      "paraphrase_first_relevant_rank": 2
+    },
+    {
+      "original": "Q109",
+      "paraphrase": "Q110",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 1
+    },
+    {
+      "original": "Q111",
+      "paraphrase": "Q112",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 1
+    },
+    {
+      "original": "Q113",
+      "paraphrase": "Q114",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 2
+    }
+  ],
+  "latency_embed_ms": {
+    "n": 40,
+    "p50": 122.16329149669036,
+    "p95": 265.1750192977488
+  },
+  "latency_search_ms": {
+    "n": 40,
+    "p50": 1.0384584893472493,
+    "p95": 1.9749794737435762
+  },
+  "latency_total_ms": {
+    "n": 40,
+    "p50": 123.26835445128381,
+    "p95": 266.17753123282455
+  },
+  "verdicts": [
+    {
+      "hypothesis": "HA1",
+      "criterion": "Hit@5 over semantic + endpoint_discovery >= 0.80",
+      "verdict": "supported",
+      "evidence": "Hit@5 = 10/11 = 0.909"
+    },
+    {
+      "hypothesis": "HA2",
+      "criterion": "Hit@5 over exact_identifier is at least 0.20 lower than HA1",
+      "verdict": "not supported",
+      "evidence": "exact_identifier Hit@5 = 6/6 = 1.000; HA1 value = 0.909; gap = -0.091"
+    },
+    {
+      "hypothesis": "HA3",
+      "criterion": "see methodology section 8",
+      "verdict": "pending (needs generation, stage 2c/2d)",
+      "evidence": ""
+    },
+    {
+      "hypothesis": "HA4",
+      "criterion": "see methodology section 8",
+      "verdict": "pending (needs generation, stage 2c/2d)",
+      "evidence": ""
+    }
+  ],
+  "deterministic": true,
+  "nondeterministic_questions": []
+}

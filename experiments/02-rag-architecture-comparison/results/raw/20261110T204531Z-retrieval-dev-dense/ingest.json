@@ -1,0 +1,22 @@
+{
+  "this_invocation": {
+    "chunks": 186,
+    "embedded": 0,
+    "cached": 186,
+    "embed_seconds": 0.0,
+    "upsert_seconds": 0.0,
+    "collection": "lab-bank-c1-0-0-72063d1b-bge-m3-5617a9f6-m2400",
+    "dimension": 1024,
+    "up_to_date": true
+  },
+  "index_build": {
+    "chunks": 186,
+    "embedded": 186,
+    "cached": 0,
+    "embed_seconds": 38.657686625025235,
+    "upsert_seconds": 0.12993316596839577,
+    "collection": "lab-bank-c1-0-0-72063d1b-bge-m3-5617a9f6-m2400",
+    "dimension": 1024,
+    "up_to_date": false
+  }
+}
