@@ -1,0 +1,152 @@
+{
+  "run_id": "20261110T221134Z-answers-measured-dense",
+  "kind": "answers",
+  "simulated": false,
+  "experiment": "02-rag-architecture-comparison",
+  "experiment_version": "0.1.0",
+  "git_sha": "d540ce84ce457cc469cbabdc7c822e7df5d6d061",
+  "git_dirty": true,
+  "started_at": "2026-11-10T22:11:34.123390Z",
+  "finished_at": "2026-11-10T22:20:24.739976Z",
+  "hardware": {
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_count": "8",
+    "memory_gb": "16.0"
+  },
+  "os": "macOS-15.0.1-arm64-arm-64bit",
+  "python_version": "3.12.12",
+  "package_versions": {
+    "torch": "2.15.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.2",
+    "qdrant-client": "1.20.0",
+    "numpy": "2.5.4",
+    "pydantic": "2.14.2",
+    "pyyaml": "6.0.3",
+    "openai": "3.42.0",
+    "httpx": "0.28.1",
+    "matplotlib": "3.11.2"
+  },
+  "corpus_version": "1.0.0",
+  "corpus_checksum": "72063d1be60b13a9e9a5105f04b081a161fa010cb11d210d0be3589b8726c0e6",
+  "question_set": "measured",
+  "question_set_version": "1.0.0",
+  "question_set_checksum": "28d846ec119f105cbb6d6b36b5b00bda0dd7b7a1b16d4b43179c359f5432cede",
+  "embedding": {
+    "model_id": "BAAI/bge-m3",
+    "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "device": "cpu",
+    "dimension": 1024,
+    "normalize": true,
+    "max_seq_length": 1024,
+    "batch_size": 16
+  },
+  "chunking": {
+    "max_chunk_chars": 2400
+  },
+  "retrieval": {
+    "top_k_eval": 10,
+    "top_k_generation": 5
+  },
+  "collection": "lab-bank-c1-0-0-72063d1b-bge-m3-5617a9f6-m2400",
+  "retriever": "dense",
+  "torch_threads": 4,
+  "deterministic": true,
+  "provider": "openrouter",
+  "model_id": "nvidia/nemotron-3.5-super-vl:free",
+  "models_served": [
+    "nvidia/nemotron-3.5-super-vl:free"
+  ],
+  "providers_served": [
+    "Nvidia"
+  ],
+  "prompt_version": "a-1.0",
+  "prompt_hash": "bc694d3da6e02137e4df755079dc355e99a1cf29506953c90c17631ac919abfc",
+  "generation": {
+    "prompt_version": "a-1.0",
+    "temperature": 0.0,
+    "max_output_tokens": 16384,
+    "llm_seed": null,
+    "request_timeout_seconds": 300
+  },
+  "run": {
+    "repetitions": 3,
+    "order_seed": 20261111,
+    "rate_limit_per_minute": 15,
+    "daily_request_cap": 900,
+    "canary_question_ids": [
+      "Q01",
+      "Q05",
+      "Q14"
+    ]
+  },
+  "pricing": {
+    "source": "paid_variant",
+    "priced_model": "nvidia/nemotron-3.5-super-vl",
+    "prompt_usd_per_token": 1.5e-07,
+    "completion_usd_per_token": 4.7e-07,
+    "captured_at": "2026-11-10T22:11:35.312353Z",
+    "note": "Estimated at the paid variant's list price (nvidia/nemotron-3.5-super-vl) captured 2026-11-10"
+  },
+  "question_ids": [
+    "Q101",
+    "Q102",
+    "Q103",
+    "Q104",
+    "Q105",
+    "Q106",
+    "Q107",
+    "Q108",
+    "Q109",
+    "Q110",
+    "Q111",
+    "Q112",
+    "Q113",
+    "Q114",
+    "Q115",
+    "Q116",
+    "Q117",
+    "Q118",
+    "Q119",
+    "Q120",
+    "Q121",
+    "Q122",
+    "Q123",
+    "Q124",
+    "Q125",
+    "Q126",
+    "Q127",
+    "Q128",
+    "Q129",
+    "Q130",
+    "Q131",
+    "Q132",
+    "Q133",
+    "Q134",
+    "Q135",
+    "Q136",
+    "Q137",
+    "Q138",
+    "Q139",
+    "Q140"
+  ],
+  "is_canary": false,
+  "requests_sent": 120,
+  "failed_requests": 0,
+  "infra_errors": 0,
+  "attempts_planned": 120,
+  "attempts_completed": 120,
+  "free_model_daily_requests_before": {
+    "used": 4,
+    "limit": 1000,
+    "remaining": 996
+  },
+  "free_model_daily_requests_after": {
+    "used": 120,
+    "limit": 1000,
+    "remaining": 880
+  },
+  "halted": false,
+  "halt_reason": null
+}

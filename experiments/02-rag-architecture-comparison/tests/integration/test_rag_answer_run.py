@@ -14,6 +14,7 @@ from ai_lab.config import load_settings
 from ai_lab.llm import InfraErrorKind
 from rag_experiment import answer_commands, cli
 from rag_experiment.config import ExperimentConfig, RunConfig
+from rag_experiment.evaluation import retrieval_run
 from rag_experiment.evaluation.answer_analysis import AnswerSummary
 from rag_experiment.evaluation.answer_run import (
     AnswerRunMetadata,
@@ -173,6 +174,17 @@ def test_canary_fake_runs_three_questions_once(results: Path) -> None:
     assert (
         meta.is_canary and meta.attempts_planned == 3 and meta.question_ids == ["Q01", "Q05", "Q14"]
     )
+
+
+def test_git_state_is_captured_at_start_not_at_the_end(
+    results: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Editing the working tree during a run must not change the recorded commit state."""
+    monkeypatch.setattr(answer_commands, "git_state", lambda root: ("start-sha", False))
+    monkeypatch.setattr(retrieval_run, "git_state", lambda root: ("later-sha", True))
+    assert cli.main(["canary", "--fake"]) == 0
+    meta = _metadata(_only_run(results))
+    assert (meta.git_sha, meta.git_dirty) == ("start-sha", False)
 
 
 def test_measured_fake_run_has_120_records_and_no_verdicts(results: Path) -> None:

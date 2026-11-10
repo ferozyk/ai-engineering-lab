@@ -21,6 +21,7 @@ from ai_lab.benchmarking import (
     PricingSnapshot,
     RequestBudget,
     before_request_hook,
+    git_state,
     package_versions,
     resolve_pricing,
     simulated_pricing,
@@ -182,8 +183,14 @@ def build_run_metadata(
     outcome: RunOutcome | None,
     key_after: FreeModelDailyRequests | None,
     earlier: AnswerRunMetadata | None,
+    git_at_start: tuple[str, bool] | None = None,
 ) -> AnswerRunMetadata:
-    """Assemble the metadata from the files on disk (so it is right after any resume)."""
+    """Assemble the metadata from the files on disk (so it is right after any resume).
+
+    ``git_at_start`` is the commit and dirty flag captured when the run started; it is kept for
+    the whole run, so files edited in the working tree while the run is in progress (code that
+    the running process has already imported) do not change what the metadata reports.
+    """
     base = build_metadata(
         config=config,
         corpus=retrieval.corpus,
@@ -204,6 +211,8 @@ def build_run_metadata(
     infra = [r for r in records if r.outcome == "infra_error"]
     ok = [r for r in records if r.outcome != "infra_error"]
     data = base.model_dump()
+    if git_at_start is not None:
+        data.update(git_sha=git_at_start[0], git_dirty=git_at_start[1])
     data.update(
         kind="answers",
         package_versions={**base.package_versions, **package_versions(EXTRA_PACKAGES)},
@@ -451,6 +460,7 @@ def execute_run(
     """Run (or resume) an answer run, then write the processed files, charts and report."""
     check_prompt_version(config.generation.prompt_version)
     started_at = datetime.now(UTC)
+    git_at_start = git_state(config.root)
     earlier: AnswerRunMetadata | None = None
     if resume is not None:
         paths = find_run(results_base, resume)
@@ -465,6 +475,7 @@ def execute_run(
                 f"run {resume!r} used the {earlier.question_set!r} set, not {set_name!r}"
             )
         started_at = earlier.started_at
+        git_at_start = (earlier.git_sha, earlier.git_dirty)
         is_canary, question_ids = earlier.is_canary, earlier.question_ids
     else:
         run_id = make_answer_run_id(set_name, retrieval.retriever_name, fake=fake, canary=is_canary)
@@ -502,6 +513,7 @@ def execute_run(
                 outcome=None,
                 key_after=None,
                 earlier=earlier,
+                git_at_start=git_at_start,
             ),
         )
 
@@ -540,6 +552,7 @@ def execute_run(
         outcome=outcome,
         key_after=key_after,
         earlier=earlier,
+        git_at_start=git_at_start,
     )
     write_json(paths.metadata, metadata)
     summary, notes = write_outputs(paths, metadata, questions, results_base, retrieval_run)
