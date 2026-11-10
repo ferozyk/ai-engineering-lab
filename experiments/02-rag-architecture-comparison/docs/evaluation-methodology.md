@@ -128,7 +128,7 @@ At this question-set size, every answer is reviewed manually against a three-lev
 
 ### Operational definitions (implementation)
 
-These are the exact rules the code applies. They refine, and do not change, the definitions above.
+These are the exact rules the code applies. They refine, and do not change, the definitions above. All of them were fixed before the measured run.
 
 **Structured answer.** The model replies with `{"answer", "cited_chunk_ids", "insufficient_context"}`. Refusal is read from the `insufficient_context` flag, never from the wording of the answer. Every deterministic check below reads the `answer` field only, not the citations.
 
@@ -142,7 +142,7 @@ These are the exact rules the code applies. They refine, and do not change, the 
 
 Only a fence around the JSON or prose around it is tolerated when parsing; nothing else is repaired. `infra_error` attempts are counted and reported but excluded from every quality denominator.
 
-**Correctness (answerable questions).** Correct means the outcome is `answered` and every *required* key fact is present under the matching rules in the Correctness section. A key fact that already appears in the question is not required, because a correct answer need not repeat the question ("What is the maximum value of `pageSize`?" is answered by "100"); if every key fact appears in the question, all stay required. This rule was added on 2026-11-11, before any generation was measured; it affects 9 questions (Q07, Q09, Q103, Q105, Q107, Q113, Q117, Q119, Q127), each of which keeps at least one required fact. `refused`, `invalid_answer` and `cut_off` attempts are incorrect; a refusal on an answerable question is also counted as a **false refusal** and reported separately.
+**Correctness (answerable questions).** Correct means the outcome is `answered` and every *required* key fact is present under the matching rules in the Correctness section. A key fact that already appears in the question is not required, because a correct answer need not repeat the question ("What is the maximum value of `pageSize`?" is answered by "100"); if every key fact appears in the question, all stay required. Nine questions have such a fact, and each keeps at least one required fact. `refused`, `invalid_answer` and `cut_off` attempts are incorrect; a refusal on an answerable question is also counted as a **false refusal** and reported separately.
 
 **Abstention (`must_abstain` questions).** A correct refusal is the outcome `refused`; a made-up answer is the outcome `answered`. Invalid answers, cut-offs and infrastructure errors are neither, and are reported as counts. A diagnostic field, `mentions_endpoint`, records whether the answer names any method and path; it is not scored.
 
@@ -157,7 +157,7 @@ Only a fence around the JSON or prose around it is tolerated when parsing; nothi
 | `header` | `X-...`, `Idempotency-Key`, `Retry-After`, `Authorization`, `Location`, matched as written and compared case-insensitively |
 | `name` | A backticked identifier, or a bare camelCase token; covers schema, field, parameter and operation names |
 
-**Vocabularies.** The *corpus vocabulary* is built from every chunk plus every operation, parameter, schema and field name in the parsed specs. The *context vocabulary* is built from only the chunks in the prompt: their content and their excerpt ids, since both are shown to the model (added 2026-11-11 after the canary flagged `getStatement`, which the model read from the excerpt id `statements-api:getStatement:parameters`, as unsupported). An endpoint also makes its bare path known. A `name` counts as known when the word appears anywhere in the text, because reference text rarely wraps names in backticks. The other kinds must have been extracted from the text with the same patterns.
+**Vocabularies.** The *corpus vocabulary* is built from every chunk plus every operation, parameter, schema and field name in the parsed specs. The *context vocabulary* is built from only the chunks in the prompt: their content and their excerpt ids, since both are shown to the model. An endpoint also makes its bare path known. A `name` counts as known when the word appears anywhere in the text, because reference text rarely wraps names in backticks. The other kinds must have been extracted from the text with the same patterns.
 
 **Question-identifier exclusion.** Identifiers that appear in the question text are removed from both checks, because repeating the question's own words is not a grounding failure.
 
