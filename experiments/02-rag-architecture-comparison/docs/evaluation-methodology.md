@@ -197,9 +197,22 @@ Fixed settings: dense retrieval returns the top 10 chunks for retrieval metrics;
 
 Retrieval is deterministic, so HA1 and HA2 use one retrieval pass per question. With 6 to 11 questions per group, one question moves a rate by 9 to 17 points; results are reported per question as well.
 
-Placeholders for later milestones, to be made precise before their runs:
+### Architecture B, hybrid retrieval (frozen 2026-11-11)
 
-- **HB:** hybrid retrieval improves `exact_identifier` Hit@5 without lowering `semantic` Hit@5 by more than 5 points.
+Frozen before any architecture B measurement, on the same frozen measured set. Architecture A's measured values are the baseline (retrieval run `20261110T204546Z-retrieval-measured-dense`, answer run `20261110T221134Z-answers-measured-dense`). All are *unverified*.
+
+Fixed settings: BM25 (k1 = 1.2, b = 0.75) over the same 186 chunks, fused with dense retrieval by Reciprocal Rank Fusion (k = 60) over the top 50 of each list; generation context is the fused top 5; prompt `a-1.0`, the same model, temperature 0 and three repetitions.
+
+The draft placeholder ("hybrid improves `exact_identifier` Hit@5") could not be tested as written: architecture A already reached 6/6 on that measure. It was replaced by the following before B was measured.
+
+- **HB1:** Hit@1 over the `exact_identifier` and `schema` questions combined (11 questions) is at least 8/11 (architecture A: 6/11).
+- **HB2:** overall Hit@5 (34 answerable questions) is at least 31/34 (architecture A: 32/34).
+- **HB3:** correctness over answerable attempts is at least 0.755 (architecture A: 77/102).
+
+### Later milestones
+
+Placeholders, to be made precise before their runs:
+
 - **HC:** reranking improves MRR; the added latency is reported.
 - **HD:** agentic retrieval improves `multi_endpoint` recall, at the cost of more model calls per question.
 

@@ -33,7 +33,12 @@ Architecture A hypotheses were **frozen on 2026-11-11**, before any retrieval or
 - **HA2** (*unverified*): baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` combined.
 - **HA3** (*unverified*): when a relevant chunk is in the generation context (top 5), answer correctness is at least 0.80; when none is, correctness is at most 0.20.
 - **HA4** (*unverified*): the correct-refusal rate on unanswerable questions is at least 0.80.
-- **HB, HC, HD** (*unverified*): placeholders for the hybrid, rerank and agentic milestones, defined in the methodology document.
+- **HB1** (*unverified*): hybrid retrieval ranks a relevant chunk first for at least 8 of the 11 `exact_identifier` and `schema` questions (architecture A: 6/11).
+- **HB2** (*unverified*): hybrid retrieval keeps a relevant chunk in the top 5 for at least 31 of 34 answerable questions (architecture A: 32/34).
+- **HB3** (*unverified*): answer correctness with hybrid retrieval is at least 0.755 (architecture A: 77/102).
+- **HC, HD** (*unverified*): placeholders for the rerank and agentic milestones, defined in the methodology document.
+
+Architecture B hypotheses were frozen on 2026-11-11, before any architecture B measurement.
 
 ## 5. Objectives
 
