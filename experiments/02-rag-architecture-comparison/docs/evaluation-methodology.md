@@ -1,6 +1,6 @@
 # Evaluation methodology
 
-Status: draft (Stage 1). Hypotheses are written down here before any measurement. Nothing in this document is a result.
+Status: architecture A hypotheses frozen (2026-11-11). Nothing in this document is a result.
 
 ## 1. Principles
 
@@ -141,14 +141,20 @@ At this question-set size, every answer is reviewed manually against a three-lev
 - Run metadata: every field in section 13 of the [benchmarking standards](../../../docs/standards/benchmarking-standards.md), plus corpus version and checksum, evaluation set version, embedding model, revision and device, chunking config, retrieval config and prompt version.
 - Request budget: with a measured set of 30–50 questions, about 90–150 generation requests for architecture A (three repetitions), plus a two-question canary. The daily cap and limiter work as in experiment 01.
 
-## 8. Draft hypotheses
+## 8. Hypotheses
 
-Frozen before each architecture's measured run. They may be revised until then, with the change noted here. All are *unverified*.
+### Architecture A (frozen 2026-11-11)
 
-- **HA1:** baseline dense retrieval reaches Hit@5 of at least 0.80 on `semantic` and `endpoint_discovery` questions.
-- **HA2:** baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` questions.
-- **HA3:** when retrieval hits (a relevant chunk in the top K), answer correctness is at least 0.80; when it misses, correctness is at most 0.20. Retrieval bounds generation.
-- **HA4:** the correct-refusal rate on unanswerable questions is at least 0.80.
+Frozen before any retrieval or answer measurement, on the frozen measured question set (Q101–Q140, version 1.0.0). The criteria will not be changed after seeing data; any later analysis that differs is reported as exploratory. All are *unverified*.
+
+Fixed settings: dense retrieval returns the top 10 chunks for retrieval metrics; the generation context is the top 5 (K = 5); temperature 0; three generation repetitions per question.
+
+- **HA1:** Hit@5 over the `semantic` and `endpoint_discovery` questions combined (11 questions) is at least 0.80, i.e. at least 9 of 11.
+- **HA2:** Hit@5 over the `exact_identifier` questions (6 questions) is at least 0.20 lower than the HA1 value.
+- **HA3:** over all answerable measured questions and repetitions, correctness is at least 0.80 for answers whose top-5 context contained a relevant chunk, and at most 0.20 for answers whose context contained none. If fewer than 3 answers fall in the "none" group, that half is reported as not testable rather than supported.
+- **HA4:** over the 6 unanswerable questions × 3 repetitions, the correct-refusal rate (section 5) is at least 0.80.
+
+Retrieval is deterministic, so HA1 and HA2 use one retrieval pass per question. With 6 to 11 questions per group, one question moves a rate by 9 to 17 points; results are reported per question as well.
 
 Placeholders for later milestones, to be made precise before their runs:
 

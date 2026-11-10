@@ -27,11 +27,11 @@ How do different retrieval strategies and agentic orchestration approaches affec
 
 ## 4. Hypotheses
 
-Draft. Frozen before the first measured run of each architecture; recorded in [docs/evaluation-methodology.md](docs/evaluation-methodology.md) section 8. All hypotheses are *unverified*.
+Architecture A hypotheses were **frozen on 2026-11-11**, before any retrieval or answer was measured. Exact definitions are in [docs/evaluation-methodology.md](docs/evaluation-methodology.md) section 8. All are evaluated on the frozen measured question set (Q101–Q140) and are *unverified*.
 
-- **HA1** (*unverified*): baseline dense retrieval reaches Hit@5 of at least 0.80 on `semantic` and `endpoint_discovery` questions.
-- **HA2** (*unverified*): baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` questions.
-- **HA3** (*unverified*): when retrieval hits, answer correctness is at least 0.80; when it misses, correctness is at most 0.20.
+- **HA1** (*unverified*): baseline dense retrieval reaches Hit@5 of at least 0.80 on the `semantic` and `endpoint_discovery` questions combined.
+- **HA2** (*unverified*): baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` combined.
+- **HA3** (*unverified*): when a relevant chunk is in the generation context (top 5), answer correctness is at least 0.80; when none is, correctness is at most 0.20.
 - **HA4** (*unverified*): the correct-refusal rate on unanswerable questions is at least 0.80.
 - **HB, HC, HD** (*unverified*): placeholders for the hybrid, rerank and agentic milestones, defined in the methodology document.
 
