@@ -173,8 +173,12 @@ def corpus_vocabulary(chunks: Sequence[Chunk], specs: Iterable[ParsedSpec] = ())
 
 
 def context_vocabulary(context_chunks: Sequence[Chunk]) -> Vocabulary:
-    """The vocabulary of only the chunks that were in the prompt."""
-    return vocabulary_from_texts(c.content for c in context_chunks)
+    """The vocabulary of everything the prompt showed for these chunks: content and excerpt id.
+
+    The excerpt id (for example ``statements-api:getStatement:parameters``) is part of the
+    prompt, so a name the model reads from it is grounded in what it was given.
+    """
+    return vocabulary_from_texts(f"{c.chunk_id}\n{c.content}" for c in context_chunks)
 
 
 @dataclass(frozen=True)

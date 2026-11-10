@@ -1,0 +1,285 @@
+{
+  "run_id": "20261110T220340Z-answers-dev-dense-canary",
+  "question_set": "dev",
+  "simulated": false,
+  "n_attempts": 3,
+  "n_scored": 3,
+  "n_infra_errors": 0,
+  "overall": {
+    "n": 3,
+    "outcomes": {
+      "answered": 2,
+      "refused": 1
+    },
+    "answerable": {
+      "numerator": 1,
+      "denominator": 2,
+      "value": 0.5
+    },
+    "false_refusals": {
+      "numerator": 0,
+      "denominator": 2,
+      "value": 0.0
+    },
+    "correct_refusals": {
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1.0
+    }
+  },
+  "by_category": {
+    "endpoint_discovery": {
+      "n": 1,
+      "outcomes": {
+        "answered": 1
+      },
+      "answerable": {
+        "numerator": 1,
+        "denominator": 1,
+        "value": 1.0
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "multi_endpoint": {
+      "n": 1,
+      "outcomes": {
+        "answered": 1
+      },
+      "answerable": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "unanswerable": {
+      "n": 1,
+      "outcomes": {
+        "refused": 1
+      },
+      "answerable": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "correct_refusals": {
+        "numerator": 1,
+        "denominator": 1,
+        "value": 1.0
+      }
+    }
+  },
+  "per_question": [
+    {
+      "question_id": "Q01",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 1,
+      "correct": 1,
+      "outcomes": [
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q05",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 1,
+      "correct": 0,
+      "outcomes": [
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "GET /v1/accounts/{accountId}/statements",
+        "POST /oauth/token"
+      ]
+    },
+    {
+      "question_id": "Q14",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 1,
+      "correct": 1,
+      "outcomes": [
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    }
+  ],
+  "ha3_hit": {
+    "numerator": 1,
+    "denominator": 2,
+    "value": 0.5
+  },
+  "ha3_miss": {
+    "numerator": 0,
+    "denominator": 0,
+    "value": null
+  },
+  "verdicts": [
+    {
+      "hypothesis": "HA3",
+      "criterion": "correctness >= 0.80 when the top-5 context has a relevant chunk and <= 0.20 when it has none; the 'none' half needs at least 3 attempts",
+      "verdict": "not applicable (development set)",
+      "evidence": "context hit 1/2 correct; context miss 0/0 correct"
+    },
+    {
+      "hypothesis": "HA4",
+      "criterion": "correct-refusal rate over unanswerable attempts >= 0.80",
+      "verdict": "not applicable (development set)",
+      "evidence": "correct refusals 1/1"
+    }
+  ],
+  "guardrails": {
+    "correct_refusal": {
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1.0
+    },
+    "made_up_answer": {
+      "numerator": 0,
+      "denominator": 1,
+      "value": 0.0
+    },
+    "unanswerable_invalid": 0,
+    "unanswerable_cut_off": 0,
+    "false_refusal": {
+      "numerator": 0,
+      "denominator": 2,
+      "value": 0.0
+    },
+    "mentions_endpoint_on_unanswerable": 1
+  },
+  "groundedness": {
+    "with_unsupported": {
+      "numerator": 1,
+      "denominator": 3,
+      "value": 0.3333333333333333
+    },
+    "with_invented": {
+      "numerator": 0,
+      "denominator": 3,
+      "value": 0.0
+    },
+    "top_unsupported": [
+      [
+        "name:getStatement",
+        1
+      ]
+    ],
+    "top_invented": []
+  },
+  "citations": {
+    "citations_valid": {
+      "numerator": 2,
+      "denominator": 2,
+      "value": 1.0
+    },
+    "cites_relevant": {
+      "numerator": 2,
+      "denominator": 2,
+      "value": 1.0
+    }
+  },
+  "latency_ms": {
+    "embed": {
+      "n": 3,
+      "p50": 120.89654197916389,
+      "p95": 9285.608053859323
+    },
+    "search": {
+      "n": 3,
+      "p50": 0.93345798086375,
+      "p95": 2.2758457576856017
+    },
+    "generation": {
+      "n": 3,
+      "p50": 2597.440875018947,
+      "p95": 79367.3814372043
+    },
+    "total": {
+      "n": 3,
+      "p50": 12049.579249927774,
+      "p95": 80413.91322378768
+    }
+  },
+  "tokens": {
+    "prompt": {
+      "n": 3,
+      "mean": 1090.3333333333333,
+      "p50": 1088.0,
+      "p95": 1108.7
+    },
+    "completion": {
+      "n": 3,
+      "mean": 749.3333333333334,
+      "p50": 353.0,
+      "p95": 1566.1999999999998
+    },
+    "total": {
+      "n": 3,
+      "mean": 1839.6666666666667,
+      "p50": 1441.0,
+      "p95": 2639.8
+    },
+    "reasoning": {
+      "n": 3,
+      "mean": 617.6666666666666,
+      "p50": 226.0,
+      "p95": 1367.1999999999998
+    }
+  },
+  "tokens_by_category": {
+    "endpoint_discovery": [
+      1305
+    ],
+    "multi_endpoint": [
+      2773
+    ],
+    "unanswerable": [
+      1441
+    ]
+  },
+  "cost": {
+    "per_1000_questions_usd": 0.5157366666666667,
+    "run_total_usd": 0.00154721,
+    "source": "paid_variant",
+    "note": "Estimated, not billed. Estimated at the paid variant's list price (nvidia/nemotron-3.5-super-vl) captured 2026-11-10"
+  },
+  "requests": {
+    "sent": 3,
+    "failed": 0,
+    "retried": 0,
+    "infra_error_attempts": 0
+  }
+}

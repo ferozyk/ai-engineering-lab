@@ -286,3 +286,12 @@ def test_key_facts_already_in_the_question_are_not_required() -> None:
 def test_all_key_facts_stay_required_when_all_appear_in_the_question() -> None:
     question = "Is `X-Api-Key` required?"
     assert required_key_facts(["X-Api-Key"], question, HEADERS) == ["X-Api-Key"]
+
+
+def test_names_in_excerpt_ids_count_as_context(make_chunk: ChunkFactory) -> None:
+    chunk = make_chunk(
+        chunk_id="statements-api:getStatement:parameters",
+        content="[statements-api] GET /v1/statements/{statementId} · parameters",
+    )
+    vocab = context_vocabulary([chunk])
+    assert vocab.contains(Identifier("name", "getStatement"))

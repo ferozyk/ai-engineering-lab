@@ -1,0 +1,4 @@
+attempt_id,question_id,repetition,category,outcome,correct,false_refusal,correct_refusal,made_up_answer,context_hit,citations_valid,cites_relevant,unsupported_identifiers,invented_identifiers,missing_key_facts,embed_ms,search_ms,generation_ms,total_ms,prompt_tokens,completion_tokens,total_tokens,attempts,error_kind
+Q05-r1,Q05,1,multi_endpoint,answered,False,False,,,True,True,True,name:getStatement,,POST /oauth/token GET /v1/accounts/{accountId}/statements,111.642,0.933,87897.375,88009.95,1072,1701,2773,1,
+Q14-r1,Q14,1,unanswerable,refused,,,True,False,False,,,,,,120.897,0.884,2597.441,2719.222,1088,353,1441,1,
+Q01-r1,Q01,1,endpoint_discovery,answered,True,False,,,True,True,True,,,,10303.909,2.425,1743.245,12049.579,1111,194,1305,1,

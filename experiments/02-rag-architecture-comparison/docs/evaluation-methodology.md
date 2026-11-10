@@ -157,7 +157,7 @@ Only a fence around the JSON or prose around it is tolerated when parsing; nothi
 | `header` | `X-...`, `Idempotency-Key`, `Retry-After`, `Authorization`, `Location`, matched as written and compared case-insensitively |
 | `name` | A backticked identifier, or a bare camelCase token; covers schema, field, parameter and operation names |
 
-**Vocabularies.** The *corpus vocabulary* is built from every chunk plus every operation, parameter, schema and field name in the parsed specs. The *context vocabulary* is built from only the chunks in the prompt. An endpoint also makes its bare path known. A `name` counts as known when the word appears anywhere in the text, because reference text rarely wraps names in backticks. The other kinds must have been extracted from the text with the same patterns.
+**Vocabularies.** The *corpus vocabulary* is built from every chunk plus every operation, parameter, schema and field name in the parsed specs. The *context vocabulary* is built from only the chunks in the prompt: their content and their excerpt ids, since both are shown to the model (added 2026-11-11 after the canary flagged `getStatement`, which the model read from the excerpt id `statements-api:getStatement:parameters`, as unsupported). An endpoint also makes its bare path known. A `name` counts as known when the word appears anywhere in the text, because reference text rarely wraps names in backticks. The other kinds must have been extracted from the text with the same patterns.
 
 **Question-identifier exclusion.** Identifiers that appear in the question text are removed from both checks, because repeating the question's own words is not a grounding failure.
 
