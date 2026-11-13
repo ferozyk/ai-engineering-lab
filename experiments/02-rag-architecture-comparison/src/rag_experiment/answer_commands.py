@@ -58,6 +58,7 @@ from rag_experiment.evaluation.answer_run import (
 )
 from rag_experiment.evaluation.dataset import Question, load_questions, validate_question_set
 from rag_experiment.evaluation.facts import corpus_header_names
+from rag_experiment.evaluation.hypotheses import apply_answer_verdicts
 from rag_experiment.evaluation.retrieval_metrics import RetrievalSummary
 from rag_experiment.evaluation.retrieval_run import build_metadata
 from rag_experiment.generation.fake import FakeChatModel
@@ -131,15 +132,16 @@ def select_questions(
     return [q for q in questions if q.id in set(ids)]
 
 
-def find_retrieval_run(results_base: Path, set_name: str) -> str | None:
-    """The newest committed (non-simulated) dense retrieval run of a question set."""
+def find_retrieval_run(results_base: Path, set_name: str, retriever: str = "dense") -> str | None:
+    """The newest committed (non-simulated) retrieval run of a question set and retriever."""
     raw = results_base / "raw"
     if not raw.is_dir():
         return None
     candidates = sorted(
         p.name
         for p in raw.iterdir()
-        if f"-retrieval-{set_name}-" in p.name and (p / "retrieval.jsonl").is_file()
+        if p.name.endswith(f"-retrieval-{set_name}-{retriever}")
+        and (p / "retrieval.jsonl").is_file()
     )
     return candidates[-1] if candidates else None
 
@@ -256,17 +258,21 @@ def write_outputs(
     questions: Sequence[Question],
     results_base: Path,
     retrieval_run: str | None,
+    baseline_dir: Path,
 ) -> tuple[AnswerSummary, list[str]]:
     """Summary, CSV, charts and report from the raw files. Makes no model request."""
     records = load_records(paths.answers)
     summary = summarise_answers(
         records, questions, question_set=metadata.question_set, pricing=metadata.pricing
     )
+    summary = apply_answer_verdicts(summary, metadata.retriever, baseline_dir)
     write_processed(paths.processed, summary, records)
     notes: list[str] = []
     retrieval_summary: RetrievalSummary | None = None
     note = ""
-    run_id = retrieval_run or find_retrieval_run(results_base, metadata.question_set)
+    run_id = retrieval_run or find_retrieval_run(
+        results_base, metadata.question_set, metadata.retriever
+    )
     if run_id is None:
         notes.append("no retrieval run found: the Hit@K chart was skipped")
     else:
@@ -277,6 +283,7 @@ def write_outputs(
         model_id=metadata.model_id,
         simulated=metadata.simulated,
         n_attempts=summary.n_scored,
+        retriever=metadata.retriever,
     )
     drawn = charts.render_all(summary, retrieval_summary, ctx, paths.charts, note)
     report = render_answer_report(metadata, summary, charts.chart_names(drawn))
@@ -555,7 +562,9 @@ def execute_run(
         git_at_start=git_at_start,
     )
     write_json(paths.metadata, metadata)
-    summary, notes = write_outputs(paths, metadata, questions, results_base, retrieval_run)
+    summary, notes = write_outputs(
+        paths, metadata, questions, results_base, retrieval_run, config.results_dir
+    )
     print()
     print("\n".join(summary_lines(summary, paths)))
     for note in notes:
@@ -577,7 +586,9 @@ def analyse_run(
     paths = find_run(results_base, run_id)
     metadata = AnswerRunMetadata.model_validate_json(paths.metadata.read_text(encoding="utf-8"))
     questions = select_questions(config, metadata.question_set, metadata.question_ids)
-    summary, notes = write_outputs(paths, metadata, questions, results_base, retrieval_run)
+    summary, notes = write_outputs(
+        paths, metadata, questions, results_base, retrieval_run, config.results_dir
+    )
     print("\n".join(summary_lines(summary, paths)))
     for note in notes:
         print(f"note: {note}")
@@ -596,8 +607,12 @@ class CheckResult:
     detail: str
 
 
-def index_status(config: ExperimentConfig, corpus: Corpus, chunks: Sequence[Chunk]) -> CheckResult:
+def index_status(
+    config: ExperimentConfig, corpus: Corpus, chunks: Sequence[Chunk], retriever: str = "dense"
+) -> CheckResult:
     """Whether the local index of the configured collection is complete (no rebuild)."""
+    if retriever == "bm25":
+        return CheckResult("index", "pass", "not needed (BM25 is built in memory)")
     provider = SentenceTransformerProvider(config.embedding)  # lazy: the model is not loaded
     collection = collection_name(
         config.index, corpus, config.chunking, provider.model_id, provider.revision
@@ -630,7 +645,10 @@ def largest_prompt(
         top = record["ranked"][: config.retrieval.top_k_generation]
         context = [
             RetrievedChunk(
-                chunk=by_id[r["chunk_id"]], score=r["score"], rank=r["rank"], retriever="dense"
+                chunk=by_id[r["chunk_id"]],
+                score=r["score"],
+                rank=r["rank"],
+                retriever=record["retriever"],
             )
             for r in top
         ]
@@ -647,6 +665,7 @@ def offline_checks(
     chunks: Sequence[Chunk],
     results_base: Path,
     retrieval_run: str | None,
+    retriever: str = "dense",
 ) -> list[CheckResult]:
     """Everything that needs no network and no model request."""
     results: list[CheckResult] = []
@@ -663,7 +682,7 @@ def offline_checks(
         results.append(CheckResult("api_key", "fail", "OPENROUTER_API_KEY is not set"))
     else:
         results.append(CheckResult("api_key", "pass", "OPENROUTER_API_KEY is set"))
-    results.append(index_status(config, corpus, chunks))
+    results.append(index_status(config, corpus, chunks, retriever))
 
     problems: list[str] = []
     header_names = corpus_header_names(corpus)
@@ -685,9 +704,11 @@ def offline_checks(
             CheckResult("questions", "pass", f"valid; measured checksum {digest[:12]} is frozen")
         )
 
-    run_id = retrieval_run or find_retrieval_run(results_base, "measured")
+    run_id = retrieval_run or find_retrieval_run(results_base, "measured", retriever)
     if run_id is None:
-        results.append(CheckResult("prompt_size", "warn", "no committed measured retrieval run"))
+        results.append(
+            CheckResult("prompt_size", "warn", "no committed retrieval run for this retriever")
+        )
     else:
         size, qid = largest_prompt(config, chunks, results_base, run_id)
         results.append(
@@ -819,10 +840,13 @@ def preflight(
     results_base: Path,
     retrieval_run: str | None,
     live: bool,
+    retriever: str = "dense",
 ) -> int:
     """Run the preflight; returns the exit code (1 on any failure)."""
     try:
-        results = offline_checks(config, settings, corpus, chunks, results_base, retrieval_run)
+        results = offline_checks(
+            config, settings, corpus, chunks, results_base, retrieval_run, retriever
+        )
     except (ConfigError, ConfigurationError, ValueError, OSError) as exc:
         print(f"Error: {exc}")
         return 1
@@ -831,7 +855,7 @@ def preflight(
             results.append(CheckResult("live", "fail", "skipped: model or API key not set"))
         else:
             print("live checks will send 1 model request")
-            run_id = retrieval_run or find_retrieval_run(results_base, "measured")
+            run_id = retrieval_run or find_retrieval_run(results_base, "measured", retriever)
             size = largest_prompt(config, chunks, results_base, run_id)[0] if run_id else None
             budget = RequestBudget(config.run.daily_request_cap)
             chat = _build_real_chat_smoke(settings, config, budget)

@@ -11,7 +11,7 @@ from rag_experiment.evaluation.answer_run import (
     latest_by_attempt,
     write_json,
 )
-from rag_experiment.evaluation.retrieval_metrics import RatioValue
+from rag_experiment.evaluation.retrieval_metrics import DIAGNOSTIC_TEXT, RatioValue
 
 # Copied from docs/evaluation-methodology.md section 9 (a test checks they still match).
 LIMITATIONS = (
@@ -97,9 +97,11 @@ def render_answer_report(
         "",
         "## Hypotheses (frozen criteria, computed mechanically)",
         "",
-        "| hypothesis | criterion | verdict | evidence |",
-        "|---|---|---|---|",
     ]
+    if summary.verdicts:
+        out += ["| hypothesis | criterion | verdict | evidence |", "|---|---|---|---|"]
+    else:
+        out.append(DIAGNOSTIC_TEXT)
     for v in summary.verdicts:
         out.append(f"| {v.hypothesis} | {v.criterion} | {v.verdict} | {v.evidence} |")
     g = summary.guardrails

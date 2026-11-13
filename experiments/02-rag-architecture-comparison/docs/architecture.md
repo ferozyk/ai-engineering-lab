@@ -195,6 +195,7 @@ flowchart LR
 - **Limitations:** two indexes to maintain; BM25 tokenisation of identifiers such as `X-Api-Key` needs care; RRF ignores score magnitude.
 - **Latency and compute:** one extra, cheap keyword search. Figures to be measured.
 - **Use cases:** documentation where users paste exact names and also ask in their own words.
+- **Implementation:** the tokeniser (`retrieval/tokenize.py`) finds compounds (letters and digits joined by `-`, `:`, `_`, `.` or `/`), emits each compound lower-cased and each separator-delimited part, adds camelCase pieces (`pageSize` gives `pagesize`, `page`, `size`), drops tokens shorter than 2 characters and a fixed English stop list, and keeps duplicates. BM25 is written from the formula over the same 186 chunks: `idf = ln((N - df + 0.5) / (df + 0.5) + 1)` (the non-negative Lucene variant), term-frequency saturation `k1 = 1.2` and length normalisation `b = 0.75`, summed over the unique query tokens; chunks scoring 0 are not returned. The hybrid retriever takes the top 50 (`candidate_depth`) of the dense and the BM25 list and fuses them with RRF at `k = 60`; ties are broken by chunk id. Each fused chunk carries `component_ranks` (for example `{"dense": 3, "bm25": 1}`; a missing key means the chunk was not in that list's top 50). Latency is split as: `embed_ms` is the dense query embedding; `search_ms` is dense search, BM25 search and fusion together. All four settings live in the `hybrid` section of `configs/experiment.yaml`.
 
 ### C. Hybrid + cross-encoder rerank
 

@@ -22,6 +22,7 @@ from rag_experiment.corpus import Corpus, load_manifest
 from rag_experiment.evaluation.dataset import Question
 from rag_experiment.evaluation.relevance import relevant_chunk_ids
 from rag_experiment.evaluation.retrieval_metrics import (
+    DIAGNOSTIC_TEXT,
     KS,
     QuestionRetrieval,
     RetrievalSummary,
@@ -122,6 +123,7 @@ def run_questions(
                 chunks=chunks,
                 relevant_ids=relevant_chunk_ids(sources, chunks),
                 ranked=[(c.chunk.chunk_id, c.score) for c in first.chunks],
+                component_ranks=[c.component_ranks for c in first.chunks],
                 embed_ms=first.embed_ms,
                 search_ms=first.search_ms,
                 excluded=excluded,
@@ -278,6 +280,19 @@ def write_run(
 # ------------------------------------------------------------------------------ report
 
 
+_LATENCY_NOTES = {
+    "dense": (
+        "Qdrant local mode, in-process, exact search; CPU; not representative of a Qdrant server."
+    ),
+    "bm25": "BM25 over an in-memory index in pure Python; CPU; no query embedding (0 ms).",
+    "hybrid": (
+        "Query embedding, then Qdrant local-mode search (in-process, exact) plus in-memory BM25 "
+        "search and rank fusion; the 'vector search' row is the sum of those three; CPU; not "
+        "representative of a Qdrant server."
+    ),
+}
+
+
 def _fmt(value: float) -> str:
     return f"{value:.3f}"
 
@@ -335,9 +350,11 @@ def render_report(
         "",
         "## Hypothesis verdicts (frozen criteria, computed mechanically)",
         "",
-        "| hypothesis | criterion | verdict | evidence |",
-        "|---|---|---|---|",
     ]
+    if summary.verdicts:
+        out += ["| hypothesis | criterion | verdict | evidence |", "|---|---|---|---|"]
+    else:
+        out.append(DIAGNOSTIC_TEXT)
     for v in summary.verdicts:
         out.append(f"| {v.hypothesis} | {v.criterion} | {v.verdict} | {v.evidence} |")
     out += [
@@ -377,7 +394,7 @@ def render_report(
         "",
         "## Latency",
         "",
-        "Qdrant local mode, in-process, exact search; CPU; not representative of a Qdrant server.",
+        _LATENCY_NOTES.get(metadata.retriever, _LATENCY_NOTES["dense"]),
         "",
         "| stage | n | p50 (ms) | p95 (ms) |",
         "|---|---|---|---|",

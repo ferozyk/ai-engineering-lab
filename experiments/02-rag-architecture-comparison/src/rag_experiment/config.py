@@ -64,6 +64,17 @@ class RetrievalConfig(BaseModel):
         return self
 
 
+class HybridConfig(BaseModel):
+    """BM25 and rank-fusion settings for the hybrid retriever."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    bm25_k1: float = Field(gt=0)
+    bm25_b: float = Field(ge=0.0, le=1.0)
+    rrf_k: int = Field(gt=0)
+    candidate_depth: int = Field(gt=0)  # top-N taken from each list before fusion
+
+
 class GenerationConfig(BaseModel):
     """Generation settings. The model id is not here: it comes from ``LLM_MODEL``."""
 
@@ -111,10 +122,17 @@ class ExperimentConfig(BaseModel):
     embedding: EmbeddingConfig
     index: IndexConfig
     retrieval: RetrievalConfig
+    hybrid: HybridConfig
     generation: GenerationConfig
     run: RunConfig
     pricing: PricingConfig
     root: Path
+
+    @model_validator(mode="after")
+    def _depth_covers_evaluation(self) -> "ExperimentConfig":
+        if self.hybrid.candidate_depth < self.retrieval.top_k_eval:
+            raise ValueError("hybrid.candidate_depth must be >= retrieval.top_k_eval")
+        return self
 
     @property
     def pricing_reference(self) -> PricingReference:

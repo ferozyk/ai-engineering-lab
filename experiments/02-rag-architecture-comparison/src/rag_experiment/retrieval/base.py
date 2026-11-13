@@ -16,6 +16,8 @@ class RetrievedChunk(BaseModel):
     score: float
     rank: int
     retriever: str
+    # Hybrid only: 1-based rank in each source list; a missing key means "not in that list".
+    component_ranks: dict[str, int] | None = None
 
 
 class RetrievalResult(BaseModel):

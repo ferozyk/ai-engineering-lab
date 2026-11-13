@@ -57,6 +57,7 @@ class ChartContext:
     model_id: str
     simulated: bool
     n_attempts: int
+    retriever: str = "dense"
 
 
 def _figure(
@@ -109,7 +110,7 @@ def chart_retrieval_hit_at_k(
 ) -> list[Path]:
     """Hit@K for the whole set and the three largest category groups."""
     fig, ax = _figure(
-        "Retrieval Hit@K (dense retrieval)",
+        f"Retrieval Hit@K ({ctx.retriever} retrieval)",
         "Share of answerable questions with a relevant chunk in the top K",
         ctx,
         source_note,

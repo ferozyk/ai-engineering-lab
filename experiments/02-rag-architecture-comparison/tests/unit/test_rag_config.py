@@ -60,6 +60,7 @@ def _embedding_yaml(extra: str = "") -> str:
         "max_seq_length: 64, normalize: true}\n"
         "index: {dir: .index, collection_prefix: p}\n"
         "retrieval: {top_k_eval: 10, top_k_generation: 5}\n"
+        "hybrid: {bm25_k1: 1.2, bm25_b: 0.75, rrf_k: 60, candidate_depth: 50}\n"
         "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
         "llm_seed: null, request_timeout_seconds: 30}\n"
         "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
@@ -139,3 +140,26 @@ def test_missing_generation_section_is_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(ConfigError, match="generation"):
         load_config(_write(tmp_path, text))
+
+
+def test_hybrid_config_is_loaded(tmp_path: Path, experiment_config: ExperimentConfig) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert config.hybrid.bm25_k1 == 1.2 and config.hybrid.bm25_b == 0.75
+    assert config.hybrid.rrf_k == 60 and config.hybrid.candidate_depth == 50
+    assert experiment_config.hybrid.candidate_depth == 50
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("bm25_k1: 1.2", "bm25_k1: 0"),
+        ("bm25_b: 0.75", "bm25_b: 1.5"),
+        ("bm25_b: 0.75", "bm25_b: -0.1"),
+        ("rrf_k: 60", "rrf_k: 0"),
+        ("candidate_depth: 50", "candidate_depth: 9"),
+        ("candidate_depth: 50", "candidate_depth: 50, extra: 1"),
+    ],
+)
+def test_invalid_hybrid_settings(tmp_path: Path, old: str, new: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))

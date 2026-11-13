@@ -14,6 +14,7 @@ from rag_experiment.ingestion.chunker import Chunk
 from rag_experiment.ingestion.pointers import Source
 
 KS = (1, 3, 5, 10)
+DIAGNOSTIC_TEXT = "diagnostic run: no pre-registered hypotheses"
 HA1_CATEGORIES = ("semantic", "endpoint_discovery")
 HA2_CATEGORIES = ("exact_identifier",)
 # Frozen criteria (methodology section 8).
@@ -70,6 +71,7 @@ class RankedChunk(BaseModel):
     chunk_id: str
     score: float
     relevant: bool
+    component_ranks: dict[str, int] | None = None  # hybrid only
 
 
 class QuestionRetrieval(BaseModel):
@@ -110,12 +112,19 @@ def score_question(
     embed_ms: float,
     search_ms: float,
     excluded: bool,
+    component_ranks: Sequence[dict[str, int] | None] | None = None,
 ) -> QuestionRetrieval:
     """Build the record for one question. Excluded questions carry zeroed metrics."""
     ids = [chunk_id for chunk_id, _ in ranked]
     relevant = set(relevant_ids)
     records = tuple(
-        RankedChunk(rank=r, chunk_id=cid, score=score, relevant=cid in relevant)
+        RankedChunk(
+            rank=r,
+            chunk_id=cid,
+            score=score,
+            relevant=cid in relevant,
+            component_ranks=None if component_ranks is None else component_ranks[r - 1],
+        )
         for r, (cid, score) in enumerate(ranked, start=1)
     )
     if excluded:

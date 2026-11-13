@@ -11,6 +11,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal, get_args
+
+import numpy as np
+from numpy.typing import NDArray
 
 from ai_lab.benchmarking import PricingError
 from ai_lab.config import ConfigurationError, Settings, load_settings
@@ -26,6 +30,7 @@ from rag_experiment.embeddings.provider import (
     EmbeddingProvider,
     SentenceTransformerProvider,
 )
+from rag_experiment.evaluation import compare
 from rag_experiment.evaluation.answer_run import AnswerRunMetadata, find_run
 from rag_experiment.evaluation.dataset import (
     Question,
@@ -33,8 +38,9 @@ from rag_experiment.evaluation.dataset import (
     validate_question_set,
 )
 from rag_experiment.evaluation.facts import corpus_header_names
+from rag_experiment.evaluation.hypotheses import apply_retrieval_verdicts
 from rag_experiment.evaluation.relevance import relevant_chunk_ids
-from rag_experiment.evaluation.retrieval_metrics import KS, summarize
+from rag_experiment.evaluation.retrieval_metrics import DIAGNOSTIC_TEXT, KS, summarize
 from rag_experiment.evaluation.retrieval_run import (
     build_metadata,
     make_run_id,
@@ -45,6 +51,9 @@ from rag_experiment.evaluation.retrieval_run import (
 from rag_experiment.generation.prompts import PromptVersionError
 from rag_experiment.ingestion.chunker import Chunk, chunk_corpus
 from rag_experiment.ingestion.parser import SpecError
+from rag_experiment.retrieval.base import Retriever
+from rag_experiment.retrieval.bm25 import BM25Index, BM25Retriever
+from rag_experiment.retrieval.hybrid import HybridRetriever
 from rag_experiment.retrieval.store import (
     IndexLockedError,
     IngestReport,
@@ -54,6 +63,9 @@ from rag_experiment.retrieval.store import (
     open_local_store,
 )
 from rag_experiment.retrieval.vector import DenseRetriever
+
+RetrieverName = Literal["dense", "bm25", "hybrid"]
+RETRIEVERS: tuple[str, ...] = get_args(RetrieverName)
 
 _SPLIT_SUFFIX = re.compile(r":p\d+$")
 _CHUNK_TYPES = (
@@ -86,6 +98,15 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("validate-dataset", help="validate the corpus and both question files")
 
     fake_help = "use the deterministic fake embedder (dry run, nothing is measured)"
+
+    def add_retriever(command: argparse.ArgumentParser) -> None:
+        command.add_argument(
+            "--retriever",
+            choices=RETRIEVERS,
+            default="dense",
+            help="retrieval method (default: dense)",
+        )
+
     index = sub.add_parser("index", help="embed the chunks and build the local Qdrant index")
     index.add_argument("--rebuild", action="store_true", help="rebuild even if up to date")
     index.add_argument("--fake-embeddings", action="store_true", help=fake_help)
@@ -95,11 +116,13 @@ def _build_parser() -> argparse.ArgumentParser:
     retrieve.add_argument("--question-id", help="take the text from a question set; marks hits")
     retrieve.add_argument("--show", action="store_true", help="print the top chunk's content")
     retrieve.add_argument("--fake-embeddings", action="store_true", help=fake_help)
+    add_retriever(retrieve)
     evaluate = sub.add_parser(
         "evaluate-retrieval", help="compute retrieval metrics on a question set (no LLM calls)"
     )
     evaluate.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
     evaluate.add_argument("--fake-embeddings", action="store_true", help=fake_help)
+    add_retriever(evaluate)
 
     retrieval_help = "committed retrieval run id (default: newest of the question set)"
     preflight = sub.add_parser("preflight", help="check everything a generation run needs")
@@ -107,17 +130,30 @@ def _build_parser() -> argparse.ArgumentParser:
         "--live", action="store_true", help="also check the provider (sends 1 model request)"
     )
     preflight.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    add_retriever(preflight)
     canary = sub.add_parser("canary", help="run the canary questions of the dev set once")
     canary.add_argument("--fake", action="store_true", help="simulate the model (no network)")
     canary.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    add_retriever(canary)
     run = sub.add_parser("run", help="generate and score answers for a question set")
     run.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
     run.add_argument("--resume", metavar="RUN_ID", help="continue an interrupted run")
     run.add_argument("--fake", action="store_true", help="simulate the model (no network)")
     run.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    add_retriever(run)
     analyse = sub.add_parser("analyse", help="rebuild summary, report and charts (no requests)")
     analyse.add_argument("run_id")
     analyse.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
+    compare_cmd = sub.add_parser(
+        "compare", help="compare committed runs side by side (reads summaries only)"
+    )
+    compare_cmd.add_argument(
+        "--retrieval", nargs="+", required=True, metavar="RUN_ID", help="retrieval run ids"
+    )
+    compare_cmd.add_argument(
+        "--answers", nargs="*", default=[], metavar="RUN_ID", help="answer run ids"
+    )
+    compare_cmd.add_argument("--out", metavar="NAME", help="output name (default: a timestamp)")
     return parser
 
 
@@ -211,14 +247,51 @@ def _cmd_validate(config: ExperimentConfig) -> int:
 # --------------------------------------------------------------------- retrieval commands
 
 
+class _NoEmbedding:
+    """Stands in for the embedding provider when the retriever needs none (BM25)."""
+
+    model_id = "none"
+    revision = "none"
+    dimension = 0
+
+    def embed_documents(self, texts: Sequence[str]) -> NDArray[np.float32]:
+        raise EmbeddingError("this retriever does not use embeddings")
+
+    def embed_query(self, text: str) -> NDArray[np.float32]:
+        raise EmbeddingError("this retriever does not use embeddings")
+
+
 @dataclass
 class _Session:
     corpus: Corpus
     chunks: list[Chunk]
     provider: EmbeddingProvider
     cache: EmbeddingCache
-    store: QdrantStore
+    store: QdrantStore | None
     index_dir: Path | None
+
+    def require_store(self) -> QdrantStore:
+        """The vector store; absent only for lexical (BM25) sessions."""
+        if self.store is None:
+            raise ValueError("this session has no vector store")
+        return self.store
+
+    @property
+    def collection(self) -> str:
+        """The vector collection name, or a label when there is none."""
+        return "none (in-memory BM25 index)" if self.store is None else self.store.collection
+
+
+def build_retriever(name: RetrieverName, session: _Session, config: ExperimentConfig) -> Retriever:
+    """The retriever called ``name``. BM25 needs no embedding model and no vector store."""
+    hybrid = config.hybrid
+    if name == "bm25":
+        return BM25Retriever(BM25Index(session.chunks, hybrid.bm25_k1, hybrid.bm25_b))
+    dense = DenseRetriever(session.provider, session.require_store())
+    if name == "dense":
+        return dense
+    bm25 = BM25Retriever(BM25Index(session.chunks, hybrid.bm25_k1, hybrid.bm25_b))
+    return HybridRetriever(dense, bm25, hybrid.rrf_k, hybrid.candidate_depth)
 
 
 def _results_root(config: ExperimentConfig, fake: bool) -> Path:
@@ -244,8 +317,11 @@ def _make_provider(config: ExperimentConfig, fake: bool) -> EmbeddingProvider:
 
 
 @contextmanager
-def _session(config: ExperimentConfig, fake: bool) -> Iterator[_Session]:
+def _session(config: ExperimentConfig, fake: bool, retriever: str = "dense") -> Iterator[_Session]:
     corpus, chunks = _load(config)
+    if retriever == "bm25":
+        yield _Session(corpus, chunks, _NoEmbedding(), EmbeddingCache(None), None, None)
+        return
     provider = _make_provider(config, fake)
     collection = collection_name(
         config.index, corpus, config.chunking, provider.model_id, provider.revision
@@ -268,10 +344,11 @@ def _ingest_record_path(index_dir: Path, collection: str) -> Path:
 
 def _ingest(session: _Session, rebuild: bool) -> tuple[IngestReport, IngestReport | None]:
     """Ingest; returns this invocation's report and the stored report of the last real build."""
-    report = ingest(session.chunks, session.provider, session.cache, session.store, rebuild)
+    store = session.require_store()
+    report = ingest(session.chunks, session.provider, session.cache, store, rebuild)
     if session.index_dir is None:
         return report, None
-    record = _ingest_record_path(session.index_dir, session.store.collection)
+    record = _ingest_record_path(session.index_dir, store.collection)
     if not report.up_to_date:
         record.parent.mkdir(parents=True, exist_ok=True)
         record.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
@@ -326,16 +403,17 @@ def _cmd_retrieve(
     question_id: str | None,
     show: bool,
     fake: bool,
+    retriever_name: RetrieverName = "dense",
 ) -> int:
     question = _find_question(config, question_id) if question_id else None
     query = text or (question.question if question else None)
     if not query:
         print("Error: give a question or --question-id", file=sys.stderr)
         return 2
-    with _session(config, fake) as session:
-        if session.store.count() == 0 and fake:
+    with _session(config, fake, retriever_name) as session:
+        if fake and session.store is not None and session.store.count() == 0:
             _ingest(session, rebuild=False)
-        retriever = DenseRetriever(session.provider, session.store)
+        retriever = build_retriever(retriever_name, session, config)
         result = retriever.retrieve(query, k)
         relevant = relevant_chunk_ids(question.sources, session.chunks) if question else None
         for item in result.chunks:
@@ -344,7 +422,12 @@ def _cmd_retrieve(
                 if relevant is None
                 else f" · {'relevant' if item.chunk.chunk_id in relevant else '-'}"
             )
-            print(f"{item.rank} · {item.score:.4f} · {item.chunk.chunk_id}{mark}")
+            parts = (
+                ""
+                if item.component_ranks is None
+                else f" · ranks {dict(sorted(item.component_ranks.items()))}"
+            )
+            print(f"{item.rank} · {item.score:.4f} · {item.chunk.chunk_id}{mark}{parts}")
         print(f"embed {result.embed_ms:.1f} ms, search {result.search_ms:.1f} ms")
         if show and result.chunks:
             print()
@@ -352,18 +435,21 @@ def _cmd_retrieve(
     return 0
 
 
-def _cmd_evaluate(config: ExperimentConfig, set_name: str, fake: bool) -> int:
+def _cmd_evaluate(
+    config: ExperimentConfig, set_name: str, fake: bool, retriever_name: RetrieverName = "dense"
+) -> int:
     path = config.questions_measured if set_name == "measured" else config.questions_dev
     questions = load_questions(path)
     started = datetime.now(UTC)
-    with _session(config, fake) as session:
-        report, build = _ingest(session, rebuild=False)
-        retriever = DenseRetriever(session.provider, session.store)
+    with _session(config, fake, retriever_name) as session:
+        report, build = (None, None) if session.store is None else _ingest(session, rebuild=False)
+        retriever = build_retriever(retriever_name, session, config)
         run_id = make_run_id(set_name, retriever.name, fake, started)
         records, differing = run_questions(
             run_id, questions, session.chunks, retriever, config.retrieval.top_k_eval
         )
         summary = summarize(run_id, set_name, records, differing)
+        summary = apply_retrieval_verdicts(summary, records, retriever.name, config.results_dir)
         metadata = build_metadata(
             config=config,
             corpus=session.corpus,
@@ -375,12 +461,12 @@ def _cmd_evaluate(config: ExperimentConfig, set_name: str, fake: bool) -> int:
             model_id=session.provider.model_id,
             revision=session.provider.revision,
             dimension=session.provider.dimension,
-            collection=session.store.collection,
+            collection=session.collection,
             started_at=started,
             deterministic=summary.deterministic,
         )
     ingest_payload: dict[str, object] = {
-        "this_invocation": report.model_dump(mode="json"),
+        "this_invocation": report.model_dump(mode="json") if report else None,
         "index_build": build.model_dump(mode="json") if build else None,
     }
     root = _results_root(config, fake)
@@ -393,8 +479,11 @@ def _cmd_evaluate(config: ExperimentConfig, set_name: str, fake: bool) -> int:
     print()
     print("\n".join(metrics_table(summary)))
     print()
-    print(f"HA1 group Hit@5: {summary.ha1_group.numerator}/{summary.ha1_group.denominator}")
-    print(f"HA2 group Hit@5: {summary.ha2_group.numerator}/{summary.ha2_group.denominator}")
+    if retriever.name == "dense":
+        print(f"HA1 group Hit@5: {summary.ha1_group.numerator}/{summary.ha1_group.denominator}")
+        print(f"HA2 group Hit@5: {summary.ha2_group.numerator}/{summary.ha2_group.denominator}")
+    if not summary.verdicts:
+        print(DIAGNOSTIC_TEXT)
     for verdict in summary.verdicts:
         print(f"{verdict.hypothesis}: {verdict.verdict} {verdict.evidence}".rstrip())
     print()
@@ -412,16 +501,22 @@ def _settings(config: ExperimentConfig) -> Settings:
 
 
 def _prepare_retrieval(
-    config: ExperimentConfig, questions: Sequence[Question], fake: bool
+    config: ExperimentConfig,
+    questions: Sequence[Question],
+    fake: bool,
+    retriever_name: RetrieverName = "dense",
 ) -> PreparedRetrieval:
     """Retrieve the context of every question once (twice, to check determinism)."""
     k = config.retrieval.top_k_generation
-    with _session(config, fake) as session:
-        if fake:
-            _ingest(session, rebuild=False)
-        elif session.store.count() != len(session.chunks):
-            raise ValueError("the local index is missing or out of date; run: rag-experiment index")
-        retriever = DenseRetriever(session.provider, session.store)
+    with _session(config, fake, retriever_name) as session:
+        if session.store is not None:
+            if fake:
+                _ingest(session, rebuild=False)
+            elif session.store.count() != len(session.chunks):
+                raise ValueError(
+                    "the local index is missing or out of date; run: rag-experiment index"
+                )
+        retriever = build_retriever(retriever_name, session, config)
         results = {}
         deterministic = True
         for question in questions:
@@ -440,7 +535,7 @@ def _prepare_retrieval(
             model_id=session.provider.model_id,
             revision=session.provider.revision,
             dimension=session.provider.dimension,
-            collection=session.store.collection,
+            collection=session.collection,
             deterministic=deterministic,
         )
 
@@ -453,6 +548,7 @@ def _cmd_answers(
     fake: bool,
     resume: str | None,
     retrieval_run: str | None,
+    retriever_name: RetrieverName = "dense",
 ) -> int:
     results_base = _results_root_base(config)
     if not fake:  # fail on missing credentials before loading the embedding model
@@ -471,7 +567,7 @@ def _cmd_answers(
         question_ids = list(config.run.canary_question_ids)
     needed = answer_commands.select_questions(config, set_name, question_ids)
     everything = answer_commands.select_questions(config, set_name, None)
-    retrieval = _prepare_retrieval(config, needed, fake)
+    retrieval = _prepare_retrieval(config, needed, fake, retriever_name)
     return answer_commands.execute_run(
         config=config,
         settings_loader=lambda: _settings(config),
@@ -488,11 +584,32 @@ def _cmd_answers(
     )
 
 
-def _cmd_preflight(config: ExperimentConfig, live: bool, retrieval_run: str | None) -> int:
+def _cmd_preflight(
+    config: ExperimentConfig,
+    live: bool,
+    retrieval_run: str | None,
+    retriever_name: RetrieverName = "dense",
+) -> int:
     corpus, chunks = _load(config)
     return answer_commands.preflight(
-        config, _settings(config), corpus, chunks, _results_root_base(config), retrieval_run, live
+        config,
+        _settings(config),
+        corpus,
+        chunks,
+        _results_root_base(config),
+        retrieval_run,
+        live,
+        retriever_name,
     )
+
+
+def _cmd_compare(
+    config: ExperimentConfig, retrieval: Sequence[str], answers: Sequence[str], out: str | None
+) -> int:
+    paths = compare.run_compare(_results_root_base(config), retrieval, answers, out)
+    print(f"comparison: {paths['json']}")
+    print(f"report: {paths['report']}")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -508,12 +625,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_index(config, args.rebuild, args.fake_embeddings)
         if args.command == "retrieve":
             return _cmd_retrieve(
-                config, args.question, args.k, args.question_id, args.show, args.fake_embeddings
+                config,
+                args.question,
+                args.k,
+                args.question_id,
+                args.show,
+                args.fake_embeddings,
+                args.retriever,
             )
         if args.command == "evaluate-retrieval":
-            return _cmd_evaluate(config, args.question_set, args.fake_embeddings)
+            return _cmd_evaluate(config, args.question_set, args.fake_embeddings, args.retriever)
         if args.command == "preflight":
-            return _cmd_preflight(config, args.live, args.retrieval_run)
+            return _cmd_preflight(config, args.live, args.retrieval_run, args.retriever)
+        if args.command == "compare":
+            return _cmd_compare(config, args.retrieval, args.answers, args.out)
         if args.command == "canary":
             return _cmd_answers(
                 config,
@@ -522,6 +647,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 fake=args.fake,
                 resume=None,
                 retrieval_run=args.retrieval_run,
+                retriever_name=args.retriever,
             )
         if args.command == "run":
             return _cmd_answers(
@@ -531,6 +657,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 fake=args.fake,
                 resume=args.resume,
                 retrieval_run=args.retrieval_run,
+                retriever_name=args.retriever,
             )
         if args.command == "analyse":
             return answer_commands.analyse_run(

@@ -203,3 +203,35 @@ async def test_live_checks_flag_a_too_small_context_window(
     async with httpx.AsyncClient(transport=_transport([small], _KEY)) as http:
         results = await live_checks(experiment_config, settings, http, _Chat("OK"), 50_000)
     assert _by_name(results)["context_window"].status == "fail"
+
+
+def test_preflight_warns_when_the_retriever_has_no_committed_run(
+    monkeypatch: pytest.MonkeyPatch,
+    experiment_config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        answer_commands, "index_status", lambda *a, **k: CheckResult("index", "pass", "ok")
+    )
+    results = _by_name(
+        offline_checks(
+            experiment_config,
+            _settings(monkeypatch, key=True, model=True),
+            corpus,
+            chunks,
+            tmp_path,
+            None,
+            "hybrid",
+        )
+    )
+    assert results["prompt_size"].status == "warn"
+    assert results["prompt_size"].detail == "no committed retrieval run for this retriever"
+
+
+def test_index_status_for_bm25_needs_no_index(
+    experiment_config: ExperimentConfig, corpus: Corpus, chunks: list[Chunk]
+) -> None:
+    result = index_status(experiment_config, corpus, chunks, "bm25")
+    assert result.status == "pass" and "not needed" in result.detail

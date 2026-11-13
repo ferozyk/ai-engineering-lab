@@ -18,6 +18,11 @@ index:
 retrieval:
   top_k_eval: 10          # retrieval metrics computed at K in {1, 3, 5, 10}
   top_k_generation: 5     # used from stage 2c onwards
+hybrid:
+  bm25_k1: 1.2
+  bm25_b: 0.75
+  rrf_k: 60
+  candidate_depth: 50     # top-N taken from each list before fusion
 generation:
   prompt_version: a-1.0
   temperature: 0.0

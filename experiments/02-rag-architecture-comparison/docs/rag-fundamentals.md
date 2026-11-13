@@ -125,6 +125,8 @@ Preview for architecture B.
 
 BM25 matches exact strings, which is the dense retriever's weak spot. It cannot match meaning without shared words.
 
+**Why identifiers need their own tokeniser.** BM25 only matches whole tokens, so how text is split decides what can match. Take the header name `X-Api-Key`. A plain word splitter turns it into `x`, `api`, `key` and loses the exact string; keeping it whole means a question about "the api key header" never matches it. The experiment's tokeniser emits both the whole identifier and its parts: `x-api-key`, `api`, `key` (`x` is dropped for being one character). In the same way `pageSize` becomes `pagesize`, `page`, `size`, and `accounts:read` becomes `accounts:read`, `accounts`, `read`. A user who pastes the exact name and a user who describes it in words can then both reach the chunk.
+
 **Reciprocal Rank Fusion (RRF)** combines ranked lists from several retrievers (Cormack et al., 2009):
 
 ```text

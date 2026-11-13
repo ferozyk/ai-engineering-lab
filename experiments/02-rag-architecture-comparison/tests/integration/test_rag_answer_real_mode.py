@@ -121,7 +121,11 @@ def wired(
     # The real embedding model is not available in unit runs: use the fake embedder for retrieval.
     original = cli._prepare_retrieval
     monkeypatch.setattr(
-        cli, "_prepare_retrieval", lambda config, questions, fake: original(config, questions, True)
+        cli,
+        "_prepare_retrieval",
+        lambda config, questions, fake, retriever="dense": original(
+            config, questions, True, retriever
+        ),
     )
     return results
 
