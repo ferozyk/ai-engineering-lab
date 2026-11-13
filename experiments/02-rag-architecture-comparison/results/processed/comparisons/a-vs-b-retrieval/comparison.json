@@ -1,0 +1,560 @@
+{
+  "question_set": "measured",
+  "retrieval_runs": {
+    "20261110T204546Z-retrieval-measured-dense": {
+      "retriever": "dense",
+      "question_set": "measured",
+      "n_answerable": 34,
+      "hit": {
+        "1": 0.5588235294117647,
+        "3": 0.9411764705882353,
+        "5": 0.9411764705882353,
+        "10": 1.0
+      },
+      "recall_at_5": 0.8431372549019608,
+      "mrr": 0.7475490196078431,
+      "latency_total_p50_ms": 123.26835445128381,
+      "hit_at_1_by_category": {
+        "authentication": 0.8,
+        "comparison": 0.3333333333333333,
+        "endpoint_discovery": 0.6,
+        "exact_identifier": 0.6666666666666666,
+        "multi_endpoint": 0.5,
+        "schema": 0.4,
+        "semantic": 0.5
+      },
+      "hit_at_5_by_category": {
+        "authentication": 0.8,
+        "comparison": 1.0,
+        "endpoint_discovery": 1.0,
+        "exact_identifier": 1.0,
+        "multi_endpoint": 1.0,
+        "schema": 1.0,
+        "semantic": 0.8333333333333334
+      },
+      "verdicts": [
+        {
+          "hypothesis": "HA1",
+          "criterion": "Hit@5 over semantic + endpoint_discovery >= 0.80",
+          "verdict": "supported",
+          "evidence": "Hit@5 = 10/11 = 0.909"
+        },
+        {
+          "hypothesis": "HA2",
+          "criterion": "Hit@5 over exact_identifier is at least 0.20 lower than HA1",
+          "verdict": "not supported",
+          "evidence": "exact_identifier Hit@5 = 6/6 = 1.000; HA1 value = 0.909; gap = -0.091"
+        },
+        {
+          "hypothesis": "HA3",
+          "criterion": "see methodology section 8",
+          "verdict": "pending (needs generation, stage 2c/2d)",
+          "evidence": ""
+        },
+        {
+          "hypothesis": "HA4",
+          "criterion": "see methodology section 8",
+          "verdict": "pending (needs generation, stage 2c/2d)",
+          "evidence": ""
+        }
+      ]
+    },
+    "20261113T232754Z-retrieval-measured-hybrid": {
+      "retriever": "hybrid",
+      "question_set": "measured",
+      "n_answerable": 34,
+      "hit": {
+        "1": 0.7058823529411765,
+        "3": 0.8823529411764706,
+        "5": 0.8823529411764706,
+        "10": 0.9411764705882353
+      },
+      "recall_at_5": 0.7754901960784314,
+      "mrr": 0.7823529411764706,
+      "latency_total_p50_ms": 130.42245857650414,
+      "hit_at_1_by_category": {
+        "authentication": 0.8,
+        "comparison": 1.0,
+        "endpoint_discovery": 0.8,
+        "exact_identifier": 0.8333333333333334,
+        "multi_endpoint": 0.75,
+        "schema": 0.4,
+        "semantic": 0.5
+      },
+      "hit_at_5_by_category": {
+        "authentication": 1.0,
+        "comparison": 1.0,
+        "endpoint_discovery": 1.0,
+        "exact_identifier": 1.0,
+        "multi_endpoint": 1.0,
+        "schema": 0.8,
+        "semantic": 0.5
+      },
+      "verdicts": [
+        {
+          "hypothesis": "HB1",
+          "criterion": "Hit@1 over exact_identifier + schema >= 8/11",
+          "verdict": "not supported",
+          "evidence": "Hit@1 = 7/11 = 0.636; architecture A: 6/11"
+        },
+        {
+          "hypothesis": "HB2",
+          "criterion": "overall Hit@5 >= 31/34",
+          "verdict": "not supported",
+          "evidence": "Hit@5 = 30/34 = 0.882; architecture A: 32/34"
+        },
+        {
+          "hypothesis": "HB3",
+          "criterion": "correctness over answerable attempts >= 0.755",
+          "verdict": "pending (needs generation)",
+          "evidence": ""
+        }
+      ]
+    },
+    "20261113T232827Z-retrieval-measured-bm25": {
+      "retriever": "bm25",
+      "question_set": "measured",
+      "n_answerable": 34,
+      "hit": {
+        "1": 0.5,
+        "3": 0.6764705882352942,
+        "5": 0.7647058823529411,
+        "10": 0.8529411764705882
+      },
+      "recall_at_5": 0.6784313725490196,
+      "mrr": 0.6124999999999999,
+      "latency_total_p50_ms": 0.12314599007368088,
+      "hit_at_1_by_category": {
+        "authentication": 0.4,
+        "comparison": 1.0,
+        "endpoint_discovery": 0.6,
+        "exact_identifier": 0.5,
+        "multi_endpoint": 0.5,
+        "schema": 0.4,
+        "semantic": 0.3333333333333333
+      },
+      "hit_at_5_by_category": {
+        "authentication": 0.8,
+        "comparison": 1.0,
+        "endpoint_discovery": 0.8,
+        "exact_identifier": 1.0,
+        "multi_endpoint": 0.75,
+        "schema": 0.6,
+        "semantic": 0.5
+      },
+      "verdicts": []
+    }
+  },
+  "answer_runs": {},
+  "categories": [
+    "authentication",
+    "comparison",
+    "endpoint_discovery",
+    "exact_identifier",
+    "multi_endpoint",
+    "schema",
+    "semantic"
+  ],
+  "per_question": {
+    "Q101": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 3,
+        "20261113T232754Z-retrieval-measured-hybrid": 10,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q102": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q103": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 2
+      },
+      "correct": {}
+    },
+    "Q104": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 8,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q105": {
+      "category": "schema",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 3,
+        "20261113T232754Z-retrieval-measured-hybrid": 3,
+        "20261113T232827Z-retrieval-measured-bm25": 4
+      },
+      "correct": {}
+    },
+    "Q106": {
+      "category": "schema",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q107": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q108": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 6,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q109": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q110": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 5
+      },
+      "correct": {}
+    },
+    "Q111": {
+      "category": "schema",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q112": {
+      "category": "semantic",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q113": {
+      "category": "schema",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q114": {
+      "category": "schema",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 2,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q115": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 2,
+        "20261113T232827Z-retrieval-measured-bm25": 3
+      },
+      "correct": {}
+    },
+    "Q116": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q117": {
+      "category": "exact_identifier",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 2
+      },
+      "correct": {}
+    },
+    "Q118": {
+      "category": "endpoint_discovery",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q119": {
+      "category": "endpoint_discovery",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 3,
+        "20261113T232827Z-retrieval-measured-bm25": 8
+      },
+      "correct": {}
+    },
+    "Q120": {
+      "category": "endpoint_discovery",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q121": {
+      "category": "endpoint_discovery",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q122": {
+      "category": "endpoint_discovery",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 2
+      },
+      "correct": {}
+    },
+    "Q123": {
+      "category": "authentication",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 6
+      },
+      "correct": {}
+    },
+    "Q124": {
+      "category": "authentication",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q125": {
+      "category": "authentication",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 8,
+        "20261113T232754Z-retrieval-measured-hybrid": 3,
+        "20261113T232827Z-retrieval-measured-bm25": 4
+      },
+      "correct": {}
+    },
+    "Q126": {
+      "category": "authentication",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 3
+      },
+      "correct": {}
+    },
+    "Q127": {
+      "category": "authentication",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q128": {
+      "category": "multi_endpoint",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q129": {
+      "category": "multi_endpoint",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 2
+      },
+      "correct": {}
+    },
+    "Q130": {
+      "category": "multi_endpoint",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 3,
+        "20261113T232827Z-retrieval-measured-bm25": 6
+      },
+      "correct": {}
+    },
+    "Q131": {
+      "category": "multi_endpoint",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q132": {
+      "category": "comparison",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q133": {
+      "category": "comparison",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 2,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q134": {
+      "category": "comparison",
+      "excluded": false,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": 1,
+        "20261113T232754Z-retrieval-measured-hybrid": 1,
+        "20261113T232827Z-retrieval-measured-bm25": 1
+      },
+      "correct": {}
+    },
+    "Q135": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q136": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q137": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q138": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q139": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    },
+    "Q140": {
+      "category": "unanswerable",
+      "excluded": true,
+      "first_relevant_rank": {
+        "20261110T204546Z-retrieval-measured-dense": null,
+        "20261113T232754Z-retrieval-measured-hybrid": null,
+        "20261113T232827Z-retrieval-measured-bm25": null
+      },
+      "correct": {}
+    }
+  }
+}
