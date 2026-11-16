@@ -209,11 +209,22 @@ The draft placeholder ("hybrid improves `exact_identifier` Hit@5") could not be 
 - **HB2:** overall Hit@5 (34 answerable questions) is at least 31/34 (architecture A: 32/34).
 - **HB3:** correctness over answerable attempts is at least 0.755 (architecture A: 77/102).
 
+### Architecture C, hybrid retrieval with reranking (frozen 2026-11-17)
+
+Frozen before any architecture C measurement, on the same frozen measured set. Architecture B's measured values are the baseline (retrieval run `20261113T232754Z-retrieval-measured-hybrid`, answer run `20261116T224508Z-answers-measured-hybrid`). All are *unverified*.
+
+Fixed settings: the architecture B retriever (unchanged settings) supplies its fused top 30 as candidates; a cross-encoder (`BAAI/bge-reranker-v2-m3`, revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`, CPU, maximum input 1,024 tokens) scores each question–chunk pair and the candidates are re-ordered by that score; generation context is the reranked top 5; prompt `a-1.0`, the same model, temperature 0 and three repetitions.
+
+- **HC1:** MRR (top 10, 34 answerable questions) is at least 0.85 (architecture B: 0.782; architecture A: 0.748).
+- **HC2:** overall Hit@5 is at least 32/34 (architecture B: 30/34; architecture A: 32/34).
+- **HC3:** correctness over answerable attempts is at least 80/102 (architecture B: 78/102).
+
+Reported without a criterion: reranking latency (p50 and p95) and total retrieval latency; and, as a diagnostic, how many questions had a relevant chunk among the 30 candidates. Reranking can only re-order the candidates, so a relevant chunk outside them cannot be recovered.
+
 ### Later milestones
 
-Placeholders, to be made precise before their runs:
+Placeholder, to be made precise before its runs:
 
-- **HC:** reranking improves MRR; the added latency is reported.
 - **HD:** agentic retrieval improves `multi_endpoint` recall, at the cost of more model calls per question.
 
 ## 9. Limitations
