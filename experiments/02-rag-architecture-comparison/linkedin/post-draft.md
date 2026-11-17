@@ -19,8 +19,8 @@ D. An agent that plans, checks what it found, and searches again: 85 of 102
 
 What surprised me:
 • Adding keyword search or a re-ranker did not add right answers. It changed which questions were answered correctly, not how many.
-• The re-ranker was misled by one short permissions list that mentions everything. It looked relevant to almost every question.
-• The agent was the only clear improvement, and it almost never said "I don't know" when the answer was there (1 time vs 9 to 13). It also cost about 3× more per question and took about 6× longer, and once it answered a trick question it should have declined.
+• The re-ranker was misled by one short permissions list that mentions everything. It often looked more relevant than the real answer.
+• The agent was the only clear improvement, mostly on questions asked in everyday words, and it almost never said "I don't know" when the answer was there (1 time vs 9 to 13). It also cost about 3× more per question and took about 6× longer, and once it answered a trick question it should have declined.
 
 My takeaway: start simple, measure where it fails, and add one piece only when the failures point to it.
 
@@ -53,16 +53,16 @@ B. Add keyword search, and merge the two result lists.
 → 78/102. Better when people use the documentation's exact terms, worse when they use everyday words: the keyword matches crowded out good results.
 
 C. Add a second model that re-reads the top 30 passages and re-orders them.
-→ 78/102, about 13 seconds per question on my laptop. It recovered the everyday-wording questions B lost, but a short permissions list that mentions everything ("read customers, accounts and consents… cancel payments") looked relevant to almost every question and pushed better passages down.
+→ 78/102, about 13 seconds per question on my laptop. It recovered the everyday-wording questions B lost, but a short permissions list that mentions everything ("read customers, accounts and consents… cancel payments") often looked more relevant than the real answer and pushed better passages down.
 
 D. An agent that plans its searches, checks whether it found enough, and searches again if not.
-→ 85/102, and only 1 wrong "I don't know" (A to C: 9 to 13). On questions that need several steps, it collected everything needed in 9 of 12 tries; the single-search designs managed 3 of 12 or fewer. One question none of the others answered ("which web address do I get back for checking on a custom report?") it answered every time, by splitting it into two searches.
+→ 85/102, and only 1 wrong "I don't know" (A to C: 9 to 13). The extra right answers came from questions asked in everyday words and one comparison. One question none of the others answered ("which web address do I get back for checking on a custom report?") it answered every time, by splitting it into two searches. On questions that need several steps, it gathered complete information far more often (9 of 12 tries vs 3 of 12), but it got the same ones right as the keyword-search design it uses as its tool.
 The cost: about 3.3 model calls per question, roughly 3× the estimated cost and 6× the time of A, and one confident wrong answer to a trick question.
 
 **What I took from it**
 1. Better ranking is not the same as better answers. B and C ranked differently, but the AI answered about as well whenever a relevant passage made it into the context.
 2. Validate "standard upgrades" on your own content. A catch-all reference section and duplicated text worked against the re-ranker.
-3. An agent loop earns its cost when questions span several steps or use everyday wording. For simple lookups, the plain design is cheaper and nearly as good.
+3. An agent loop earned its cost on everyday wording and on not giving up too early. More complete evidence for multi-step questions did not, by itself, add right answers. For simple lookups, the plain design is cheaper and nearly as good.
 
 Caveats: a small synthetic test, one AI model (a free model through OpenRouter), estimated costs, and CPU-only latencies. Treat it as direction, not law.
 
