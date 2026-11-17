@@ -221,11 +221,19 @@ Fixed settings: the architecture B retriever (unchanged settings) supplies its f
 
 Reported without a criterion: reranking latency (p50 and p95) and total retrieval latency; and, as a diagnostic, how many questions had a relevant chunk among the 30 candidates. Reranking can only re-order the candidates, so a relevant chunk outside them cannot be recovered.
 
-### Later milestones
+### Architecture D, agentic retrieval (frozen 2026-11-17)
 
-Placeholder, to be made precise before its runs:
+Frozen before any architecture D measurement, on the same frozen measured set. Architecture B's measured values are the baseline (retrieval run `20261113T232754Z-retrieval-measured-hybrid`, answer run `20261116T224508Z-answers-measured-hybrid`); B's retriever is the agent's search tool. All are *unverified*.
 
-- **HD:** agentic retrieval improves `multi_endpoint` recall, at the cost of more model calls per question.
+Fixed settings: a LangGraph graph with plan, search, judge and answer steps. The search tool is the architecture B retriever (unchanged settings), returning its top 5 per query; the agent may search at most 3 times per question. The answer step uses the same answer contract, refusal rules, model, temperature 0 and three repetitions as A–C; its context is every chunk the agent retrieved, without duplicates, in first-retrieved order, capped at 10 chunks. Model calls per question are between 3 and 5.
+
+Because the agent chooses its own queries, its retrieval can differ between repetitions; each attempt is scored on the context it actually collected.
+
+- **HD1:** on the `multi_endpoint` questions (4 questions × 3 repetitions), the collected context contains a relevant chunk for every labelled source in at least 9 of 12 attempts (architecture B's top 5: 3 of 12).
+- **HD2:** correctness over answerable attempts is at least 80/102 (architecture B: 78/102).
+- **HD3:** correct refusals on unanswerable attempts are at least 17/18 (architecture B: 18/18).
+
+Reported without a criterion: model calls and searches per question (mean and maximum), tokens, latency per stage and estimated cost.
 
 ## 9. Limitations
 
