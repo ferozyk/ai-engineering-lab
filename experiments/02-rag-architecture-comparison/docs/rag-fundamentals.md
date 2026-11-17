@@ -141,13 +141,15 @@ Preview for architecture C. A first-stage retriever compares vectors that were c
 
 It is slow because it needs one model pass per candidate, so it is applied only to the shortlist the first stage returns. That is also its limit: it can only re-order the candidates it is given. A chunk that the first stage did not return is never scored, so reranking cannot recover it.
 
-## 14. Agentic retrieval
+## 14. Agentic RAG
 
-Preview for architecture D. A single retrieval pass assumes one search finds everything. Some questions need several, such as "which calls do I need to download a statement starting from a customer ID?".
+A single retrieval pass assumes one search finds everything. Some questions need several, such as "which calls do I need to download a statement starting from a customer ID?": the facts live in different parts of the documentation, and one query rarely matches all of them.
 
-An agentic approach loops: plan what to look for, search, check whether the evidence is enough, then search again or answer. It can handle multi-step questions that one search cannot.
+An *agent loop* adds decisions around the search. A model first plans which searches to run, the searches run, a model then checks whether the collected excerpts are enough, and, if they are not, proposes a new query and the loop repeats, up to a fixed limit. Only then is the answer written from everything collected. In architecture D the plan, the check and the answer are separate model calls, and the search tool is the architecture B retriever.
 
-The cost is more model calls per question, which means more latency and more tokens. Whether that is worth it is what the experiment measures.
+It costs more than a single pass because every step the model decides is a model call. A question that needs no refinement still pays for a plan, a check and an answer (three calls); each extra search adds another check. More calls mean more latency, more tokens and more requests against a rate limit, and each call is another place where a request can fail.
+
+Its retrieval is not deterministic in the way A to C are. For a given query the search tool returns the same chunks every time, but the queries themselves are written by a model. Two runs of the same question can therefore search differently and collect different context, so each attempt is judged on the context it actually collected rather than on a fixed top K. Whether the extra calls are worth it is what the experiment measures.
 
 ## 15. Glossary
 

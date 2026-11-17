@@ -35,8 +35,15 @@ from ai_lab.llm import (
     OpenRouterClient,
     OpenRouterError,
 )
+from rag_experiment.agent.fake import FakeAgentChatModel
+from rag_experiment.agent.graph import AgentGraph
+from rag_experiment.agent.prompts import (
+    AGENT_PROMPT_VERSION,
+    agent_prompt_hash,
+    check_agent_prompt_version,
+)
 from rag_experiment.config import ConfigError, ExperimentConfig
-from rag_experiment.corpus import Corpus, load_manifest
+from rag_experiment.corpus import Corpus, load_corpus, load_manifest
 from rag_experiment.embeddings.provider import SentenceTransformerProvider
 from rag_experiment.evaluation import charts
 from rag_experiment.evaluation.answer_analysis import AnswerSummary, summarise_answers
@@ -44,18 +51,22 @@ from rag_experiment.evaluation.answer_metrics import corpus_vocabulary
 from rag_experiment.evaluation.answer_report import render_answer_report, write_processed
 from rag_experiment.evaluation.answer_run import (
     AnswerRunMetadata,
+    PlannedAttempt,
     RunInputs,
     RunOutcome,
     RunPaths,
     completed_attempts,
+    failed_requests,
     find_run,
     latest_by_attempt,
     load_records,
     make_answer_run_id,
     plan_attempts,
+    run_agent_attempts,
     run_attempts,
     write_json,
 )
+from rag_experiment.evaluation.coverage import CoverageContext
 from rag_experiment.evaluation.dataset import Question, load_questions, validate_question_set
 from rag_experiment.evaluation.facts import corpus_header_names
 from rag_experiment.evaluation.hypotheses import apply_answer_verdicts
@@ -69,8 +80,8 @@ from rag_experiment.generation.prompts import (
     prompt_hash,
 )
 from rag_experiment.generation.provider import Generator
-from rag_experiment.ingestion.chunker import Chunk
-from rag_experiment.retrieval.base import RetrievalResult, RetrievedChunk
+from rag_experiment.ingestion.chunker import Chunk, chunk_corpus
+from rag_experiment.retrieval.base import RetrievalResult, RetrievedChunk, Retriever
 from rag_experiment.retrieval.store import collection_name, open_local_store
 
 EXTRA_PACKAGES = ("openai", "httpx", "matplotlib")
@@ -79,6 +90,8 @@ SMOKE_PROMPT = "Reply with the word OK."
 SMOKE_MAX_TOKENS = 256
 CHARS_PER_TOKEN = 4
 CONTEXT_MARGIN = 1.3
+AGENTIC = "agentic"  # the retriever name of architecture D
+MIN_AGENT_CALLS = 3  # plan + one judge + answer
 
 
 class RunError(Exception):
@@ -99,6 +112,7 @@ class PreparedRetrieval:
     collection: str
     deterministic: bool
     reranker: tuple[str, str] | None = None  # (model id, revision); rerank runs only
+    search: Retriever | None = None  # the agent's search tool; agentic runs only (results is empty)
 
 
 @dataclass
@@ -167,6 +181,24 @@ def _one_line(text: str) -> str:
     return " ".join(text.split())
 
 
+def coverage_context(config: ExperimentConfig, chunks: Sequence[Chunk]) -> CoverageContext:
+    """The labelled questions of both sets and the chunks, for source coverage."""
+    questions: dict[str, Question] = {}
+    for path in (config.questions_dev, config.questions_measured):
+        for question in load_questions(path):
+            questions[question.id] = question
+    return CoverageContext(questions, chunks)
+
+
+def agent_metadata(config: ExperimentConfig) -> dict[str, object]:
+    """The ``agent`` block of an agentic run: prompt version and hash, loop limits, search tool."""
+    return {
+        **config.agent.model_dump(mode="json"),
+        "prompt_hash": agent_prompt_hash(),
+        "search_tool": {"retriever": "hybrid", **config.hybrid.model_dump(mode="json")},
+    }
+
+
 # ------------------------------------------------------------------------------ metadata
 
 
@@ -213,13 +245,16 @@ def build_run_metadata(
     records = load_records(paths.answers)
     latest = latest_by_attempt(records)
     infra = [r for r in records if r.outcome == "infra_error"]
-    ok = [r for r in records if r.outcome != "infra_error"]
+    agentic = retrieval.retriever_name == AGENTIC
     data = base.model_dump()
     if git_at_start is not None:
         data.update(git_sha=git_at_start[0], git_dirty=git_at_start[1])
     data.update(
         kind="answers",
-        package_versions={**base.package_versions, **package_versions(EXTRA_PACKAGES)},
+        package_versions={
+            **base.package_versions,
+            **package_versions((*EXTRA_PACKAGES, *(("langgraph",) if agentic else ()))),
+        },
     )
     gen = config.generation
     return AnswerRunMetadata(
@@ -236,7 +271,7 @@ def build_run_metadata(
         question_ids=list(question_ids),
         is_canary=is_canary,
         requests_sent=sum(r.attempts for r in records),
-        failed_requests=sum(r.attempts for r in infra) + sum(max(0, r.attempts - 1) for r in ok),
+        failed_requests=sum(failed_requests(r) for r in records),
         infra_errors=len(infra),
         attempts_planned=planned,
         attempts_completed=sum(1 for r in latest.values() if r.outcome != "infra_error"),
@@ -248,6 +283,7 @@ def build_run_metadata(
         ),
         halted=outcome.halted if outcome else False,
         halt_reason=outcome.halt_reason if outcome else None,
+        agent=agent_metadata(config) if agentic else None,
     )
 
 
@@ -261,21 +297,26 @@ def write_outputs(
     results_base: Path,
     retrieval_run: str | None,
     baseline_dir: Path,
+    coverage: CoverageContext | None = None,
 ) -> tuple[AnswerSummary, list[str]]:
     """Summary, CSV, charts and report from the raw files. Makes no model request."""
     records = load_records(paths.answers)
     summary = summarise_answers(
         records, questions, question_set=metadata.question_set, pricing=metadata.pricing
     )
-    summary = apply_answer_verdicts(summary, metadata.retriever, baseline_dir)
+    summary = apply_answer_verdicts(summary, metadata.retriever, baseline_dir, coverage)
     write_processed(paths.processed, summary, records)
     notes: list[str] = []
     retrieval_summary: RetrievalSummary | None = None
     note = ""
-    run_id = retrieval_run or find_retrieval_run(
-        results_base, metadata.question_set, metadata.retriever
-    )
-    if run_id is None:
+    run_id = None
+    if metadata.retriever != AGENTIC:  # the agent's retrieval is measured inside the answer run
+        run_id = retrieval_run or find_retrieval_run(
+            results_base, metadata.question_set, metadata.retriever
+        )
+    if metadata.retriever == AGENTIC:
+        notes.append("agentic retrieval is measured inside the answer run: no Hit@K chart")
+    elif run_id is None:
         notes.append("no retrieval run found: the Hit@K chart was skipped")
     else:
         retrieval_summary, retrieval_simulated = load_retrieval_summary(results_base, run_id)
@@ -317,6 +358,13 @@ def summary_lines(summary: AnswerSummary, paths: RunPaths) -> list[str]:
     if ref.value is not None:
         lines.append(
             f"correct refusal (unanswerable): {ref.numerator}/{ref.denominator} = {ref.value:.3f}"
+        )
+    if summary.agent is not None:
+        a = summary.agent
+        lines.append(
+            f"agent: model calls per attempt mean {a.model_calls.mean:.2f} "
+            f"max {a.model_calls.max}; searches per attempt mean {a.searches.mean:.2f} "
+            f"max {a.searches.max}"
         )
     lines += [f"{v.hypothesis}: {v.verdict} {v.evidence}".rstrip() for v in summary.verdicts]
     lines += [
@@ -387,13 +435,18 @@ async def _execute(
     if fake:
         setup = Setup("simulated-oracle", "simulated", simulated_pricing(), None)
         budget = RequestBudget(cap)
-        chat_fake = FakeChatModel(
-            all_questions, retrieval.chunks, before_request=_budget_hook(budget)
+        chat_fake = (
+            FakeAgentChatModel(all_questions, retrieval.chunks, before_request=_budget_hook(budget))
+            if retrieval.retriever_name == AGENTIC
+            else FakeChatModel(all_questions, retrieval.chunks, before_request=_budget_hook(budget))
         )
         on_ready(setup)
-        outcome = await run_attempts(
+        outcome = await _run(
+            config,
+            retrieval,
             inputs,
-            Generator(chat_fake, simulated=True),
+            chat_fake,
+            True,
             plan,
             skip,
             budget,
@@ -431,8 +484,8 @@ async def _execute(
         chat = _build_real_chat(settings, config, model_id, budget)
         on_ready(setup)
         try:
-            outcome = await run_attempts(
-                inputs, Generator(chat), plan, skip, budget, None, progress
+            outcome = await _run(
+                config, retrieval, inputs, chat, False, plan, skip, budget, None, progress
             )
         finally:
             try:
@@ -440,6 +493,29 @@ async def _execute(
             except OpenRouterError:
                 key_after = None
     return outcome, key_after, setup
+
+
+async def _run(
+    config: ExperimentConfig,
+    retrieval: PreparedRetrieval,
+    inputs: RunInputs,
+    chat: ChatModel,
+    simulated: bool,
+    plan: Sequence[PlannedAttempt],
+    skip: set[str],
+    budget: RequestBudget,
+    on_attempt: Callable[[str], None] | None,
+    progress: Callable[[str], None],
+) -> RunOutcome:
+    """The run loop of the architecture: the agent graph for agentic runs, else one call."""
+    if retrieval.retriever_name == AGENTIC:
+        if retrieval.search is None:
+            raise RunError("an agentic run needs its search tool")
+        graph = AgentGraph(chat, retrieval.search, config.agent, simulated=simulated)
+        return await run_agent_attempts(inputs, graph, plan, skip, budget, on_attempt, progress)
+    return await run_attempts(
+        inputs, Generator(chat, simulated=simulated), plan, skip, budget, on_attempt, progress
+    )
 
 
 def _budget_hook(budget: RequestBudget) -> Callable[[], Awaitable[None]]:
@@ -468,6 +544,8 @@ def execute_run(
 ) -> int:
     """Run (or resume) an answer run, then write the processed files, charts and report."""
     check_prompt_version(config.generation.prompt_version)
+    if retrieval.retriever_name == AGENTIC:
+        check_agent_prompt_version(config.agent.prompt_version)
     started_at = datetime.now(UTC)
     git_at_start = git_state(config.root)
     earlier: AnswerRunMetadata | None = None
@@ -565,7 +643,13 @@ def execute_run(
     )
     write_json(paths.metadata, metadata)
     summary, notes = write_outputs(
-        paths, metadata, questions, results_base, retrieval_run, config.results_dir
+        paths,
+        metadata,
+        questions,
+        results_base,
+        retrieval_run,
+        config.results_dir,
+        coverage_context(config, retrieval.chunks),
     )
     print()
     print("\n".join(summary_lines(summary, paths)))
@@ -588,8 +672,15 @@ def analyse_run(
     paths = find_run(results_base, run_id)
     metadata = AnswerRunMetadata.model_validate_json(paths.metadata.read_text(encoding="utf-8"))
     questions = select_questions(config, metadata.question_set, metadata.question_ids)
+    chunks = chunk_corpus(load_corpus(config.corpus_dir), config.chunking)
     summary, notes = write_outputs(
-        paths, metadata, questions, results_base, retrieval_run, config.results_dir
+        paths,
+        metadata,
+        questions,
+        results_base,
+        retrieval_run,
+        config.results_dir,
+        coverage_context(config, chunks),
     )
     print("\n".join(summary_lines(summary, paths)))
     for note in notes:
@@ -700,7 +791,11 @@ def offline_checks(
     results: list[CheckResult] = []
     try:
         check_prompt_version(config.generation.prompt_version)
-        results.append(CheckResult("config", "pass", f"valid; prompt version {PROMPT_VERSION}"))
+        detail = f"valid; prompt version {PROMPT_VERSION}"
+        if retriever == AGENTIC:
+            check_agent_prompt_version(config.agent.prompt_version)
+            detail += f"; agent prompt version {AGENT_PROMPT_VERSION}"
+        results.append(CheckResult("config", "pass", detail))
     except ValueError as exc:
         results.append(CheckResult("config", "fail", _one_line(str(exc))))
     if settings.llm_model is None:
@@ -735,8 +830,21 @@ def offline_checks(
             CheckResult("questions", "pass", f"valid; measured checksum {digest[:12]} is frozen")
         )
 
-    run_id = retrieval_run or find_retrieval_run(results_base, "measured", retriever)
-    if run_id is None:
+    run_id = (
+        None
+        if retriever == AGENTIC
+        else (retrieval_run or find_retrieval_run(results_base, "measured", retriever))
+    )
+    if retriever == AGENTIC:
+        results.append(
+            CheckResult(
+                "prompt_size",
+                "pass",
+                "not estimated: the agent chooses its context at run time "
+                f"(at most {config.agent.max_context_chunks} chunks)",
+            )
+        )
+    elif run_id is None:
         results.append(
             CheckResult("prompt_size", "warn", "no committed retrieval run for this retriever")
         )
@@ -754,6 +862,20 @@ def offline_checks(
     canary = len(config.run.canary_question_ids)
     measured = len(load_questions(config.questions_measured)) * config.run.repetitions
     cap = config.run.daily_request_cap
+    if retriever == AGENTIC:
+        top = config.agent.max_searches + 2  # plan + one judge per search + answer
+        low = (canary + measured) * MIN_AGENT_CALLS
+        high = (canary + measured) * top
+        results.append(
+            CheckResult(
+                "request_plan",
+                "pass" if high <= cap else "fail",
+                f"canary {canary} + measured {measured} attempts x {MIN_AGENT_CALLS} to {top} "
+                f"model calls = {low} (minimum) to {high} (maximum) requests, before retries; "
+                f"maximum {high} vs daily cap {cap}",
+            )
+        )
+        return results
     status = "pass" if canary + measured <= cap else "fail"
     results.append(
         CheckResult(

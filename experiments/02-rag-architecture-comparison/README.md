@@ -1,6 +1,6 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** Stage 4 in progress (architecture C)
+> **Status:** Stage 5 in progress (architecture D)
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-17
 
@@ -109,7 +109,7 @@ Each architecture adds one piece to the previous one.
 | A. Baseline | Dense vector retrieval over structure-aware chunks | Built; retrieval and answers measured |
 | B. Hybrid | BM25 keyword search combined with dense search by Reciprocal Rank Fusion | Built; retrieval and answers measured |
 | C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Built; retrieval and answers measured |
-| D. Agentic | A LangGraph agent that plans, searches, checks the evidence and searches again | Later milestone |
+| D. Agentic | A LangGraph agent that plans, searches, checks the evidence and searches again | Built; answers pending |
 
 These are composable capabilities, not exclusive categories: architecture D can use C's retriever as its tool.
 
@@ -122,7 +122,7 @@ These are composable capabilities, not exclusive categories: architecture D can 
 | Generation | OpenRouter through the `openai` SDK; model set by `LLM_MODEL` | Same access path as experiment 01; never hardcoded | A |
 | Keyword search | Hand-written BM25 (about 40 lines) | Small enough to read end to end | B |
 | Reranker | `BAAI/bge-reranker-v2-m3` cross-encoder via sentence-transformers (`CrossEncoder`), revision pinned in `configs/experiment.yaml`; about 2.3 GB downloaded once | Same runtime as the embedding model; reads the question and each candidate chunk together | C |
-| Agent orchestration | LangGraph | Only when the agentic milestone needs it | D |
+| Agent orchestration | LangGraph (`langgraph` 1.2.22), using only `StateGraph`, `START` and `END` | Makes the loop (plan, search, judge, answer, with a bounded number of searches) an explicit graph. The model is still called through the shared chat client, so the rate limiter, request budget, retries, token accounting and pricing are the same as in A to C; LangChain chat models and tools, checkpointers and LangSmith are not used | D |
 
 Size implications (the model card figures are listed first; the measured installation and weights sizes are in [architecture.md](docs/architecture.md) section 6):
 
@@ -185,7 +185,7 @@ Each architecture stops for review before the next begins.
 
 ## 16. How to Run
 
-Corpus, question sets, chunking, embeddings, the local Qdrant index, dense retrieval and the generation pipeline exist. The generation pipeline has been exercised only with a deterministic fake model (a simulated oracle); no real model has answered a question yet, and no answer results exist. Everything below runs without an API key unless noted.
+Corpus, question sets, chunking, embeddings, the local Qdrant index, the four retrievers (dense, BM25, hybrid, hybrid with reranking) and the generation pipeline exist; architectures A to C have measured results under `results/`. Architecture D (the agent loop) is built and has only been exercised with a deterministic fake model (a simulated oracle); no real model has run it and no D answer results exist. Everything below runs without an API key unless noted.
 
 ```bash
 make install
@@ -201,8 +201,11 @@ uv run rag-experiment evaluate-retrieval --set measured --retriever rerank   # a
 uv run rag-experiment evaluate-retrieval --set measured --retriever bm25     # diagnostic, no model
 uv run rag-experiment compare --retrieval RUN_ID RUN_ID --out NAME           # side by side
 uv run rag-experiment preflight                   # offline checks, no request
+uv run rag-experiment preflight --retriever agentic   # architecture D: offline checks and request range
 uv run rag-experiment canary --fake               # simulated canary (3 questions)
 uv run rag-experiment run --set dev --fake        # simulated dev run (15 x 3)
+uv run rag-experiment canary --retriever agentic --fake   # simulated architecture D canary
+uv run rag-experiment run --set measured --retriever agentic --fake   # simulated architecture D run
 uv run rag-experiment analyse RUN_ID              # rebuild summary, report and charts
 make test-models                                  # tests that load the real embedding model
 ```
@@ -214,6 +217,7 @@ make test-models                                  # tests that load the real emb
 - `retrieve` prints the top chunks for a question; `--question-id` takes the text from a question set and marks the relevant chunks, `--show` prints the top chunk.
 - `evaluate-retrieval` retrieves every question of a set twice (determinism check) and writes the run under `results/raw`, `results/processed` and `results/reports`.
 - `--retriever dense|bm25|hybrid|rerank` (default `dense`) selects the retrieval method on `retrieve`, `evaluate-retrieval`, `preflight`, `canary` and `run`. `hybrid` is BM25 plus dense search fused by Reciprocal Rank Fusion; `rerank` re-orders the hybrid top 30 with a local cross-encoder (the reranker is loaded on first use; `--fake-embeddings` and `--fake` use a deterministic stand-in for both models); `bm25` needs no embedding model and no index and is a diagnostic with no pre-registered hypotheses. Run ids carry the retriever name (for example `...-retrieval-measured-hybrid`); `analyse` and the default chart inputs use the committed retrieval run of the same retriever.
+- `--retriever agentic` (architecture D) is accepted by `run`, `canary` and `preflight` only: the agent searches during the answer run with the hybrid retriever as its tool, so `retrieve` and `evaluate-retrieval` reject it (exit code 2). A real agentic attempt makes between 3 and 5 model calls (plan, one to three judge calls, answer) and 1 to 3 searches. A measured run is 120 attempts, so it sends 360 to 600 requests, plus 9 to 15 for the canary; `preflight --retriever agentic` prints the range before retries (369 to 615) against the daily cap of 900. If the provider's free daily quota is short, the run halts cleanly and can be continued the next day with `run --resume RUN_ID`. Run ids end in `-answers-measured-agentic`; the report adds an "Agent behaviour" section and the records, summary and CSV carry the agent fields (they appear for agentic runs only).
 - `compare --retrieval RUN_ID [RUN_ID ...] [--answers RUN_ID ...] [--out NAME]` reads committed summaries only (no request, no model) and writes `results/processed/comparisons/<name>/comparison.json` and `results/reports/comparisons/<name>/comparison.md`: overall and per-category retrieval metrics, answer metrics, a per-question table and each run's verdict table. It contains numbers only, no interpretation.
 - `--fake-embeddings` on these commands uses a deterministic stand-in embedder for a dry run; its output goes to `results/dry-run/` and is not a measurement.
 - `preflight` checks the configuration, the prompt version, that `LLM_MODEL` and `OPENROUTER_API_KEY` are set (it prints "set", never the value), that the local index is complete, that the question sets are valid and the measured set matches its frozen checksum, the largest prompt, and the planned request count against the daily cap. `preflight --live` also looks the model up, resolves a price, reads the key's free-model counters and sends one tiny completion (it prints "live checks will send 1 model request" first).

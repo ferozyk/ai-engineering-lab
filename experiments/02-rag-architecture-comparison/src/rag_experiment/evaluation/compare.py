@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from rag_experiment.evaluation.answer_analysis import AnswerSummary
+from rag_experiment.evaluation.answer_run import load_records
+from rag_experiment.evaluation.coverage import CoverageContext, full_coverage
 from rag_experiment.evaluation.retrieval_metrics import (
     DIAGNOSTIC_TEXT,
     KS,
@@ -47,6 +49,9 @@ class AnswerRun:
     run_id: str
     retriever: str
     summary: AnswerSummary
+    # ``(attempts covering every labelled source, multi_endpoint answerable attempts)``, computed
+    # from the raw records with the shared coverage function; None when no context was given.
+    multi_endpoint_coverage: tuple[int, int] | None = None
 
 
 def _read(path: Path) -> str:
@@ -79,13 +84,20 @@ def load_retrieval_run(results_base: Path, run_id: str) -> RetrievalRun:
     )
 
 
-def load_answer_run(results_base: Path, run_id: str) -> AnswerRun:
-    """Load a committed answer run (not a dry run)."""
+def load_answer_run(
+    results_base: Path, run_id: str, coverage: CoverageContext | None = None
+) -> AnswerRun:
+    """Load a committed answer run (not a dry run). ``coverage`` adds the source-coverage count."""
     meta = json.loads(_read(results_base / "raw" / run_id / "run_metadata.json"))
     summary = AnswerSummary.model_validate_json(
         _read(results_base / "processed" / run_id / "answer_summary.json")
     )
-    return AnswerRun(run_id, meta["retriever"], summary)
+    counts = (
+        None
+        if coverage is None
+        else full_coverage(load_records(results_base / "raw" / run_id / "answers.jsonl"), coverage)
+    )
+    return AnswerRun(run_id, meta["retriever"], summary, counts)
 
 
 # ------------------------------------------------------------------------------ formatting
@@ -99,6 +111,19 @@ def _ratio(value: RatioValue) -> str:
 
 def _rank(value: int | None) -> str:
     return "not in top 10" if value is None else str(value)
+
+
+def _mean_max(stats: AnswerSummary) -> str:
+    """Model calls per attempt. Architectures A to C make one call per attempt by construction."""
+    if stats.agent is None:
+        return "1.00 / 1"
+    return f"{stats.agent.model_calls.mean:.2f} / {stats.agent.model_calls.max}"
+
+
+def _coverage(run: AnswerRun) -> str:
+    if run.multi_endpoint_coverage is None:
+        return "-"
+    return f"{run.multi_endpoint_coverage[0]}/{run.multi_endpoint_coverage[1]} attempts"
 
 
 def _pool_rank(value: int | None) -> str:
@@ -167,6 +192,23 @@ def build_comparison(
             "generation_p50_ms": s2.latency_ms["generation"].p50,
             "generation_p95_ms": s2.latency_ms["generation"].p95,
             "rerank_p50_ms": s2.latency_ms["rerank"].p50 if "rerank" in s2.latency_ms else None,
+            "agent_p50_ms": s2.latency_ms["agent"].p50 if "agent" in s2.latency_ms else None,
+            "model_calls_mean": 1.0 if s2.agent is None else s2.agent.model_calls.mean,
+            "model_calls_max": 1 if s2.agent is None else s2.agent.model_calls.max,
+            "searches_mean": 1.0 if s2.agent is None else s2.agent.searches.mean,
+            "multi_endpoint_full_coverage": (
+                None
+                if a.multi_endpoint_coverage is None
+                else {
+                    "numerator": a.multi_endpoint_coverage[0],
+                    "denominator": a.multi_endpoint_coverage[1],
+                }
+            ),
+            "sources_covered_by_question": (
+                None
+                if s2.agent is None
+                else {q: list(v) for q, v in s2.agent.sources_covered_by_question.items()}
+            ),
             "total_p50_ms": s2.latency_ms["total"].p50,
             "mean_total_tokens": s2.tokens["total"].mean,
             "estimated_cost_per_1000_questions_usd": s2.cost.per_1000_questions_usd,
@@ -320,8 +362,32 @@ def render_comparison(
             ]
         )
         arows.append(
+            [
+                "agent p50 (ms)",
+                *(
+                    f"{a.summary.latency_ms['agent'].p50:.0f}"
+                    if "agent" in a.summary.latency_ms
+                    else "-"
+                    for a in answers
+                ),
+            ]
+        )
+        arows.append(
             ["total p50 (ms)", *(f"{a.summary.latency_ms['total'].p50:.0f}" for a in answers)]
         )
+        arows.append(
+            ["model calls per attempt (mean / max)", *(_mean_max(a.summary) for a in answers)]
+        )
+        arows.append(
+            [
+                "searches per attempt (mean)",
+                *(
+                    "1.00" if a.summary.agent is None else f"{a.summary.agent.searches.mean:.2f}"
+                    for a in answers
+                ),
+            ]
+        )
+        arows.append(["full source coverage, multi_endpoint", *(_coverage(a) for a in answers)])
         arows.append(
             ["mean total tokens", *(f"{a.summary.tokens['total'].mean:.0f}" for a in answers)]
         )
@@ -335,12 +401,14 @@ def render_comparison(
     if retrieval:
         first = retrieval[0]
         pooled = [r for r in retrieval if r.pool_first_relevant_rank]
+        agentic = [a for a in answers if a.summary.agent is not None]
         header = [
             "question",
             "category",
             *(f"first relevant rank: {r.retriever}" for r in retrieval),
             *(f"candidate rank: {r.retriever}" for r in pooled),
             *(f"correct: {a.retriever} ({a.run_id})" for a in answers),
+            *(f"sources covered (r1/r2/r3): {a.retriever}" for a in agentic),
         ]
         qrows: list[list[str]] = []
         for qid in first.first_relevant_rank:
@@ -352,6 +420,12 @@ def render_comparison(
             for a in answers:
                 match = [q for q in a.summary.per_question if q.question_id == qid]
                 row.append(f"{match[0].correct}/{match[0].attempts}" if match else "n/a")
+            for a in agentic:
+                agent = a.summary.agent
+                assert agent is not None
+                covered = agent.sources_covered_by_question.get(qid)
+                total = agent.n_sources_by_question.get(qid)
+                row.append("-" if covered is None else " / ".join(f"{c}/{total}" for c in covered))
             qrows.append(row)
         out += ["## Per question", "", *_table(header, qrows), ""]
     out += ["## Verdicts", ""]
@@ -377,13 +451,14 @@ def run_compare(
     retrieval_ids: Sequence[str],
     answer_ids: Sequence[str],
     name: str | None,
+    coverage: CoverageContext | None = None,
 ) -> dict[str, Path]:
     """Load the runs, write the JSON and the Markdown report, return their paths."""
     name = name or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     if not _NAME.match(name):
         raise ValueError(f"invalid comparison name {name!r}")
     retrieval = [load_retrieval_run(results_base, i) for i in retrieval_ids]
-    answers = [load_answer_run(results_base, i) for i in answer_ids]
+    answers = [load_answer_run(results_base, i, coverage) for i in answer_ids]
     data = build_comparison(retrieval, answers)
     json_path = results_base / "processed" / "comparisons" / name / "comparison.json"
     report_path = results_base / "reports" / "comparisons" / name / "comparison.md"

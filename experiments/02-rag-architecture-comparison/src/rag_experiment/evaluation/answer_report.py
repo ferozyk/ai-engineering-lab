@@ -4,7 +4,12 @@ import csv
 from collections.abc import Sequence
 from pathlib import Path
 
-from rag_experiment.evaluation.answer_analysis import AnswerGroup, AnswerSummary
+from rag_experiment.evaluation.answer_analysis import (
+    AgentSummary,
+    AnswerGroup,
+    AnswerSummary,
+    CountStats,
+)
 from rag_experiment.evaluation.answer_run import (
     AnswerRecord,
     AnswerRunMetadata,
@@ -53,6 +58,74 @@ def _results_table(summary: AnswerSummary) -> list[str]:
     return lines
 
 
+def _code(text: str) -> str:
+    """A Markdown code span that survives backticks inside the text."""
+    fence = "``" if "`" in text else "`"
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
+def _distribution(stats: CountStats, expected: Sequence[int]) -> list[str]:
+    values = sorted({*expected, *(int(v) for v in stats.distribution)})
+    lines = ["| value | attempts |", "|---|---|"]
+    lines += [f"| {v} | {stats.distribution.get(str(v), 0)} |" for v in values]
+    return lines
+
+
+def agent_section(agent: AgentSummary) -> list[str]:
+    """The "Agent behaviour" section (agentic runs only). Numbers only."""
+    calls, searches = agent.model_calls, agent.searches
+    first = agent.first_judge_enough
+    out = [
+        "## Agent behaviour",
+        "",
+        f"Scored attempts: {agent.n_attempts}. Retrieval is chosen by the model, so it can differ "
+        "between repetitions; each attempt is scored on the context it collected.",
+        "",
+        "| per attempt | mean | p50 | max |",
+        "|---|---|---|---|",
+        f"| model calls | {calls.mean:.2f} | {calls.p50:.1f} | {calls.max} |",
+        f"| searches | {searches.mean:.2f} | {searches.p50:.1f} | {searches.max} |",
+        f"| context chunks | {agent.context_chunks_mean:.2f} | - | {agent.context_chunks_max} |",
+        "",
+        "Model calls per attempt:",
+        "",
+        *_distribution(calls, (3, 4, 5)),
+        "",
+        "Searches per attempt:",
+        "",
+        *_distribution(searches, (1, 2, 3)),
+        "",
+        "| planner and judge | value |",
+        "|---|---|",
+        f"| planner reported needs_retrieval = false | {agent.needs_retrieval_false} |",
+        f"| plan replies that could not be used (fell back to the question) | "
+        f"{agent.plan_parse_errors} |",
+        f"| judge replies that could not be parsed (counted as enough) | "
+        f"{agent.judge_parse_errors} |",
+        f"| first judge decision was enough | {_ratio(first)} |",
+        "",
+        "Attempts whose collected context covers every labelled source, by category "
+        "(answerable attempts):",
+        "",
+        "| category | full source coverage |",
+        "|---|---|",
+    ]
+    out += [
+        f"| {c} | {r.numerator}/{r.denominator} attempts |"
+        for c, r in agent.full_coverage_by_category.items()
+    ]
+    out += ["", "Queries run in repetition 1 for each multi_endpoint question (model output):", ""]
+    if agent.multi_endpoint_queries:
+        for qid, queries in agent.multi_endpoint_queries.items():
+            joined = ", ".join(_code(q) for q in queries) or "none"
+            out.append(f"- {qid}: {joined}")
+    else:
+        out.append("- none")
+    out.append("")
+    return out
+
+
 def render_answer_report(
     metadata: AnswerRunMetadata,
     summary: AnswerSummary,
@@ -74,10 +147,16 @@ def render_answer_report(
         f"served by models {metadata.models_served or 'n/a'}, providers "
         f"{metadata.providers_served or 'n/a'}",
         f"- Prompt: version {metadata.prompt_version}, hash `{metadata.prompt_hash}`",
+        *([f"- Agent: {metadata.agent}"] if metadata.agent is not None else []),
         f"- Generation settings: {metadata.generation}",
         f"- Run settings: {metadata.run}",
-        f"- Retrieval: {metadata.retriever}, context = top {metadata.retrieval['top_k_generation']}"
-        f" chunks; embedding `{emb.model_id}` revision `{emb.revision}` ({emb.device}); "
+        f"- Retrieval: {metadata.retriever}, context = "
+        + (
+            f"up to {metadata.agent['max_context_chunks']}"
+            if metadata.agent is not None
+            else f"top {metadata.retrieval['top_k_generation']}"
+        )
+        + f" chunks; embedding `{emb.model_id}` revision `{emb.revision}` ({emb.device}); "
         f"collection `{metadata.collection}`; retrieval deterministic: {metadata.deterministic}",
         f"- Run timing: started {metadata.started_at:%Y-%m-%d %H:%M:%S} UTC, "
         f"finished {metadata.finished_at:%Y-%m-%d %H:%M:%S} UTC",
@@ -153,14 +232,16 @@ def render_answer_report(
             f"{'yes' if q.repetitions_agree else 'no'} | "
             f"{', '.join(f'`{f}`' for f in q.missing_key_facts) or '-'} |"
         )
+    out += ["", "For an unanswerable question 'correct' counts correct refusals.", ""]
+    if summary.agent is not None:
+        out += agent_section(summary.agent)
     out += [
-        "",
-        "For an unanswerable question 'correct' counts correct refusals.",
-        "",
         "## Latency",
         "",
         "Qdrant local mode, in-process, exact search; CPU. Total = embed + search + "
-        f"{'rerank + ' if 'rerank' in summary.latency_ms else ''}generation, "
+        f"{'rerank + ' if 'rerank' in summary.latency_ms else ''}"
+        f"{'agent (planner and judge calls) + ' if 'agent' in summary.latency_ms else ''}"
+        "generation, "
         "without client-side throttling. With few attempts p95 rests on a handful of "
         "observations.",
         "",
@@ -220,6 +301,7 @@ def write_processed(
     csv_path = processed_dir / "answers_by_attempt.csv"
     write_json(summary_path, summary)
     reranked = any(r.rerank_ms > 0 for r in records)  # the column exists for rerank runs only
+    agentic = any(r.agentic for r in records)  # the agent columns exist for agentic runs only
     columns = [
         "attempt_id",
         "question_id",
@@ -239,12 +321,14 @@ def write_processed(
         "embed_ms",
         "search_ms",
         *(["rerank_ms"] if reranked else []),
+        *(["agent_ms"] if agentic else []),
         "generation_ms",
         "total_ms",
         "prompt_tokens",
         "completion_tokens",
         "total_tokens",
         "attempts",
+        *(["model_calls", "searches", "sources_covered", "n_sources"] if agentic else []),
         "error_kind",
     ]
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
@@ -270,6 +354,11 @@ def write_processed(
                 "embed_ms": round(r.embed_ms, 3),
                 "search_ms": round(r.search_ms, 3),
                 "rerank_ms": round(r.rerank_ms, 3),
+                "agent_ms": round(r.agent_ms, 3),
+                "model_calls": r.model_calls,
+                "searches": r.searches,
+                "sources_covered": r.sources_covered,
+                "n_sources": r.n_sources,
                 "generation_ms": round(r.generation_ms, 3),
                 "total_ms": round(r.total_ms, 3),
                 "prompt_tokens": r.usage.prompt_tokens,

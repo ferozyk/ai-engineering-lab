@@ -65,6 +65,8 @@ def _embedding_yaml(extra: str = "") -> str:
         "candidate_depth: 30}\n"
         "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
         "llm_seed: null, request_timeout_seconds: 30}\n"
+        "agent: {prompt_version: d-1.0, max_searches: 3, results_per_search: 5, "
+        "max_context_chunks: 10, max_planned_queries: 3}\n"
         "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
         "daily_request_cap: 900, canary_question_ids: [Q01]}\n"
         "pricing: {reference_label: null, reference_prompt_usd_per_million: null, "
@@ -189,3 +191,38 @@ def test_rerank_config_is_loaded(tmp_path: Path, experiment_config: ExperimentCo
 def test_invalid_rerank_settings(tmp_path: Path, old: str, new: str) -> None:
     with pytest.raises(ConfigError):
         load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))
+
+
+def test_agent_config_is_loaded(tmp_path: Path, experiment_config: ExperimentConfig) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert config.agent.prompt_version == "d-1.0" and config.agent.max_searches == 3
+    agent = experiment_config.agent  # the frozen settings of architecture D
+    assert (agent.prompt_version, agent.max_searches, agent.results_per_search) == ("d-1.0", 3, 5)
+    assert (agent.max_context_chunks, agent.max_planned_queries) == (10, 3)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("max_searches: 3", "max_searches: 0"),
+        ("max_searches: 3", "max_searches: 2"),  # fewer searches than planned queries
+        ("results_per_search: 5", "results_per_search: 0"),
+        ("max_context_chunks: 10", "max_context_chunks: -1"),
+        ("max_planned_queries: 3", "max_planned_queries: 0"),
+        ("max_planned_queries: 3", "max_planned_queries: 3, extra: 1"),
+        ("prompt_version: d-1.0", "prompt_version: ''"),
+    ],
+)
+def test_invalid_agent_settings(tmp_path: Path, old: str, new: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))
+
+
+def test_missing_agent_section_is_rejected(tmp_path: Path) -> None:
+    text = "".join(
+        line
+        for line in _embedding_yaml().splitlines(keepends=True)
+        if not line.startswith("agent:")
+    )
+    with pytest.raises(ConfigError, match="agent"):
+        load_config(_write(tmp_path, text))

@@ -214,6 +214,7 @@ def chart_latency(summary: AnswerSummary, ctx: ChartContext, directory: Path) ->
         "embed": "Query embedding",
         "search": "Vector search",
         "rerank": "Reranking",
+        "agent": "Agent (plan + judge)",
         "generation": "Generation",
     }
     stages = tuple(stage for stage in names if stage in summary.latency_ms)

@@ -4,8 +4,9 @@
 stays in ``retrieval_metrics`` and ``answer_analysis`` and is only dispatched from here.
 ``hybrid`` (architecture B) has HB1 and HB2 (retrieval) and HB3 (answers), defined in
 ``docs/evaluation-methodology.md`` section 8. ``rerank`` (architecture C) has HC1 and HC2
-(retrieval) and HC3 (answers), defined in the same section. ``bm25`` is a diagnostic run with no
-hypotheses.
+(retrieval) and HC3 (answers), defined in the same section. ``agentic`` (architecture D) has HD1
+to HD3, all answer-run verdicts: its retrieval happens inside the answer run. ``bm25`` is a
+diagnostic run with no hypotheses.
 
 Architecture B's criteria quote architecture A's measured values, and C's quote B's. They are read
 from the committed files of the earlier architecture and checked against the numbers frozen in the
@@ -18,6 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rag_experiment.evaluation.answer_analysis import AnswerSummary
+from rag_experiment.evaluation.answer_run import load_records
+from rag_experiment.evaluation.coverage import CoverageContext, full_coverage
 from rag_experiment.evaluation.retrieval_metrics import (
     QuestionRetrieval,
     RetrievalSummary,
@@ -48,6 +51,17 @@ HC3_MIN, HC3_DENOMINATOR = 80, 102
 HC1_CRITERION = f"MRR (top 10) over answerable questions >= {HC1_MIN_MRR:.2f}"
 HC2_CRITERION = f"overall Hit@5 >= {HC2_MIN}/{HC2_DENOMINATOR}"
 HC3_CRITERION = f"correct answerable attempts >= {HC3_MIN}/{HC3_DENOMINATOR}"
+
+HD1_MIN, HD1_DENOMINATOR = 9, 12
+HD2_MIN, HD2_DENOMINATOR = 80, 102
+HD3_MIN, HD3_DENOMINATOR = 17, 18
+
+HD1_CRITERION = (
+    f"multi_endpoint attempts whose collected context covers every labelled source >= "
+    f"{HD1_MIN}/{HD1_DENOMINATOR}"
+)
+HD2_CRITERION = f"correct answerable attempts >= {HD2_MIN}/{HD2_DENOMINATOR}"
+HD3_CRITERION = f"correct refusals on unanswerable attempts >= {HD3_MIN}/{HD3_DENOMINATOR}"
 
 NOT_APPLICABLE_DEV = "not applicable (development set)"
 NOT_APPLICABLE_SIMULATED = "not applicable (simulated)"
@@ -136,6 +150,46 @@ def load_baseline_b(results_dir: Path) -> BaselineB:
     ):
         raise BaselineError(
             f"architecture B baseline {found} differs from the frozen values {FROZEN_BASELINE_B}"
+        )
+    return found
+
+
+@dataclass(frozen=True)
+class BaselineD:
+    """Architecture B's measured counts as ``(numerator, denominator)``."""
+
+    hd1: tuple[int, int]
+    hd2: tuple[int, int]
+    hd3: tuple[int, int]
+
+
+FROZEN_BASELINE_D = BaselineD(hd1=(3, 12), hd2=(78, 102), hd3=(18, 18))
+
+
+def load_baseline_d(results_dir: Path, coverage: CoverageContext) -> BaselineD:
+    """Read B's committed answer run and check it against the numbers frozen for HD1 to HD3.
+
+    HD1's baseline is computed from B's records with the same function that scores architecture D.
+    """
+    raw = results_dir / "raw" / BASELINE_B_ANSWER_RUN / "answers.jsonl"
+    processed = results_dir / "processed" / BASELINE_B_ANSWER_RUN / "answer_summary.json"
+    try:
+        records = load_records(raw)
+        summary = json.loads(processed.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise BaselineError(f"architecture B baseline file missing: {exc}") from exc
+    if not records:
+        raise BaselineError("architecture B baseline has no answer records")
+    correct = summary["overall"]["answerable"]
+    refusal = summary["guardrails"]["correct_refusal"]
+    found = BaselineD(
+        hd1=full_coverage(records, coverage),
+        hd2=(int(correct["numerator"]), int(correct["denominator"])),
+        hd3=(int(refusal["numerator"]), int(refusal["denominator"])),
+    )
+    if found != FROZEN_BASELINE_D:
+        raise BaselineError(
+            f"architecture B baseline {found} differs from the frozen values {FROZEN_BASELINE_D}"
         )
     return found
 
@@ -231,6 +285,67 @@ def hc3_verdict(
     return Verdict(hypothesis="HC3", criterion=HC3_CRITERION, verdict=verdict, evidence=evidence)
 
 
+def _count_verdict(
+    hypothesis: str,
+    criterion: str,
+    label: str,
+    counts: tuple[int, int],
+    minimum: int,
+    denominator: int,
+    applicability: str | None,
+    baseline: tuple[int, int],
+) -> Verdict:
+    """A verdict of the form "at least ``minimum`` of exactly ``denominator``"."""
+    numerator, found = counts
+    evidence = (
+        f"{label} {numerator}/{found} = {_rate(numerator, found)}; "
+        f"architecture B: {_pair(baseline)}"
+    )
+    if applicability is not None:
+        verdict = applicability
+    elif found != denominator:
+        verdict = "not testable"
+        evidence += f"; expected {denominator} attempts, found {found}"
+    else:
+        verdict = "supported" if numerator >= minimum else "not supported"
+    return Verdict(hypothesis=hypothesis, criterion=criterion, verdict=verdict, evidence=evidence)
+
+
+def hd1_verdict(counts: tuple[int, int], applicability: str | None, base: BaselineD) -> Verdict:
+    """HD1 from ``(full-coverage attempts, multi_endpoint answerable attempts)``."""
+    return _count_verdict(
+        "HD1",
+        HD1_CRITERION,
+        "full source coverage",
+        counts,
+        HD1_MIN,
+        HD1_DENOMINATOR,
+        applicability,
+        base.hd1,
+    )
+
+
+def hd2_verdict(counts: tuple[int, int], applicability: str | None, base: BaselineD) -> Verdict:
+    """HD2 from ``(correct answerable attempts, answerable attempts)``."""
+    return _count_verdict(
+        "HD2", HD2_CRITERION, "correct", counts, HD2_MIN, HD2_DENOMINATOR, applicability, base.hd2
+    )
+
+
+def hd3_verdict(counts: tuple[int, int], applicability: str | None, base: BaselineD) -> Verdict:
+    """HD3 from ``(correct refusals, unanswerable attempts)``."""
+    return _count_verdict(
+        "HD3",
+        HD3_CRITERION,
+        "correct refusals",
+        counts,
+        HD3_MIN,
+        HD3_DENOMINATOR,
+        applicability,
+        base.hd3,
+    )
+
+
 def hb3_verdict(
     numerator: int, denominator: int, applicability: str | None, base: Baseline
 ) -> Verdict:
@@ -288,7 +403,7 @@ _RETRIEVAL: dict[str, Callable[[Sequence[QuestionRetrieval], bool, Path], tuple[
 }
 
 
-_ANSWER_HYPOTHESES = frozenset({"hybrid", "rerank"})
+_ANSWER_HYPOTHESES = frozenset({"hybrid", "rerank", "agentic"})
 
 
 def has_hypotheses(retriever: str) -> bool:
@@ -313,9 +428,16 @@ def apply_retrieval_verdicts(
 
 
 def apply_answer_verdicts(
-    summary: AnswerSummary, retriever: str, results_dir: Path
+    summary: AnswerSummary,
+    retriever: str,
+    results_dir: Path,
+    coverage: CoverageContext | None = None,
 ) -> AnswerSummary:
-    """The answer summary with the retriever's own verdicts (dense: unchanged)."""
+    """The answer summary with the retriever's own verdicts (dense: unchanged).
+
+    ``coverage`` is needed for ``agentic``: HD1's baseline is computed from architecture B's
+    committed records.
+    """
     if retriever == "dense":
         return summary
     if retriever not in _ANSWER_HYPOTHESES:
@@ -326,6 +448,29 @@ def apply_answer_verdicts(
     elif summary.question_set != "measured":
         applicability = NOT_APPLICABLE_DEV
     ratio = summary.overall.answerable
+    if retriever == "agentic":
+        if coverage is None:
+            raise BaselineError("architecture D verdicts need the coverage context")
+        base = load_baseline_d(results_dir, coverage)
+        multi = (
+            summary.agent.full_coverage_by_category.get("multi_endpoint")
+            if summary.agent is not None
+            else None
+        )
+        refusal = summary.guardrails.correct_refusal
+        return summary.model_copy(
+            update={
+                "verdicts": (
+                    hd1_verdict(
+                        (multi.numerator, multi.denominator) if multi is not None else (0, 0),
+                        applicability,
+                        base,
+                    ),
+                    hd2_verdict((ratio.numerator, ratio.denominator), applicability, base),
+                    hd3_verdict((refusal.numerator, refusal.denominator), applicability, base),
+                )
+            }
+        )
     if retriever == "rerank":
         verdict = hc3_verdict(
             ratio.numerator, ratio.denominator, applicability, load_baseline_b(results_dir)

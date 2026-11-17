@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -95,11 +96,11 @@ def _load(text: str) -> object | None:
     return value
 
 
-def parse_answer(raw: str | None) -> ParsedAnswer | ParseFailure:
-    """Parse a model reply. Lenient about fences and surrounding prose; no other repair.
+def extract_json_object(raw: str | None) -> dict[str, Any] | ParseFailure:
+    """The JSON object in a model reply. Lenient about fences and surrounding prose only.
 
     Steps: strip one code fence; try the whole text as JSON; otherwise take the first balanced
-    ``{...}`` and try that. Then validate the three fields.
+    ``{...}`` and try that.
     """
     if raw is None or not raw.strip():
         return ParseFailure("empty reply")
@@ -114,6 +115,18 @@ def parse_answer(raw: str | None) -> ParsedAnswer | ParseFailure:
             return ParseFailure("invalid JSON")
     if not isinstance(data, dict):
         return ParseFailure("JSON value is not an object")
+    return data
+
+
+def parse_answer(raw: str | None) -> ParsedAnswer | ParseFailure:
+    """Parse a model reply. Lenient about fences and surrounding prose; no other repair.
+
+    The JSON object is extracted by :func:`extract_json_object`; then the three fields are
+    validated.
+    """
+    data = extract_json_object(raw)
+    if isinstance(data, ParseFailure):
+        return data
     answer = data.get("answer")
     if not isinstance(answer, str):
         return ParseFailure("'answer' is missing or not a string")

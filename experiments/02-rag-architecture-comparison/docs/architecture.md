@@ -215,15 +215,15 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    Q["Question"] --> P["Plan search"]
-    P --> S["Search tool<br/>(read-only retrieval)"]
-    S --> J{"Evidence enough?"}
-    J -- "no" --> P
-    J -- "yes" --> G["Generate answer"]
+    Q["Question"] --> P["plan<br/>(model call)"]
+    P --> S["search<br/>(hybrid retriever, top 5 per query)"]
+    S --> J["judge<br/>(model call)"]
+    J -- "enough, no new query,<br/>or 3 searches done" --> G["answer<br/>(model call, answer prompt a-1.0)"]
+    J -- "not enough, new query,<br/>fewer than 3 searches" --> S
     G --> A["Answer"]
 ```
 
-- **How it works:** a graph with plan, search and judge nodes. The agent may search several times, with different queries, before answering. A step limit bounds the loop.
+- **Implementation:** the graph (`agent/graph.py`) is a LangGraph `StateGraph` with four async nodes; `START`, `END` and `StateGraph` are the only LangGraph parts used. **plan** makes one model call (prompt `d-1.0`, `agent/prompts.py`) that returns `{"needs_retrieval": ..., "queries": [...]}`; it keeps at most 3 non-blank queries, distinct ignoring case, and if the reply cannot be parsed or holds no usable query it falls back to the question text as the single query and records a plan parse error. `needs_retrieval` is recorded but does not skip the search: every answer must be grounded in excerpts, so the design always searches at least once. **search** (no model call) runs the pending queries in order with the architecture B retriever, top 5 each, while fewer than 3 searches have run, and appends the chunks to the collected list in first-retrieved order, skipping ids already collected. **judge** makes one model call over the collected chunks (at most 10, in collected order, formatted like the answer prompt's excerpts) and returns `{"enough": ..., "missing": ..., "next_query": ...}`; an unparseable reply counts as `enough` and is recorded. The graph goes to **answer** when the judge says enough, when `next_query` is null, blank or was already run (ignoring case), or when 3 searches have run; otherwise it queues `next_query` and returns to **search**. **answer** is the unchanged `Generator` and answer prompt `a-1.0`, given the first 10 collected chunks (rank = collection order, retriever label `agentic`). The bounds follow from this: 3 to 5 model calls per attempt (plan, one to three judge calls, answer), 1 to 3 searches, at most 10 context chunks; `recursion_limit` is set to 20 as a safety net, while the step logic is the real bound. An `LLMInfraError` in any call ends the attempt as an `infra_error` record with the partial trace; a `BudgetExhaustedError` propagates, the run halts and the attempt is not recorded, so `--resume` redoes it. Every model call goes through the shared `ChatModel` client rather than a LangChain chat model, so the rate limiter, request budget, retries, token usage and pricing behave exactly as in architectures A to C. Each record keeps every call (step, latency, HTTP attempts, usage, finish reason, model served, provider, request id), the queries run, the judge decisions, parse errors and how many labelled sources the collected context covers; `embed_ms` and `search_ms` are summed over the searches, `agent_ms` is the planner and judge latency, `generation_ms` the answer call, and usage and attempts are summed over all calls. Transcripts hold every call's messages and raw reply in order, plus the searches.
 - **Advantages:** can answer multi-step questions that one search cannot cover; can refine a poor first query.
 - **Limitations:** several model calls per question; harder to make deterministic; more ways to fail.
 - **Latency and compute:** model calls per question grow with the number of searches. To be measured.

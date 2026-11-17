@@ -101,6 +101,24 @@ class GenerationConfig(BaseModel):
     request_timeout_seconds: int = Field(gt=0)
 
 
+class AgentConfig(BaseModel):
+    """Settings of the agentic pipeline (architecture D)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    prompt_version: str = Field(min_length=1)
+    max_searches: int = Field(gt=0)  # searches per question, over the whole loop
+    results_per_search: int = Field(gt=0)  # top-N of the search tool returned per query
+    max_context_chunks: int = Field(gt=0)  # distinct chunks handed to the judge and the answer
+    max_planned_queries: int = Field(gt=0)  # queries the planner may propose up front
+
+    @model_validator(mode="after")
+    def _planned_within_searches(self) -> "AgentConfig":
+        if self.max_planned_queries > self.max_searches:
+            raise ValueError("agent.max_planned_queries must be <= agent.max_searches")
+        return self
+
+
 class RunConfig(BaseModel):
     """How an answer run is scheduled and throttled."""
 
@@ -139,6 +157,7 @@ class ExperimentConfig(BaseModel):
     hybrid: HybridConfig
     rerank: RerankConfig
     generation: GenerationConfig
+    agent: AgentConfig
     run: RunConfig
     pricing: PricingConfig
     root: Path

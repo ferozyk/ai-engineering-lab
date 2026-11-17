@@ -64,7 +64,6 @@ class FakeChatModel:
             raise LLMInfraError(
                 "Simulated provider failure", kind=self._infra_kind, status_code=None, attempts=1
             )
-        user = str(messages[-1]["content"])
         prompt_chars = sum(len(str(m["content"])) for m in messages)
         finish = "stop"
         if attempt in self._cut_off:
@@ -73,7 +72,7 @@ class FakeChatModel:
         elif attempt in self._invalid:
             content = "I cannot format this as JSON."
         else:
-            content = self._answer(user)
+            content = self._reply(messages)
         completion_chars = len(content or "")
         usage = Usage(
             prompt_tokens=prompt_chars // 4,
@@ -94,6 +93,10 @@ class FakeChatModel:
             assistant_message={"role": "assistant", "content": content},
             simulated=True,
         )
+
+    def _reply(self, messages: Sequence[Mapping[str, Any]]) -> str:
+        """The reply to a healthy request (subclasses answer other prompts too)."""
+        return self._answer(str(messages[-1]["content"]))
 
     def _answer(self, user: str) -> str:
         head, _, question_text = user.rpartition(_QUESTION_MARK)

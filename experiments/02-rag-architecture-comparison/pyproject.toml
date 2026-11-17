@@ -7,6 +7,7 @@ license = "MIT"
 authors = [{ name = "Feroz Khatri" }]
 dependencies = [
     "ai-engineering-lab[llm]",
+    "langgraph>=1.0,<2",
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pydantic>=2.9",

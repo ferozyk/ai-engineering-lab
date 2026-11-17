@@ -37,6 +37,12 @@ generation:
   max_output_tokens: 16384     # reasoning models spend output tokens thinking; cut-offs are recorded, not hidden
   llm_seed: null               # sent only if not null
   request_timeout_seconds: 300
+agent:
+  prompt_version: d-1.0
+  max_searches: 3              # frozen: searches per question
+  results_per_search: 5        # frozen: the hybrid retriever's top 5 per query
+  max_context_chunks: 10       # frozen: distinct chunks, first-retrieved order
+  max_planned_queries: 3       # queries the planner may propose; searches never exceed max_searches
 run:
   repetitions: 3
   order_seed: 20261111

@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Literal, cast, get_args
 
 import numpy as np
 from numpy.typing import NDArray
@@ -69,6 +69,11 @@ from rag_experiment.retrieval.vector import DenseRetriever
 
 RetrieverName = Literal["dense", "bm25", "hybrid", "rerank"]
 RETRIEVERS: tuple[str, ...] = get_args(RetrieverName)
+AGENTIC = answer_commands.AGENTIC
+ANSWER_RETRIEVERS: tuple[str, ...] = (*RETRIEVERS, AGENTIC)
+AGENTIC_RETRIEVAL_MESSAGE = (
+    "agentic retrieval needs the model; its retrieval is measured inside the answer run"
+)
 
 _SPLIT_SUFFIX = re.compile(r":p\d+$")
 _CHUNK_TYPES = (
@@ -105,9 +110,10 @@ def _build_parser() -> argparse.ArgumentParser:
     def add_retriever(command: argparse.ArgumentParser) -> None:
         command.add_argument(
             "--retriever",
-            choices=RETRIEVERS,
+            choices=ANSWER_RETRIEVERS,
             default="dense",
-            help="retrieval method (default: dense)",
+            help="retrieval method (default: dense); agentic runs the agent loop and is "
+            "available for run, canary and preflight",
         )
 
     index = sub.add_parser("index", help="embed the chunks and build the local Qdrant index")
@@ -582,6 +588,45 @@ def _prepare_retrieval(
         )
 
 
+@contextmanager
+def _prepared_agent(config: ExperimentConfig, fake: bool) -> Iterator[PreparedRetrieval]:
+    """Architecture D: no retrieval is done up front. The session (index and embedding model)
+    stays open for the whole run, because the agent searches during every attempt.
+    """
+    with _session(config, fake, "hybrid") as session:
+        store = session.require_store()
+        if fake:
+            _ingest(session, rebuild=False)
+        elif store.count() != len(session.chunks):
+            raise ValueError("the local index is missing or out of date; run: rag-experiment index")
+        yield PreparedRetrieval(
+            corpus=session.corpus,
+            chunks=session.chunks,
+            retriever_name=AGENTIC,
+            results={},
+            model_id=session.provider.model_id,
+            revision=session.provider.revision,
+            dimension=session.provider.dimension,
+            collection=session.collection,
+            deterministic=False,  # the model chooses the queries; the search tool is exact
+            search=build_retriever("hybrid", session, config),
+        )
+
+
+@contextmanager
+def _prepared(
+    config: ExperimentConfig,
+    questions: Sequence[Question],
+    fake: bool,
+    retriever_name: str,
+) -> Iterator[PreparedRetrieval]:
+    if retriever_name == AGENTIC:
+        with _prepared_agent(config, fake) as agent:
+            yield agent
+    else:
+        yield _prepare_retrieval(config, questions, fake, cast(RetrieverName, retriever_name))
+
+
 def _cmd_answers(
     config: ExperimentConfig,
     *,
@@ -590,7 +635,7 @@ def _cmd_answers(
     fake: bool,
     resume: str | None,
     retrieval_run: str | None,
-    retriever_name: RetrieverName = "dense",
+    retriever_name: str = "dense",
 ) -> int:
     results_base = _results_root_base(config)
     if not fake:  # fail on missing credentials before loading the embedding model
@@ -609,28 +654,28 @@ def _cmd_answers(
         question_ids = list(config.run.canary_question_ids)
     needed = answer_commands.select_questions(config, set_name, question_ids)
     everything = answer_commands.select_questions(config, set_name, None)
-    retrieval = _prepare_retrieval(config, needed, fake, retriever_name)
-    return answer_commands.execute_run(
-        config=config,
-        settings_loader=lambda: _settings(config),
-        results_base=results_base,
-        results_root=_results_root(config, fake),
-        retrieval=retrieval,
-        set_name=set_name,
-        question_ids=question_ids,
-        is_canary=canary,
-        fake=fake,
-        resume=resume,
-        retrieval_run=retrieval_run,
-        all_questions=everything,
-    )
+    with _prepared(config, needed, fake, retriever_name) as retrieval:
+        return answer_commands.execute_run(
+            config=config,
+            settings_loader=lambda: _settings(config),
+            results_base=results_base,
+            results_root=_results_root(config, fake),
+            retrieval=retrieval,
+            set_name=set_name,
+            question_ids=question_ids,
+            is_canary=canary,
+            fake=fake,
+            resume=resume,
+            retrieval_run=retrieval_run,
+            all_questions=everything,
+        )
 
 
 def _cmd_preflight(
     config: ExperimentConfig,
     live: bool,
     retrieval_run: str | None,
-    retriever_name: RetrieverName = "dense",
+    retriever_name: str = "dense",
 ) -> int:
     corpus, chunks = _load(config)
     return answer_commands.preflight(
@@ -665,6 +710,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_show_chunk(config, args.chunk_id)
         if args.command == "index":
             return _cmd_index(config, args.rebuild, args.fake_embeddings)
+        if args.command in ("retrieve", "evaluate-retrieval") and args.retriever == AGENTIC:
+            print(f"Error: {AGENTIC_RETRIEVAL_MESSAGE}", file=sys.stderr)
+            return 2
         if args.command == "retrieve":
             return _cmd_retrieve(
                 config,

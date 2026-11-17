@@ -8,11 +8,12 @@ criteria (methodology section 8).
 from collections import Counter, defaultdict
 from collections.abc import Callable, Collection, Sequence
 from statistics import fmean
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model_serializer
 
 from ai_lab.benchmarking import PricingSnapshot, estimate_cost_usd, percentile
-from rag_experiment.evaluation.answer_run import AnswerRecord, latest_by_attempt
+from rag_experiment.evaluation.answer_run import AnswerRecord, failed_requests, latest_by_attempt
 from rag_experiment.evaluation.dataset import Question
 from rag_experiment.evaluation.retrieval_metrics import LatencyStats, RatioValue, Verdict
 
@@ -117,6 +118,37 @@ class RequestCounts(BaseModel):
     infra_error_attempts: int
 
 
+class CountStats(BaseModel):
+    """A per-attempt count: mean, p50, maximum and how often each value occurred."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    mean: float
+    p50: float
+    max: int
+    distribution: dict[str, int]  # value -> attempts, ascending by value
+
+
+class AgentSummary(BaseModel):
+    """Behaviour of the agent loop (architecture D), from the scored attempts."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    n_attempts: int
+    model_calls: CountStats
+    searches: CountStats
+    context_chunks_mean: float
+    context_chunks_max: int
+    needs_retrieval_false: int
+    plan_parse_errors: int  # attempts whose plan reply could not be used
+    judge_parse_errors: int  # judge replies that could not be parsed, over all attempts
+    first_judge_enough: RatioValue  # attempts whose first judge decision was "enough"
+    full_coverage_by_category: dict[str, RatioValue]  # answerable attempts
+    sources_covered_by_question: dict[str, tuple[int, ...]]  # repetition order
+    n_sources_by_question: dict[str, int]
+    multi_endpoint_queries: dict[str, tuple[str, ...]]  # repetition 1, verbatim model output
+
+
 class AnswerSummary(BaseModel):
     """Everything the report and the charts show."""
 
@@ -142,6 +174,14 @@ class AnswerSummary(BaseModel):
     tokens_by_category: dict[str, tuple[int, ...]]
     cost: CostEstimate
     requests: RequestCounts
+    agent: AgentSummary | None = None  # agentic runs only; omitted from the file otherwise
+
+    @model_serializer(mode="wrap")
+    def _omit_agent(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if data.get("agent") is None:
+            data.pop("agent", None)
+        return data
 
 
 def _ratio(numerator: int, denominator: int) -> RatioValue:
@@ -191,6 +231,62 @@ def _top(identifiers: Collection[str] | Counter[str]) -> tuple[tuple[str, int], 
     counter = identifiers if isinstance(identifiers, Counter) else Counter(identifiers)
     ordered = sorted(counter.items(), key=lambda item: (-item[1], item[0]))
     return tuple(ordered[:TOP_OFFENDERS])
+
+
+def _count_stats(values: Sequence[int]) -> CountStats:
+    if not values:
+        return CountStats(mean=0.0, p50=0.0, max=0, distribution={})
+    floats = [float(v) for v in values]
+    counts = Counter(values)
+    return CountStats(
+        mean=fmean(floats),
+        p50=percentile(floats, 50),
+        max=max(values),
+        distribution={str(v): counts[v] for v in sorted(counts)},
+    )
+
+
+def _agent_summary(scored: Sequence[AnswerRecord]) -> AgentSummary:
+    """The "Agent behaviour" numbers. Coverage comes from the counts stored in each record."""
+    answerable = [r for r in scored if not r.must_abstain]
+    by_category: dict[str, list[AnswerRecord]] = defaultdict(list)
+    for r in answerable:
+        by_category[r.category].append(r)
+    first = [r.judge_decisions[0] for r in scored if r.judge_decisions]
+    by_question: dict[str, list[AnswerRecord]] = defaultdict(list)
+    for r in scored:
+        by_question[r.question_id].append(r)
+    covered: dict[str, tuple[int, ...]] = {}
+    totals: dict[str, int] = {}
+    queries: dict[str, tuple[str, ...]] = {}
+    for qid, rs in by_question.items():
+        ordered = sorted(rs, key=lambda r: r.repetition)
+        if ordered[0].must_abstain:
+            continue
+        covered[qid] = tuple(r.sources_covered for r in ordered)
+        totals[qid] = ordered[0].n_sources
+        if ordered[0].category == "multi_endpoint" and ordered[0].repetition == 1:
+            queries[qid] = ordered[0].queries
+    return AgentSummary(
+        n_attempts=len(scored),
+        model_calls=_count_stats([r.model_calls for r in scored]),
+        searches=_count_stats([r.searches for r in scored]),
+        context_chunks_mean=fmean([float(len(r.context_chunk_ids)) for r in scored])
+        if scored
+        else 0.0,
+        context_chunks_max=max((len(r.context_chunk_ids) for r in scored), default=0),
+        needs_retrieval_false=_count(scored, lambda r: r.needs_retrieval is False),
+        plan_parse_errors=_count(scored, lambda r: r.plan_parse_error is not None),
+        judge_parse_errors=sum(r.judge_parse_errors for r in scored),
+        first_judge_enough=_ratio(sum(first), len(first)),
+        full_coverage_by_category={
+            c: _ratio(_count(rs, lambda r: r.sources_covered == r.n_sources), len(rs))
+            for c, rs in sorted(by_category.items())
+        },
+        sources_covered_by_question=covered,
+        n_sources_by_question=totals,
+        multi_endpoint_queries=queries,
+    )
 
 
 def _verdicts(
@@ -349,6 +445,15 @@ def summarise_answers(
             "generation": latency["generation"],
             "total": latency["total"],
         }
+    agentic = any(r.agentic for r in scored)
+    if agentic:  # the agent stage (planner and judge calls) exists for agentic runs only
+        latency = {
+            "embed": latency["embed"],
+            "search": latency["search"],
+            "agent": _latency([r.agent_ms for r in scored]),
+            "generation": latency["generation"],
+            "total": latency["total"],
+        }
     tokens = {
         "prompt": _tokens([r.usage.prompt_tokens for r in scored]),
         "completion": _tokens([r.usage.completion_tokens for r in scored]),
@@ -376,8 +481,8 @@ def summarise_answers(
     all_ok = [r for r in records if r.outcome != "infra_error"]
     requests = RequestCounts(
         sent=sum(r.attempts for r in records),
-        failed=sum(r.attempts for r in all_infra) + sum(max(0, r.attempts - 1) for r in all_ok),
-        retried=sum(max(0, r.attempts - 1) for r in all_ok),
+        failed=sum(failed_requests(r) for r in records),
+        retried=sum(failed_requests(r) for r in all_ok),
         infra_error_attempts=len(all_infra),
     )
 
@@ -414,4 +519,5 @@ def summarise_answers(
         tokens_by_category=tokens_by_category,
         cost=cost,
         requests=requests,
+        agent=_agent_summary(scored) if agentic else None,
     )

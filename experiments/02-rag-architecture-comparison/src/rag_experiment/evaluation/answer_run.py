@@ -13,7 +13,7 @@ once per question (it is deterministic) and is reused across repetitions.
 
 import json
 import random
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +23,8 @@ from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model
 
 from ai_lab.benchmarking import BudgetExhaustedError, PricingSnapshot, RequestBudget
 from ai_lab.llm import FreeModelDailyRequests, InfraErrorKind, LLMInfraError, Usage
+from rag_experiment.agent.graph import AgentGraph
+from rag_experiment.agent.records import AgentCall, AgentResult
 from rag_experiment.evaluation.answer_metrics import (
     Outcome,
     Vocabulary,
@@ -36,7 +38,7 @@ from rag_experiment.evaluation.answer_metrics import (
     score_groundedness,
 )
 from rag_experiment.evaluation.dataset import Question
-from rag_experiment.evaluation.relevance import relevant_chunk_ids
+from rag_experiment.evaluation.relevance import covered_sources, relevant_chunk_ids
 from rag_experiment.evaluation.retrieval_run import RetrievalRunMetadata
 from rag_experiment.generation.prompts import build_messages
 from rag_experiment.generation.provider import GeneratedAnswer, Generator
@@ -48,6 +50,19 @@ HALT_KINDS: frozenset[InfraErrorKind] = frozenset(
     {"daily_limit", "auth", "not_found", "bad_request", "no_usage"}
 )
 MAX_CONSECUTIVE_INFRA = 5
+AGENT_RECORD_KEYS = (
+    "calls",
+    "model_calls",
+    "searches",
+    "queries",
+    "needs_retrieval",
+    "plan_parse_error",
+    "judge_parse_errors",
+    "judge_decisions",
+    "agent_ms",
+    "sources_covered",
+    "n_sources",
+)
 
 
 # ------------------------------------------------------------------------------ records
@@ -99,13 +114,34 @@ class AnswerRecord(BaseModel):
     error_message: str | None
     # Rerank only: 0.0 for every other retriever, and then omitted from the written record.
     rerank_ms: float = 0.0
+    # Agentic only (architecture D). ``calls`` is None for every other retriever; the keys below
+    # are then omitted from the written record.
+    calls: tuple[AgentCall, ...] | None = None
+    model_calls: int = 0
+    searches: int = 0
+    queries: tuple[str, ...] = ()
+    needs_retrieval: bool | None = None
+    plan_parse_error: str | None = None
+    judge_parse_errors: int = 0
+    judge_decisions: tuple[bool, ...] = ()
+    agent_ms: float = 0.0
+    sources_covered: int = 0
+    n_sources: int = 0
 
     @model_serializer(mode="wrap")
-    def _omit_zero_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+    def _omit_unused(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
         if self.rerank_ms == 0.0:
             data.pop("rerank_ms", None)
+        if self.calls is None:
+            for key in AGENT_RECORD_KEYS:
+                data.pop(key, None)
         return data
+
+    @property
+    def agentic(self) -> bool:
+        """Whether this attempt ran the agent loop."""
+        return self.calls is not None
 
 
 class AnswerRunMetadata(RetrievalRunMetadata):
@@ -131,6 +167,16 @@ class AnswerRunMetadata(RetrievalRunMetadata):
     free_model_daily_requests_after: FreeModelDailyRequests | None
     halted: bool
     halt_reason: str | None
+    agent: dict[str, object] | None = None  # agentic runs only; omitted from the file otherwise
+
+    @model_serializer(mode="wrap")
+    def _omit_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if data.get("rerank") is None:
+            data.pop("rerank", None)
+        if data.get("agent") is None:
+            data.pop("agent", None)
+        return data
 
 
 # ------------------------------------------------------------------------------ paths
@@ -230,6 +276,20 @@ def latest_by_attempt(records: Sequence[AnswerRecord]) -> dict[str, AnswerRecord
     return latest
 
 
+def failed_requests(record: AnswerRecord) -> int:
+    """Requests of this record that did not produce a reply (each successful call used one).
+
+    Architectures A to C make one call per record: a scored record has ``attempts - 1`` failed
+    requests and an infrastructure-error record has all of them. An agentic record makes several
+    calls; every completed call used exactly one successful request.
+    """
+    if record.calls is not None:
+        return max(0, record.attempts - len(record.calls))
+    if record.outcome == "infra_error":
+        return record.attempts
+    return max(0, record.attempts - 1)
+
+
 def completed_attempts(records: Sequence[AnswerRecord]) -> set[str]:
     """Attempts whose latest record is not an ``infra_error``; a resume skips these."""
     return {a for a, r in latest_by_attempt(records).items() if r.outcome != "infra_error"}
@@ -294,20 +354,39 @@ def _usage_zero() -> Usage:
     return Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0)
 
 
-def build_record(
+def _sum_optional(values: Sequence[int | None]) -> int | None:
+    """The sum of the reported values; ``None`` only when no call reported one."""
+    reported = [v for v in values if v is not None]
+    return sum(reported) if reported else None
+
+
+def sum_usage(calls: Sequence[AgentCall]) -> Usage:
+    """Token usage added up over calls (a field stays ``None`` if no call reported it)."""
+    if not calls:
+        return _usage_zero()
+    return Usage(
+        prompt_tokens=sum(c.usage.prompt_tokens for c in calls),
+        completion_tokens=sum(c.usage.completion_tokens for c in calls),
+        total_tokens=sum(c.usage.total_tokens for c in calls),
+        reasoning_tokens=_sum_optional([c.usage.reasoning_tokens for c in calls]),
+        cached_tokens=_sum_optional([c.usage.cached_tokens for c in calls]),
+    )
+
+
+def _scored_fields(
     inputs: RunInputs,
     planned: PlannedAttempt,
     context: Sequence[RetrievedChunk],
     generated: GeneratedAnswer | None,
     error: LLMInfraError | None,
-) -> AnswerRecord:
-    """Score one attempt and assemble its record."""
+    hit_k: int,
+) -> dict[str, Any]:
+    """Identity, context, answer and scoring fields shared by every retriever's records."""
     question = planned.question
-    retrieval = inputs.retrievals[question.id]
     context_chunks = [item.chunk for item in context]
     context_ids = tuple(c.chunk_id for c in context_chunks)
     relevant = relevant_chunk_ids(question.sources, inputs.chunks)
-    hit = context_hit(context_ids, relevant, inputs.top_k)
+    hit = context_hit(context_ids, relevant, hit_k)
     abstain = question.constraints.must_abstain
 
     if generated is None:
@@ -356,34 +435,51 @@ def build_record(
         valid = citations_valid(cited, context_ids)
         relevant_cited = cites_relevant(cited, relevant)
 
+    return {
+        "run_id": inputs.run_id,
+        "attempt_id": planned.attempt_id,
+        "question_id": question.id,
+        "repetition": planned.repetition,
+        "category": question.category,
+        "paraphrase_of": question.paraphrase_of,
+        "must_abstain": abstain,
+        "context_chunk_ids": context_ids,
+        "context_hit": hit,
+        "relevant_chunk_ids": tuple(sorted(relevant)),
+        "outcome": outcome,
+        "answer": answer,
+        "cited_chunk_ids": cited,
+        "insufficient_context": flag,
+        "parse_error": generated.parse_error if generated else None,
+        "finish_reason": generated.finish_reason if generated else None,
+        "correct": correct,
+        "missing_key_facts": missing,
+        "false_refusal": false_refusal,
+        "correct_refusal": correct_refusal,
+        "made_up_answer": made_up,
+        "unsupported_identifiers": unsupported,
+        "invented_identifiers": invented,
+        "citations_valid": valid,
+        "cites_relevant": relevant_cited,
+        "mentions_endpoint": mentions_endpoint(answer),
+        "simulated": inputs.simulated,
+        "error_kind": error.kind if error else None,
+        "error_message": str(error) if error else None,
+    }
+
+
+def build_record(
+    inputs: RunInputs,
+    planned: PlannedAttempt,
+    context: Sequence[RetrievedChunk],
+    generated: GeneratedAnswer | None,
+    error: LLMInfraError | None,
+) -> AnswerRecord:
+    """Score one attempt and assemble its record."""
+    retrieval = inputs.retrievals[planned.question.id]
     generation_ms = generated.latency_ms if generated else 0.0
     return AnswerRecord(
-        run_id=inputs.run_id,
-        attempt_id=planned.attempt_id,
-        question_id=question.id,
-        repetition=planned.repetition,
-        category=question.category,
-        paraphrase_of=question.paraphrase_of,
-        must_abstain=abstain,
-        context_chunk_ids=context_ids,
-        context_hit=hit,
-        relevant_chunk_ids=tuple(sorted(relevant)),
-        outcome=outcome,
-        answer=answer,
-        cited_chunk_ids=cited,
-        insufficient_context=flag,
-        parse_error=generated.parse_error if generated else None,
-        finish_reason=generated.finish_reason if generated else None,
-        correct=correct,
-        missing_key_facts=missing,
-        false_refusal=false_refusal,
-        correct_refusal=correct_refusal,
-        made_up_answer=made_up,
-        unsupported_identifiers=unsupported,
-        invented_identifiers=invented,
-        citations_valid=valid,
-        cites_relevant=relevant_cited,
-        mentions_endpoint=mentions_endpoint(answer),
+        **_scored_fields(inputs, planned, context, generated, error, inputs.top_k),
         embed_ms=retrieval.embed_ms,
         search_ms=retrieval.search_ms,
         generation_ms=generation_ms,
@@ -395,27 +491,66 @@ def build_record(
         model_served=generated.model_served if generated else None,
         provider=generated.provider if generated else None,
         request_id=generated.request_id if generated else None,
-        simulated=inputs.simulated,
-        error_kind=error.kind if error else None,
-        error_message=str(error) if error else None,
     )
 
 
-def _write_transcript(
-    inputs: RunInputs,
+def build_agent_record(
+    inputs: RunInputs, planned: PlannedAttempt, result: AgentResult
+) -> AnswerRecord:
+    """Score one agentic attempt on the context it collected and record the whole trace.
+
+    ``embed_ms`` and ``search_ms`` are summed over the searches; ``generation_ms`` is the answer
+    call only; ``agent_ms`` is the planner and judge calls; ``usage`` and ``attempts`` are summed
+    over every call (the call that raised, if any, adds its requests to ``attempts``).
+    """
+    generated = result.generated
+    context = result.context
+    embed_ms = sum(s.embed_ms for s in result.searches)
+    search_ms = sum(s.search_ms for s in result.searches)
+    agent_ms = sum(c.latency_ms for c in result.calls if c.step != "answer")
+    generation_ms = generated.latency_ms if generated else 0.0
+    sources = frozenset(planned.question.sources)
+    covered = covered_sources([item.chunk.chunk_id for item in context], sources, inputs.chunks)
+    return AnswerRecord(
+        **_scored_fields(inputs, planned, context, result.generated, result.error, len(context)),
+        embed_ms=embed_ms,
+        search_ms=search_ms,
+        generation_ms=generation_ms,
+        total_ms=embed_ms + search_ms + agent_ms + generation_ms,
+        client_wait_ms=generated.client_wait_ms if generated else 0.0,
+        attempts=sum(c.attempts for c in result.calls) + result.failed_attempts,
+        usage=sum_usage(result.calls),
+        model_served=generated.model_served if generated else None,
+        provider=generated.provider if generated else None,
+        request_id=generated.request_id if generated else None,
+        calls=result.calls,
+        model_calls=len(result.calls),
+        searches=len(result.searches),
+        queries=result.queries,
+        needs_retrieval=result.needs_retrieval,
+        plan_parse_error=result.plan_parse_error,
+        judge_parse_errors=result.judge_parse_errors,
+        judge_decisions=result.judge_decisions,
+        agent_ms=agent_ms,
+        sources_covered=len(covered),
+        n_sources=len(sources),
+    )
+
+
+def _transcript_payload(
     record: AnswerRecord,
     messages: Sequence[Mapping[str, str]],
-    generated: GeneratedAnswer | None,
-) -> None:
+    raw_content: str | None,
+) -> dict[str, object]:
     """The prompt and the raw and parsed reply. It holds no headers and no credentials."""
-    payload: dict[str, object] = {
+    return {
         "run_id": record.run_id,
         "attempt_id": record.attempt_id,
         "question_id": record.question_id,
         "repetition": record.repetition,
         "simulated": record.simulated,
         "messages": [dict(m) for m in messages],
-        "raw_content": generated.raw_content if generated else None,
+        "raw_content": raw_content,
         "parsed": {
             "answer": record.answer,
             "cited_chunk_ids": list(record.cited_chunk_ids),
@@ -427,19 +562,43 @@ def _write_transcript(
         "error_kind": record.error_kind,
         "error_message": record.error_message,
     }
-    write_json(inputs.paths.transcripts / f"{record.attempt_id}.json", payload)
 
 
-async def run_attempts(
+def _agent_transcript(record: AnswerRecord, result: AgentResult) -> dict[str, object]:
+    """Every call's messages and raw reply in order, the searches, and the parsed answer."""
+    payload: dict[str, object] = {
+        key: value
+        for key, value in _transcript_payload(record, (), None).items()
+        if key not in ("messages", "raw_content")
+    }
+    payload["steps"] = [dict(step) for step in result.steps]
+    payload["searches"] = [s.model_dump(mode="json") for s in result.searches]
+    return payload
+
+
+@dataclass
+class AttemptResult:
+    """One finished attempt, ready to be written."""
+
+    record: AnswerRecord
+    transcript: dict[str, object]
+    error: LLMInfraError | None
+    progress_note: str = ""
+
+
+AttemptRunner = Callable[[PlannedAttempt], Awaitable[AttemptResult]]
+
+
+async def _run_loop(
     inputs: RunInputs,
-    generator: Generator,
     plan: Sequence[PlannedAttempt],
     skip: set[str],
     budget: RequestBudget | None,
-    on_attempt: Callable[[str], None] | None = None,
-    progress: Callable[[str], None] | None = None,
+    attempt: AttemptRunner,
+    on_attempt: Callable[[str], None] | None,
+    progress: Callable[[str], None] | None,
 ) -> RunOutcome:
-    """Generate and score every planned attempt that is not in ``skip``.
+    """The loop shared by every retriever: checkpointing, progress and the halting rules.
 
     Each record is appended and flushed as soon as it is scored. The loop halts cleanly when the
     provider's daily limit or the request budget is exhausted, or when an error that repeats on
@@ -455,33 +614,23 @@ async def run_attempts(
                 outcome.halted = True
                 outcome.halt_reason = "daily request cap reached; resume later with --resume"
                 break
-            question = planned.question
-            context = inputs.retrievals[question.id].chunks[: inputs.top_k]
             if on_attempt is not None:
                 on_attempt(planned.attempt_id)
-            generated: GeneratedAnswer | None = None
-            error: LLMInfraError | None = None
             try:
-                generated = await generator.generate(question.question, context)
+                finished = await attempt(planned)
             except BudgetExhaustedError:
                 outcome.halted = True
                 outcome.halt_reason = "daily request cap reached mid-attempt; resume with --resume"
                 break
-            except LLMInfraError as exc:
-                error = exc
-            record = build_record(inputs, planned, context, generated, error)
+            record, error = finished.record, finished.error
             handle.write(json.dumps(record.model_dump(mode="json"), ensure_ascii=False) + "\n")
             handle.flush()
-            _write_transcript(
-                inputs,
-                record,
-                generated.messages if generated else build_messages(question.question, context),
-                generated,
-            )
+            write_json(inputs.paths.transcripts / f"{record.attempt_id}.json", finished.transcript)
             outcome.attempts_run += 1
             if progress is not None:
                 progress(
                     f"[{index}/{len(pending)}] {record.attempt_id} {record.outcome}"
+                    + (f" {finished.progress_note}" if finished.progress_note else "")
                     + (f" ({record.error_kind})" if record.error_kind else "")
                 )
             if error is None:
@@ -500,3 +649,61 @@ async def run_attempts(
                 )
                 break
     return outcome
+
+
+async def run_attempts(
+    inputs: RunInputs,
+    generator: Generator,
+    plan: Sequence[PlannedAttempt],
+    skip: set[str],
+    budget: RequestBudget | None,
+    on_attempt: Callable[[str], None] | None = None,
+    progress: Callable[[str], None] | None = None,
+) -> RunOutcome:
+    """Generate and score every planned attempt that is not in ``skip`` (architectures A to C)."""
+
+    async def attempt(planned: PlannedAttempt) -> AttemptResult:
+        question = planned.question
+        context = inputs.retrievals[question.id].chunks[: inputs.top_k]
+        generated: GeneratedAnswer | None = None
+        error: LLMInfraError | None = None
+        try:
+            generated = await generator.generate(question.question, context)
+        except LLMInfraError as exc:
+            error = exc
+        record = build_record(inputs, planned, context, generated, error)
+        messages = generated.messages if generated else build_messages(question.question, context)
+        return AttemptResult(
+            record,
+            _transcript_payload(record, messages, generated.raw_content if generated else None),
+            error,
+        )
+
+    return await _run_loop(inputs, plan, skip, budget, attempt, on_attempt, progress)
+
+
+async def run_agent_attempts(
+    inputs: RunInputs,
+    agent: AgentGraph,
+    plan: Sequence[PlannedAttempt],
+    skip: set[str],
+    budget: RequestBudget | None,
+    on_attempt: Callable[[str], None] | None = None,
+    progress: Callable[[str], None] | None = None,
+) -> RunOutcome:
+    """Run the agent graph for every planned attempt that is not in ``skip`` (architecture D).
+
+    ``inputs.retrievals`` is not used: the agent searches during the attempt.
+    """
+
+    async def attempt(planned: PlannedAttempt) -> AttemptResult:
+        result = await agent.run(planned.question.question)
+        record = build_agent_record(inputs, planned, result)
+        return AttemptResult(
+            record,
+            _agent_transcript(record, result),
+            result.error,
+            f"calls={record.model_calls} searches={record.searches}",
+        )
+
+    return await _run_loop(inputs, plan, skip, budget, attempt, on_attempt, progress)

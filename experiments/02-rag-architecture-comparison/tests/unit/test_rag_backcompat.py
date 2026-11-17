@@ -1,4 +1,4 @@
-"""Architecture A and B records and reports must survive the addition of reranking.
+"""Architecture A, B and C records and reports must survive the addition of the agent loop.
 
 The committed run files are loaded into the current models, their summaries are rebuilt from the
 raw records, and every file that is derived from them is rendered again and compared byte for byte
@@ -39,10 +39,12 @@ RESULTS = Path(__file__).resolve().parents[2] / "results"
 RETRIEVAL_RUNS = (
     "20261110T204546Z-retrieval-measured-dense",
     "20261113T232754Z-retrieval-measured-hybrid",
+    "20261117T023412Z-retrieval-measured-rerank",
 )
 ANSWER_RUNS = (
     "20261110T221134Z-answers-measured-dense",
     "20261116T224508Z-answers-measured-hybrid",
+    "20261117T090258Z-answers-measured-rerank",
 )
 
 
@@ -68,8 +70,11 @@ def test_committed_retrieval_runs_rebuild_byte_for_byte(run_id: str, tmp_path: P
         for line in _text(raw / "retrieval.jsonl").splitlines()
     ]
     committed = RetrievalSummary.model_validate_json(_text(processed / "retrieval_summary.json"))
-    assert metadata.rerank is None
-    assert committed.latency_rerank_ms is None and committed.pool_hit is None
+    if "rerank" in run_id:
+        assert metadata.rerank is not None and committed.pool_hit is not None
+    else:
+        assert metadata.rerank is None
+        assert committed.latency_rerank_ms is None and committed.pool_hit is None
 
     rebuilt = summarize(
         run_id, committed.question_set, records, list(committed.nondeterministic_questions)
@@ -101,7 +106,10 @@ def test_committed_answer_runs_rebuild_byte_for_byte(
     records = load_records(raw / "answers.jsonl")
     assert records and all(isinstance(r, AnswerRecord) for r in records)
     committed = AnswerSummary.model_validate_json(_text(processed / "answer_summary.json"))
-    assert "rerank" not in committed.latency_ms
+    assert ("rerank" in committed.latency_ms) == ("rerank" in run_id)
+    assert committed.agent is None and "agent" not in committed.latency_ms
+    assert all(not r.agentic for r in records)
+    assert metadata.agent is None
 
     questions = load_questions(experiment_config.questions_measured)
     rebuilt = summarise_answers(
@@ -109,6 +117,7 @@ def test_committed_answer_runs_rebuild_byte_for_byte(
     )
     rebuilt = apply_answer_verdicts(rebuilt, metadata.retriever, RESULTS)
     assert rebuilt == committed
+    assert "agent" not in json.loads(rebuilt.model_dump_json())
 
     out = write_processed(tmp_path / "processed", rebuilt, records)
     assert _text(out["summary"]) == _text(processed / "answer_summary.json")

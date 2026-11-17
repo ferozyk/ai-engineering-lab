@@ -293,3 +293,73 @@ def test_offline_checks_for_rerank_add_the_reranker_and_warn_without_a_run(
             "hybrid",
         )
     )
+
+
+def _agentic_checks(
+    monkeypatch: pytest.MonkeyPatch,
+    config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+) -> dict[str, CheckResult]:
+    monkeypatch.setattr(
+        answer_commands, "index_status", lambda *a, **k: CheckResult("index", "pass", "ok")
+    )
+    return _by_name(
+        offline_checks(
+            config,
+            _settings(monkeypatch, key=True, model=True),
+            corpus,
+            chunks,
+            EXP_ROOT / "results",
+            None,
+            "agentic",
+        )
+    )
+
+
+def test_offline_checks_for_agentic_show_the_request_range_against_the_cap(
+    monkeypatch: pytest.MonkeyPatch,
+    experiment_config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+) -> None:
+    results = _agentic_checks(monkeypatch, experiment_config, corpus, chunks)
+    assert results["config"].status == "pass" and "agent prompt version d-1.0" in (
+        results["config"].detail
+    )
+    plan = results["request_plan"]
+    assert plan.status == "pass"
+    assert "369 (minimum) to 615 (maximum)" in plan.detail and "daily cap 900" in plan.detail
+    assert results["prompt_size"].status == "pass" and "at most 10 chunks" in (
+        results["prompt_size"].detail
+    )
+    assert "index" in results and results["questions"].status == "pass"
+
+
+def test_agentic_request_plan_fails_when_the_maximum_exceeds_the_cap(
+    monkeypatch: pytest.MonkeyPatch,
+    experiment_config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+) -> None:
+    small = experiment_config.model_copy(
+        update={"run": experiment_config.run.model_copy(update={"daily_request_cap": 614})}
+    )
+    assert _agentic_checks(monkeypatch, small, corpus, chunks)["request_plan"].status == "fail"
+    exact = experiment_config.model_copy(
+        update={"run": experiment_config.run.model_copy(update={"daily_request_cap": 615})}
+    )
+    assert _agentic_checks(monkeypatch, exact, corpus, chunks)["request_plan"].status == "pass"
+
+
+def test_agentic_config_check_fails_on_a_prompt_version_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+    experiment_config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+) -> None:
+    stale = experiment_config.model_copy(
+        update={"agent": experiment_config.agent.model_copy(update={"prompt_version": "d-0.1"})}
+    )
+    config = _agentic_checks(monkeypatch, stale, corpus, chunks)["config"]
+    assert config.status == "fail" and "d-0.1" in config.detail
