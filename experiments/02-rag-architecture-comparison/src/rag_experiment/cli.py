@@ -32,6 +32,7 @@ from rag_experiment.embeddings.provider import (
 )
 from rag_experiment.evaluation import compare
 from rag_experiment.evaluation.answer_run import AnswerRunMetadata, find_run
+from rag_experiment.evaluation.coverage import CoverageContext
 from rag_experiment.evaluation.dataset import (
     Question,
     load_questions,
@@ -693,7 +694,16 @@ def _cmd_preflight(
 def _cmd_compare(
     config: ExperimentConfig, retrieval: Sequence[str], answers: Sequence[str], out: str | None
 ) -> int:
-    paths = compare.run_compare(_results_root_base(config), retrieval, answers, out)
+    coverage: CoverageContext | None = None
+    if answers:
+        _, chunks = _load(config)
+        questions = {
+            q.id: q
+            for path in (config.questions_dev, config.questions_measured)
+            for q in load_questions(path)
+        }
+        coverage = CoverageContext(questions=questions, chunks=chunks)
+    paths = compare.run_compare(_results_root_base(config), retrieval, answers, out, coverage)
     print(f"comparison: {paths['json']}")
     print(f"report: {paths['report']}")
     return 0

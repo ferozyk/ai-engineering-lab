@@ -7,8 +7,10 @@ import pytest
 
 from rag_experiment import answer_commands, cli
 from rag_experiment.config import ExperimentConfig
+from rag_experiment.evaluation import compare
 from rag_experiment.evaluation.answer_analysis import AnswerSummary
 from rag_experiment.evaluation.answer_run import AnswerRunMetadata, RunPaths
+from rag_experiment.evaluation.coverage import CoverageContext
 from rag_experiment.evaluation.hypotheses import BASELINE_RETRIEVAL_RUN
 from rag_experiment.evaluation.retrieval_metrics import QuestionRetrieval, RetrievalSummary
 from rag_experiment.evaluation.retrieval_run import RetrievalRunMetadata
@@ -235,3 +237,24 @@ def test_fake_answer_run_with_rerank_adds_a_rerank_stage(
 
 def test_retriever_choices_include_rerank() -> None:
     assert cli.RETRIEVERS == ("dense", "bm25", "hybrid", "rerank")
+
+
+def test_compare_command_passes_source_coverage_for_answer_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_run_compare(
+        base: Path, retrieval: object, answers: object, out: object, coverage: object = None
+    ) -> dict[str, Path]:
+        seen["coverage"] = coverage
+        return {"json": base / "c.json", "report": base / "c.md"}
+
+    monkeypatch.setattr(compare, "run_compare", fake_run_compare)
+    assert cli.main(["compare", "--retrieval", "r1", "--answers", "a1", "--out", "x"]) == 0
+    coverage = seen["coverage"]
+    assert isinstance(coverage, CoverageContext)
+    assert {"Q01", "Q128"} <= set(coverage.questions) and len(coverage.chunks) == 186
+
+    assert cli.main(["compare", "--retrieval", "r1", "--out", "x"]) == 0
+    assert seen["coverage"] is None
