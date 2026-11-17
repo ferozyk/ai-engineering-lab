@@ -1,0 +1,1396 @@
+{
+  "run_id": "20261117T173854Z-answers-measured-agentic",
+  "question_set": "measured",
+  "simulated": false,
+  "n_attempts": 120,
+  "n_scored": 120,
+  "n_infra_errors": 0,
+  "overall": {
+    "n": 120,
+    "outcomes": {
+      "answered": 102,
+      "refused": 18
+    },
+    "answerable": {
+      "numerator": 85,
+      "denominator": 102,
+      "value": 0.8333333333333334
+    },
+    "false_refusals": {
+      "numerator": 1,
+      "denominator": 102,
+      "value": 0.00980392156862745
+    },
+    "correct_refusals": {
+      "numerator": 17,
+      "denominator": 18,
+      "value": 0.9444444444444444
+    }
+  },
+  "by_category": {
+    "authentication": {
+      "n": 15,
+      "outcomes": {
+        "answered": 15
+      },
+      "answerable": {
+        "numerator": 12,
+        "denominator": 15,
+        "value": 0.8
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 15,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "comparison": {
+      "n": 9,
+      "outcomes": {
+        "answered": 9
+      },
+      "answerable": {
+        "numerator": 8,
+        "denominator": 9,
+        "value": 0.8888888888888888
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 9,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "endpoint_discovery": {
+      "n": 15,
+      "outcomes": {
+        "answered": 15
+      },
+      "answerable": {
+        "numerator": 15,
+        "denominator": 15,
+        "value": 1.0
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 15,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "exact_identifier": {
+      "n": 18,
+      "outcomes": {
+        "answered": 18
+      },
+      "answerable": {
+        "numerator": 15,
+        "denominator": 18,
+        "value": 0.8333333333333334
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 18,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "multi_endpoint": {
+      "n": 12,
+      "outcomes": {
+        "answered": 12
+      },
+      "answerable": {
+        "numerator": 9,
+        "denominator": 12,
+        "value": 0.75
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 12,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "schema": {
+      "n": 15,
+      "outcomes": {
+        "answered": 14,
+        "refused": 1
+      },
+      "answerable": {
+        "numerator": 11,
+        "denominator": 15,
+        "value": 0.7333333333333333
+      },
+      "false_refusals": {
+        "numerator": 1,
+        "denominator": 15,
+        "value": 0.06666666666666667
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "semantic": {
+      "n": 18,
+      "outcomes": {
+        "answered": 18
+      },
+      "answerable": {
+        "numerator": 15,
+        "denominator": 18,
+        "value": 0.8333333333333334
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 18,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "unanswerable": {
+      "n": 18,
+      "outcomes": {
+        "answered": 1,
+        "refused": 17
+      },
+      "answerable": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "correct_refusals": {
+        "numerator": 17,
+        "denominator": 18,
+        "value": 0.9444444444444444
+      }
+    }
+  },
+  "per_question": [
+    {
+      "question_id": "Q101",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 0,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "VAL-001"
+      ]
+    },
+    {
+      "question_id": "Q102",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q103",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q104",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q105",
+      "category": "schema",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q106",
+      "category": "schema",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 0,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "pageSize"
+      ]
+    },
+    {
+      "question_id": "Q107",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q108",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q109",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q110",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q111",
+      "category": "schema",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q112",
+      "category": "semantic",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q113",
+      "category": "schema",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q114",
+      "category": "schema",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 2,
+      "outcomes": [
+        "answered",
+        "refused",
+        "answered"
+      ],
+      "repetitions_agree": false,
+      "missing_key_facts": [
+        "CREDIT",
+        "DEBIT",
+        "creditDebitIndicator"
+      ]
+    },
+    {
+      "question_id": "Q115",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 0,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "404"
+      ]
+    },
+    {
+      "question_id": "Q116",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q117",
+      "category": "exact_identifier",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q118",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q119",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q120",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q121",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q122",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q123",
+      "category": "authentication",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q124",
+      "category": "authentication",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q125",
+      "category": "authentication",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q126",
+      "category": "authentication",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q127",
+      "category": "authentication",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 0,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "statements:read"
+      ]
+    },
+    {
+      "question_id": "Q128",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q129",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q130",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 0,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "GET /v1/customers/{customerId}"
+      ]
+    },
+    {
+      "question_id": "Q131",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q132",
+      "category": "comparison",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q133",
+      "category": "comparison",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 2,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": false,
+      "missing_key_facts": [
+        "currency"
+      ]
+    },
+    {
+      "question_id": "Q134",
+      "category": "comparison",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "answered",
+        "answered",
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q135",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "refused",
+        "refused",
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q136",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "refused",
+        "refused",
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q137",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "refused",
+        "refused",
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q138",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 2,
+      "outcomes": [
+        "refused",
+        "refused",
+        "answered"
+      ],
+      "repetitions_agree": false,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q139",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "refused",
+        "refused",
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q140",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 3,
+      "correct": 3,
+      "outcomes": [
+        "refused",
+        "refused",
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    }
+  ],
+  "ha3_hit": {
+    "numerator": 85,
+    "denominator": 100,
+    "value": 0.85
+  },
+  "ha3_miss": {
+    "numerator": 0,
+    "denominator": 2,
+    "value": 0.0
+  },
+  "verdicts": [
+    {
+      "hypothesis": "HD1",
+      "criterion": "multi_endpoint attempts whose collected context covers every labelled source >= 9/12",
+      "verdict": "supported",
+      "evidence": "full source coverage 9/12 = 0.750; architecture B: 3/12"
+    },
+    {
+      "hypothesis": "HD2",
+      "criterion": "correct answerable attempts >= 80/102",
+      "verdict": "supported",
+      "evidence": "correct 85/102 = 0.833; architecture B: 78/102"
+    },
+    {
+      "hypothesis": "HD3",
+      "criterion": "correct refusals on unanswerable attempts >= 17/18",
+      "verdict": "supported",
+      "evidence": "correct refusals 17/18 = 0.944; architecture B: 18/18"
+    }
+  ],
+  "guardrails": {
+    "correct_refusal": {
+      "numerator": 17,
+      "denominator": 18,
+      "value": 0.9444444444444444
+    },
+    "made_up_answer": {
+      "numerator": 1,
+      "denominator": 18,
+      "value": 0.05555555555555555
+    },
+    "unanswerable_invalid": 0,
+    "unanswerable_cut_off": 0,
+    "false_refusal": {
+      "numerator": 1,
+      "denominator": 102,
+      "value": 0.00980392156862745
+    },
+    "mentions_endpoint_on_unanswerable": 3
+  },
+  "groundedness": {
+    "with_unsupported": {
+      "numerator": 0,
+      "denominator": 120,
+      "value": 0.0
+    },
+    "with_invented": {
+      "numerator": 0,
+      "denominator": 120,
+      "value": 0.0
+    },
+    "top_unsupported": [],
+    "top_invented": []
+  },
+  "citations": {
+    "citations_valid": {
+      "numerator": 101,
+      "denominator": 101,
+      "value": 1.0
+    },
+    "cites_relevant": {
+      "numerator": 98,
+      "denominator": 101,
+      "value": 0.9702970297029703
+    }
+  },
+  "latency_ms": {
+    "embed": {
+      "n": 120,
+      "p50": 393.44772894401103,
+      "p95": 2406.4538570411955
+    },
+    "search": {
+      "n": 120,
+      "p50": 6.531437044031918,
+      "p95": 22.271922376239665
+    },
+    "agent": {
+      "n": 120,
+      "p50": 8468.789604550693,
+      "p95": 24439.186997379875
+    },
+    "generation": {
+      "n": 120,
+      "p50": 3774.1013960330747,
+      "p95": 12331.966541730799
+    },
+    "total": {
+      "n": 120,
+      "p50": 14185.416708583944,
+      "p95": 33912.04109166283
+    }
+  },
+  "tokens": {
+    "prompt": {
+      "n": 120,
+      "mean": 3572.575,
+      "p50": 3377.0,
+      "p95": 6103.649999999999
+    },
+    "completion": {
+      "n": 120,
+      "mean": 1130.6583333333333,
+      "p50": 974.5,
+      "p95": 2213.1499999999996
+    },
+    "total": {
+      "n": 120,
+      "mean": 4703.233333333334,
+      "p50": 4404.0,
+      "p95": 8186.2
+    },
+    "reasoning": {
+      "n": 120,
+      "mean": 971.0416666666666,
+      "p50": 840.5,
+      "p95": 1915.949999999999
+    }
+  },
+  "tokens_by_category": {
+    "authentication": [
+      3735,
+      3691,
+      3946,
+      3734,
+      4052,
+      4842,
+      3362,
+      4720,
+      3753,
+      4351,
+      3664,
+      4153,
+      3807,
+      3642,
+      3909
+    ],
+    "comparison": [
+      5478,
+      5093,
+      8120,
+      5321,
+      5491,
+      4676,
+      5757,
+      5769,
+      5045
+    ],
+    "endpoint_discovery": [
+      3090,
+      3830,
+      3762,
+      3807,
+      3566,
+      3613,
+      4754,
+      3847,
+      3823,
+      3423,
+      3273,
+      3372,
+      2901,
+      4352,
+      3553
+    ],
+    "exact_identifier": [
+      3915,
+      3626,
+      3159,
+      2641,
+      2481,
+      2591,
+      3779,
+      3060,
+      2722,
+      2290,
+      2589,
+      3825,
+      2327,
+      3760,
+      3190,
+      2296,
+      3921,
+      2665
+    ],
+    "multi_endpoint": [
+      6036,
+      5213,
+      4408,
+      4858,
+      4844,
+      4582,
+      7180,
+      5215,
+      5131,
+      4810,
+      4614,
+      5991
+    ],
+    "schema": [
+      2669,
+      4066,
+      3233,
+      4579,
+      4400,
+      3414,
+      5096,
+      8499,
+      3113,
+      2668,
+      5169,
+      4030,
+      4003,
+      5178,
+      2626
+    ],
+    "semantic": [
+      3929,
+      6891,
+      6202,
+      4552,
+      3999,
+      5177,
+      8328,
+      4487,
+      5693,
+      2720,
+      3701,
+      8388,
+      5970,
+      5510,
+      4510,
+      4450,
+      8190,
+      3508
+    ],
+    "unanswerable": [
+      4597,
+      8439,
+      6928,
+      8132,
+      5328,
+      7420,
+      6220,
+      8643,
+      5518,
+      8186,
+      5007,
+      6960,
+      7989,
+      8011,
+      5404,
+      7292,
+      7165,
+      5405
+    ]
+  },
+  "cost": {
+    "per_1000_questions_usd": 1.1012154166666666,
+    "run_total_usd": 0.13214584999999998,
+    "source": "paid_variant",
+    "note": "Estimated, not billed. Estimated at the paid variant's list price (nvidia/nemotron-3.5-super-vl) captured 2026-11-17"
+  },
+  "requests": {
+    "sent": 390,
+    "failed": 0,
+    "retried": 0,
+    "infra_error_attempts": 0
+  },
+  "agent": {
+    "n_attempts": 120,
+    "model_calls": {
+      "mean": 3.25,
+      "p50": 3.0,
+      "max": 5,
+      "distribution": {
+        "3": 92,
+        "4": 26,
+        "5": 2
+      }
+    },
+    "searches": {
+      "mean": 2.183333333333333,
+      "p50": 2.0,
+      "max": 3,
+      "distribution": {
+        "1": 6,
+        "2": 86,
+        "3": 28
+      }
+    },
+    "context_chunks_mean": 7.783333333333333,
+    "context_chunks_max": 10,
+    "needs_retrieval_false": 0,
+    "plan_parse_errors": 0,
+    "judge_parse_errors": 0,
+    "first_judge_enough": {
+      "numerator": 92,
+      "denominator": 120,
+      "value": 0.7666666666666667
+    },
+    "full_coverage_by_category": {
+      "authentication": {
+        "numerator": 13,
+        "denominator": 15,
+        "value": 0.8666666666666667
+      },
+      "comparison": {
+        "numerator": 9,
+        "denominator": 9,
+        "value": 1.0
+      },
+      "endpoint_discovery": {
+        "numerator": 15,
+        "denominator": 15,
+        "value": 1.0
+      },
+      "exact_identifier": {
+        "numerator": 18,
+        "denominator": 18,
+        "value": 1.0
+      },
+      "multi_endpoint": {
+        "numerator": 9,
+        "denominator": 12,
+        "value": 0.75
+      },
+      "schema": {
+        "numerator": 14,
+        "denominator": 15,
+        "value": 0.9333333333333333
+      },
+      "semantic": {
+        "numerator": 17,
+        "denominator": 18,
+        "value": 0.9444444444444444
+      }
+    },
+    "sources_covered_by_question": {
+      "Q105": [
+        1,
+        1,
+        1
+      ],
+      "Q111": [
+        1,
+        1,
+        1
+      ],
+      "Q113": [
+        2,
+        2,
+        2
+      ],
+      "Q132": [
+        3,
+        3,
+        3
+      ],
+      "Q119": [
+        1,
+        1,
+        1
+      ],
+      "Q127": [
+        1,
+        1,
+        1
+      ],
+      "Q115": [
+        1,
+        1,
+        1
+      ],
+      "Q120": [
+        1,
+        1,
+        1
+      ],
+      "Q102": [
+        1,
+        1,
+        1
+      ],
+      "Q122": [
+        1,
+        1,
+        1
+      ],
+      "Q109": [
+        1,
+        1,
+        1
+      ],
+      "Q112": [
+        1,
+        1,
+        1
+      ],
+      "Q131": [
+        2,
+        2,
+        2
+      ],
+      "Q104": [
+        1,
+        1,
+        1
+      ],
+      "Q130": [
+        1,
+        1,
+        1
+      ],
+      "Q121": [
+        1,
+        1,
+        1
+      ],
+      "Q103": [
+        1,
+        1,
+        1
+      ],
+      "Q110": [
+        1,
+        1,
+        1
+      ],
+      "Q117": [
+        1,
+        1,
+        1
+      ],
+      "Q101": [
+        1,
+        0,
+        1
+      ],
+      "Q124": [
+        2,
+        1,
+        2
+      ],
+      "Q129": [
+        2,
+        2,
+        2
+      ],
+      "Q107": [
+        2,
+        2,
+        2
+      ],
+      "Q118": [
+        1,
+        1,
+        1
+      ],
+      "Q134": [
+        2,
+        2,
+        2
+      ],
+      "Q126": [
+        1,
+        1,
+        1
+      ],
+      "Q106": [
+        1,
+        1,
+        1
+      ],
+      "Q123": [
+        1,
+        1,
+        1
+      ],
+      "Q128": [
+        2,
+        2,
+        2
+      ],
+      "Q108": [
+        2,
+        2,
+        2
+      ],
+      "Q116": [
+        1,
+        1,
+        1
+      ],
+      "Q125": [
+        5,
+        4,
+        5
+      ],
+      "Q133": [
+        2,
+        2,
+        2
+      ],
+      "Q114": [
+        2,
+        0,
+        2
+      ]
+    },
+    "n_sources_by_question": {
+      "Q105": 1,
+      "Q111": 1,
+      "Q113": 2,
+      "Q132": 3,
+      "Q119": 1,
+      "Q127": 1,
+      "Q115": 1,
+      "Q120": 1,
+      "Q102": 1,
+      "Q122": 1,
+      "Q109": 1,
+      "Q112": 1,
+      "Q131": 2,
+      "Q104": 1,
+      "Q130": 2,
+      "Q121": 1,
+      "Q103": 1,
+      "Q110": 1,
+      "Q117": 1,
+      "Q101": 1,
+      "Q124": 2,
+      "Q129": 2,
+      "Q107": 2,
+      "Q118": 1,
+      "Q134": 2,
+      "Q126": 1,
+      "Q106": 1,
+      "Q123": 1,
+      "Q128": 2,
+      "Q108": 2,
+      "Q116": 1,
+      "Q125": 5,
+      "Q133": 2,
+      "Q114": 2
+    },
+    "multi_endpoint_queries": {
+      "Q131": [
+        "find customer by last name",
+        "customer consents"
+      ],
+      "Q130": [
+        "change customer email address endpoint",
+        "confirm email address change endpoint",
+        "customers-api email confirmation endpoint"
+      ],
+      "Q129": [
+        "list customer accounts endpoint",
+        "read account balance endpoint"
+      ],
+      "Q128": [
+        "cancel payment",
+        "get payment status"
+      ]
+    }
+  }
+}
