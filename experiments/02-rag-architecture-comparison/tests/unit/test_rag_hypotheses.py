@@ -13,14 +13,19 @@ from rag_experiment.evaluation.answer_run import AnswerRecord
 from rag_experiment.evaluation.dataset import Question, QuestionConstraints
 from rag_experiment.evaluation.hypotheses import (
     BASELINE_ANSWER_RUN,
+    BASELINE_B_ANSWER_RUN,
+    BASELINE_B_RETRIEVAL_RUN,
     BASELINE_RETRIEVAL_RUN,
     FROZEN_BASELINE,
+    FROZEN_BASELINE_B,
     BaselineError,
     apply_answer_verdicts,
     apply_retrieval_verdicts,
     has_hypotheses,
     hb3_verdict,
+    hc3_verdict,
     load_baseline,
+    load_baseline_b,
 )
 from rag_experiment.evaluation.retrieval_metrics import (
     QuestionRetrieval,
@@ -212,3 +217,125 @@ def test_answer_verdicts_per_retriever(make_record: RecordFactory) -> None:
     assert apply_answer_verdicts(summary, "bm25", RESULTS).verdicts == ()
     simulated = apply_answer_verdicts(_answers(make_record, 8, 10, True), "hybrid", RESULTS)
     assert simulated.verdicts[0].verdict == "not applicable (simulated)"
+
+
+# ----------------------------------------------------------------------- architecture C
+
+
+def _rec_c(qid: str, rr: float, hit5: bool, *, excluded: bool = False) -> QuestionRetrieval:
+    hits = {1: float(rr == 1.0), 3: float(hit5), 5: float(hit5), 10: float(rr > 0)}
+    return QuestionRetrieval(
+        run_id="r",
+        question_id=qid,
+        category="semantic",
+        paraphrase_of=None,
+        retriever="rerank",
+        k=10,
+        excluded=excluded,
+        ranked=(),
+        relevant_chunk_ids=("c",),
+        n_relevant_sources=1,
+        hit=hits,
+        recall=dict(hits),
+        precision=dict(hits),
+        reciprocal_rank=rr,
+        first_relevant_rank=None if rr == 0 else round(1 / rr),
+        embed_ms=1.0,
+        search_ms=1.0,
+        rerank_ms=1.0,
+    )
+
+
+def _records_c(mrr_total: float, hit5_total: int, n: int = 34) -> list[QuestionRetrieval]:
+    """``n`` answerable questions whose reciprocal ranks sum to ``mrr_total``; the first
+    ``hit5_total`` hit within the top 5."""
+    out = []
+    remaining = mrr_total
+    for i in range(n):
+        rr = min(1.0, max(0.0, remaining))
+        remaining -= rr
+        out.append(_rec_c(f"C{i}", rr, i < hit5_total))
+    return out
+
+
+def test_hc1_boundary() -> None:
+    below = _by_name(_verdicts(_records_c(34 * 0.85 - 0.01, 32), "rerank"))["HC1"]
+    exact = _by_name(_verdicts(_records_c(34 * 0.85, 32), "rerank"))["HC1"]
+    assert below.verdict == "not supported"
+    assert exact.verdict == "supported"
+    assert "architecture B: 0.782" in exact.evidence and exact.evidence.startswith("MRR = 0.850")
+
+
+def test_hc2_boundary() -> None:
+    low = _by_name(_verdicts(_records_c(30.0, 31), "rerank"))["HC2"]
+    high = _by_name(_verdicts(_records_c(30.0, 32), "rerank"))["HC2"]
+    assert low.verdict == "not supported" and "31/34" in low.evidence
+    assert high.verdict == "supported" and "architecture B: 30/34" in high.evidence
+
+
+def test_hc_wrong_denominator_and_dev_set() -> None:
+    short = _by_name(_verdicts(_records_c(30.0, 32, n=33), "rerank"))
+    assert short["HC1"].verdict == "not testable" and short["HC2"].verdict == "not testable"
+    dev = _by_name(_verdicts(_records_c(30.0, 32), "rerank", set_name="dev"))
+    assert dev["HC1"].verdict == dev["HC2"].verdict == "not applicable (development set)"
+    assert dev["HC3"].verdict.startswith("pending")
+
+
+def test_rerank_retrieval_registry_and_other_retrievers_unchanged() -> None:
+    assert has_hypotheses("rerank") and has_hypotheses("hybrid") and has_hypotheses("dense")
+    assert not has_hypotheses("bm25")
+    verdicts = _verdicts(_records_c(30.0, 32), "rerank")
+    assert [v.hypothesis for v in verdicts] == ["HC1", "HC2", "HC3"]
+    assert [v.hypothesis for v in _verdicts(_records(8, 31), "hybrid")] == ["HB1", "HB2", "HB3"]
+    assert [v.hypothesis for v in _verdicts(_records(8, 31), "dense")] == [
+        "HA1",
+        "HA2",
+        "HA3",
+        "HA4",
+    ]
+    assert _verdicts(_records(8, 31), "bm25") == ()
+
+
+def test_hc3_boundary_is_a_count() -> None:
+    base = FROZEN_BASELINE_B
+    assert hc3_verdict(79, 102, None, base).verdict == "not supported"
+    assert hc3_verdict(80, 102, None, base).verdict == "supported"
+    assert "architecture B: 78/102" in hc3_verdict(80, 102, None, base).evidence
+    odd = hc3_verdict(80, 101, None, base)
+    assert odd.verdict == "not testable" and "expected 102" in odd.evidence
+    assert hc3_verdict(0, 0, None, base).verdict == "not testable"
+    assert hc3_verdict(80, 102, "not applicable (simulated)", base).verdict.startswith("not app")
+
+
+def test_load_baseline_b_reads_the_committed_files() -> None:
+    base = load_baseline_b(RESULTS)
+    assert base == FROZEN_BASELINE_B or (
+        base.hc2 == (30, 34)
+        and base.hc3 == (78, 102)
+        and abs(base.mrr - 0.7823529411764706) < 1e-12
+    )
+    assert round(base.mrr, 3) == 0.782
+
+
+def test_load_baseline_b_detects_a_changed_record(tmp_path: Path) -> None:
+    raw = tmp_path / "raw" / BASELINE_B_RETRIEVAL_RUN
+    processed = tmp_path / "processed" / BASELINE_B_ANSWER_RUN
+    raw.mkdir(parents=True)
+    processed.mkdir(parents=True)
+    lines = (RESULTS / "raw" / BASELINE_B_RETRIEVAL_RUN / "retrieval.jsonl").read_text("utf-8")
+    shutil.copy(
+        RESULTS / "processed" / BASELINE_B_ANSWER_RUN / "answer_summary.json",
+        processed / "answer_summary.json",
+    )
+    (raw / "retrieval.jsonl").write_text(lines, encoding="utf-8")
+    assert load_baseline_b(tmp_path).hc3 == (78, 102)
+    changed = [json.loads(x) for x in lines.splitlines()]
+    target = next(r for r in changed if not r["excluded"] and r["reciprocal_rank"] == 1.0)
+    target["reciprocal_rank"] = 0.5
+    (raw / "retrieval.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in changed), encoding="utf-8"
+    )
+    with pytest.raises(BaselineError, match="differs"):
+        load_baseline_b(tmp_path)
+    with pytest.raises(BaselineError, match="missing"):
+        load_baseline_b(tmp_path / "nowhere")

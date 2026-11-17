@@ -16,7 +16,8 @@ class RetrievedChunk(BaseModel):
     score: float
     rank: int
     retriever: str
-    # Hybrid only: 1-based rank in each source list; a missing key means "not in that list".
+    # Hybrid and rerank: 1-based rank in each source list (rerank adds ``hybrid``).
+    # A missing key means "not in that list".
     component_ranks: dict[str, int] | None = None
 
 
@@ -28,6 +29,9 @@ class RetrievalResult(BaseModel):
     chunks: tuple[RetrievedChunk, ...]
     embed_ms: float
     search_ms: float
+    # Rerank only; the defaults leave dense, BM25 and hybrid results unchanged.
+    rerank_ms: float = 0.0
+    candidate_ids: tuple[str, ...] | None = None  # the pool that was re-ordered, in pool order
 
 
 class Retriever(Protocol):

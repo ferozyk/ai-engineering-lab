@@ -89,3 +89,37 @@ def test_bad_name_and_missing_run(tmp_path: Path) -> None:
         run_compare(tmp_path, ["x"], [], "../escape")
     with pytest.raises(ValueError, match="cannot read"):
         run_compare(tmp_path, ["nope"], [], "ok")
+
+
+def test_comparison_shows_rerank_columns_only_when_present(tmp_path: Path) -> None:
+    _write_run(tmp_path, "run-hybrid", "hybrid", [4, 7, None])
+    run_id = "run-rerank"
+    categories = ["semantic", "exact_identifier", "unanswerable"]
+    records = [
+        _rec(run_id, f"Q{i}", categories[min(i, 2)], rank, excluded=i == 2).model_copy(
+            update={"retriever": "rerank", "rerank_ms": 40.0, "pool_first_relevant_rank": pool}
+        )
+        for i, (rank, pool) in enumerate([(1, 4), (None, None), (None, None)])
+    ]
+    summary = summarize(run_id, "measured", records, [])
+    raw = tmp_path / "raw" / run_id
+    raw.mkdir(parents=True)
+    (raw / "run_metadata.json").write_text(json.dumps({"retriever": "rerank"}), "utf-8")
+    (raw / "retrieval.jsonl").write_text(
+        "".join(json.dumps(r.model_dump(mode="json")) + "\n" for r in records), "utf-8"
+    )
+    processed = tmp_path / "processed" / run_id
+    processed.mkdir(parents=True)
+    (processed / "retrieval_summary.json").write_text(summary.model_dump_json(), "utf-8")
+
+    paths = run_compare(tmp_path, ["run-hybrid", run_id], [], "abc")
+    text = paths["report"].read_text("utf-8")
+    assert "| latency p50, retrieval total (ms) | 12.00 | 52.00 |" in text
+    assert "| latency p50, rerank (ms) | - | 40.00 |" in text
+    assert "| relevant chunk among candidates | - | 1/2 (0.500) |" in text
+    assert "candidate rank: rerank" in text
+    assert "| Q0 | semantic | 4 | 1 | 4 |" in text
+    assert "| Q1 | exact_identifier | 7 | not in top 10 | not in candidates |" in text
+    data = json.loads(paths["json"].read_text("utf-8"))
+    assert data["retrieval_runs"][run_id]["pool_hit"]["numerator"] == 1
+    assert data["retrieval_runs"]["run-hybrid"]["latency_rerank_p50_ms"] is None

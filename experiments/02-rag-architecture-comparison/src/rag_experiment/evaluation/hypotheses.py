@@ -3,10 +3,13 @@
 ``dense`` (architecture A) has HA1 and HA2 (retrieval) and HA3 and HA4 (answers); their logic
 stays in ``retrieval_metrics`` and ``answer_analysis`` and is only dispatched from here.
 ``hybrid`` (architecture B) has HB1 and HB2 (retrieval) and HB3 (answers), defined in
-``docs/evaluation-methodology.md`` section 8. ``bm25`` is a diagnostic run with no hypotheses.
+``docs/evaluation-methodology.md`` section 8. ``rerank`` (architecture C) has HC1 and HC2
+(retrieval) and HC3 (answers), defined in the same section. ``bm25`` is a diagnostic run with no
+hypotheses.
 
-Architecture B's criteria quote architecture A's measured values. They are read from A's committed
-files and checked against the numbers frozen in the methodology; any mismatch is an error.
+Architecture B's criteria quote architecture A's measured values, and C's quote B's. They are read
+from the committed files of the earlier architecture and checked against the numbers frozen in the
+methodology; any mismatch is an error.
 """
 
 import json
@@ -34,6 +37,17 @@ HB3_MIN_RATE = 0.755
 HB1_CRITERION = f"Hit@1 over exact_identifier + schema >= {HB1_MIN}/{HB1_DENOMINATOR}"
 HB2_CRITERION = f"overall Hit@5 >= {HB2_MIN}/{HB2_DENOMINATOR}"
 HB3_CRITERION = f"correctness over answerable attempts >= {HB3_MIN_RATE}"
+
+BASELINE_B_RETRIEVAL_RUN = "20261113T232754Z-retrieval-measured-hybrid"
+BASELINE_B_ANSWER_RUN = "20261116T224508Z-answers-measured-hybrid"
+
+HC1_MIN_MRR, HC1_DENOMINATOR = 0.85, 34
+HC2_MIN, HC2_DENOMINATOR = 32, 34
+HC3_MIN, HC3_DENOMINATOR = 80, 102
+
+HC1_CRITERION = f"MRR (top 10) over answerable questions >= {HC1_MIN_MRR:.2f}"
+HC2_CRITERION = f"overall Hit@5 >= {HC2_MIN}/{HC2_DENOMINATOR}"
+HC3_CRITERION = f"correct answerable attempts >= {HC3_MIN}/{HC3_DENOMINATOR}"
 
 NOT_APPLICABLE_DEV = "not applicable (development set)"
 NOT_APPLICABLE_SIMULATED = "not applicable (simulated)"
@@ -81,6 +95,51 @@ def load_baseline(results_dir: Path) -> Baseline:
     return found
 
 
+@dataclass(frozen=True)
+class BaselineB:
+    """Architecture B's measured MRR and counts."""
+
+    mrr: float
+    hc2: tuple[int, int]
+    hc3: tuple[int, int]
+
+
+FROZEN_BASELINE_B_MRR = 0.7823529411764706
+FROZEN_BASELINE_B = BaselineB(mrr=FROZEN_BASELINE_B_MRR, hc2=(30, 34), hc3=(78, 102))
+
+
+def load_baseline_b(results_dir: Path) -> BaselineB:
+    """Read B's committed run files and check them against the numbers frozen in the methodology."""
+    retrieval = results_dir / "raw" / BASELINE_B_RETRIEVAL_RUN / "retrieval.jsonl"
+    answers = results_dir / "processed" / BASELINE_B_ANSWER_RUN / "answer_summary.json"
+    try:
+        lines = retrieval.read_text(encoding="utf-8").splitlines()
+        records = [json.loads(line) for line in lines if line.strip()]
+        summary = json.loads(answers.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise BaselineError(f"architecture B baseline file missing: {exc}") from exc
+    scored = [r for r in records if not r["excluded"]]
+    if not scored:
+        raise BaselineError("architecture B baseline has no answerable questions")
+    ratio = summary["overall"]["answerable"]
+    mrr = sum(r["reciprocal_rank"] for r in scored) / len(scored)
+    found = BaselineB(
+        mrr=mrr,
+        hc2=(sum(1 for r in scored if r["hit"]["5"] == 1.0), len(scored)),
+        hc3=(int(ratio["numerator"]), int(ratio["denominator"])),
+    )
+    if (
+        round(found.mrr, 3) != 0.782
+        or abs(found.mrr - FROZEN_BASELINE_B_MRR) > 1e-12
+        or found.hc2 != FROZEN_BASELINE_B.hc2
+        or found.hc3 != FROZEN_BASELINE_B.hc3
+    ):
+        raise BaselineError(
+            f"architecture B baseline {found} differs from the frozen values {FROZEN_BASELINE_B}"
+        )
+    return found
+
+
 def _pair(value: tuple[int, int]) -> str:
     return f"{value[0]}/{value[1]}"
 
@@ -123,6 +182,55 @@ def _hb2(records: Sequence[QuestionRetrieval], frozen: bool, base: Baseline) -> 
     return Verdict(hypothesis="HB2", criterion=HB2_CRITERION, verdict=verdict, evidence=evidence)
 
 
+def _hc1(records: Sequence[QuestionRetrieval], frozen: bool, base: BaselineB) -> Verdict:
+    scored = [r for r in records if not r.excluded]
+    mrr = sum(r.reciprocal_rank for r in scored) / len(scored) if scored else 0.0
+    evidence = f"MRR = {mrr:.3f}; architecture B: {base.mrr:.3f}"
+    if not frozen:
+        verdict = NOT_APPLICABLE_DEV
+    elif len(scored) != HC1_DENOMINATOR:
+        verdict = "not testable"
+        evidence += f"; expected {HC1_DENOMINATOR} answerable questions, found {len(scored)}"
+    else:
+        verdict = "supported" if mrr >= HC1_MIN_MRR - 1e-9 else "not supported"
+    return Verdict(hypothesis="HC1", criterion=HC1_CRITERION, verdict=verdict, evidence=evidence)
+
+
+def _hc2(records: Sequence[QuestionRetrieval], frozen: bool, base: BaselineB) -> Verdict:
+    scored = [r for r in records if not r.excluded]
+    hits = sum(1 for r in scored if r.hit[5] == 1.0)
+    evidence = (
+        f"Hit@5 = {hits}/{len(scored)} = {_rate(hits, len(scored))}; "
+        f"architecture B: {_pair(base.hc2)}"
+    )
+    if not frozen:
+        verdict = NOT_APPLICABLE_DEV
+    elif len(scored) != HC2_DENOMINATOR:
+        verdict = "not testable"
+        evidence += f"; expected {HC2_DENOMINATOR} answerable questions"
+    else:
+        verdict = "supported" if hits >= HC2_MIN else "not supported"
+    return Verdict(hypothesis="HC2", criterion=HC2_CRITERION, verdict=verdict, evidence=evidence)
+
+
+def hc3_verdict(
+    numerator: int, denominator: int, applicability: str | None, base: BaselineB
+) -> Verdict:
+    """HC3 from the correct/answerable attempt counts of an answer run (compared as a count)."""
+    evidence = (
+        f"correct {numerator}/{denominator} = {_rate(numerator, denominator)}; "
+        f"architecture B: {_pair(base.hc3)}"
+    )
+    if applicability is not None:
+        verdict = applicability
+    elif denominator != HC3_DENOMINATOR:
+        verdict = "not testable"
+        evidence += f"; expected {HC3_DENOMINATOR} answerable attempts"
+    else:
+        verdict = "supported" if numerator >= HC3_MIN else "not supported"
+    return Verdict(hypothesis="HC3", criterion=HC3_CRITERION, verdict=verdict, evidence=evidence)
+
+
 def hb3_verdict(
     numerator: int, denominator: int, applicability: str | None, base: Baseline
 ) -> Verdict:
@@ -162,11 +270,25 @@ def _hybrid_retrieval(
     return (_hb1(records, frozen, base), _hb2(records, frozen, base), pending)
 
 
+def _rerank_retrieval(
+    records: Sequence[QuestionRetrieval], frozen: bool, results_dir: Path
+) -> tuple[Verdict, ...]:
+    base = load_baseline_b(results_dir)
+    pending = Verdict(
+        hypothesis="HC3", criterion=HC3_CRITERION, verdict=PENDING_ANSWERS, evidence=""
+    )
+    return (_hc1(records, frozen, base), _hc2(records, frozen, base), pending)
+
+
 # Registry: retriever name -> retrieval-time verdicts. A retriever absent here has none.
 _RETRIEVAL: dict[str, Callable[[Sequence[QuestionRetrieval], bool, Path], tuple[Verdict, ...]]] = {
     "dense": _dense_retrieval,
     "hybrid": _hybrid_retrieval,
+    "rerank": _rerank_retrieval,
 }
+
+
+_ANSWER_HYPOTHESES = frozenset({"hybrid", "rerank"})
 
 
 def has_hypotheses(retriever: str) -> bool:
@@ -196,7 +318,7 @@ def apply_answer_verdicts(
     """The answer summary with the retriever's own verdicts (dense: unchanged)."""
     if retriever == "dense":
         return summary
-    if retriever != "hybrid":
+    if retriever not in _ANSWER_HYPOTHESES:
         return summary.model_copy(update={"verdicts": ()})
     applicability: str | None = None
     if summary.simulated:
@@ -204,7 +326,12 @@ def apply_answer_verdicts(
     elif summary.question_set != "measured":
         applicability = NOT_APPLICABLE_DEV
     ratio = summary.overall.answerable
-    verdict = hb3_verdict(
-        ratio.numerator, ratio.denominator, applicability, load_baseline(results_dir)
-    )
+    if retriever == "rerank":
+        verdict = hc3_verdict(
+            ratio.numerator, ratio.denominator, applicability, load_baseline_b(results_dir)
+        )
+    else:
+        verdict = hb3_verdict(
+            ratio.numerator, ratio.denominator, applicability, load_baseline(results_dir)
+        )
     return summary.model_copy(update={"verdicts": (verdict,)})

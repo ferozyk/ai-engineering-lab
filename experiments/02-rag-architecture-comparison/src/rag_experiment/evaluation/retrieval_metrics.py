@@ -5,8 +5,9 @@ Definitions follow ``docs/evaluation-methodology.md`` section 4. Nothing here do
 
 from collections import defaultdict
 from collections.abc import Collection, Sequence
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model_serializer
 
 from ai_lab.benchmarking import percentile
 from rag_experiment.evaluation.relevance import covered_sources
@@ -14,6 +15,7 @@ from rag_experiment.ingestion.chunker import Chunk
 from rag_experiment.ingestion.pointers import Source
 
 KS = (1, 3, 5, 10)
+RERANK_RETRIEVER = "rerank"
 DIAGNOSTIC_TEXT = "diagnostic run: no pre-registered hypotheses"
 HA1_CATEGORIES = ("semantic", "endpoint_discovery")
 HA2_CATEGORIES = ("exact_identifier",)
@@ -96,6 +98,31 @@ class QuestionRetrieval(BaseModel):
     first_relevant_rank: int | None
     embed_ms: float
     search_ms: float
+    # Rerank only. Both are omitted from the written record of every other retriever, so dense,
+    # BM25 and hybrid records keep exactly the shape they had before reranking existed.
+    rerank_ms: float = 0.0
+    pool_first_relevant_rank: int | None = None  # 1-based position in the candidate pool
+
+    @model_serializer(mode="wrap")
+    def _omit_rerank_fields(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if self.retriever != RERANK_RETRIEVER:
+            data.pop("rerank_ms", None)
+            data.pop("pool_first_relevant_rank", None)
+        return data
+
+
+def pool_first_rank(
+    candidate_ids: Sequence[str] | None, relevant_ids: Collection[str]
+) -> int | None:
+    """1-based position of the first relevant chunk in the candidate pool, or ``None``."""
+    if candidate_ids is None:
+        return None
+    relevant = set(relevant_ids)
+    for position, chunk_id in enumerate(candidate_ids, start=1):
+        if chunk_id in relevant:
+            return position
+    return None
 
 
 def score_question(
@@ -113,6 +140,8 @@ def score_question(
     search_ms: float,
     excluded: bool,
     component_ranks: Sequence[dict[str, int] | None] | None = None,
+    rerank_ms: float = 0.0,
+    candidate_ids: Sequence[str] | None = None,
 ) -> QuestionRetrieval:
     """Build the record for one question. Excluded questions carry zeroed metrics."""
     ids = [chunk_id for chunk_id, _ in ranked]
@@ -147,6 +176,8 @@ def score_question(
             first_relevant_rank=None,
             embed_ms=embed_ms,
             search_ms=search_ms,
+            rerank_ms=rerank_ms,
+            pool_first_relevant_rank=None,
         )
     return QuestionRetrieval(
         run_id=run_id,
@@ -166,6 +197,8 @@ def score_question(
         first_relevant_rank=first_relevant_rank(ids, relevant),
         embed_ms=embed_ms,
         search_ms=search_ms,
+        rerank_ms=rerank_ms,
+        pool_first_relevant_rank=pool_first_rank(candidate_ids, relevant),
     )
 
 
@@ -246,6 +279,17 @@ class RetrievalSummary(BaseModel):
     verdicts: tuple[Verdict, ...]
     deterministic: bool
     nondeterministic_questions: tuple[str, ...]
+    # Rerank only (omitted from the written summary otherwise).
+    latency_rerank_ms: LatencyStats | None = None
+    pool_hit: RatioValue | None = None  # answerable questions with a relevant chunk in the pool
+
+    @model_serializer(mode="wrap")
+    def _omit_rerank_fields(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        for key in ("latency_rerank_ms", "pool_hit"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
 
 def _mean(values: Sequence[float]) -> float:
@@ -367,7 +411,9 @@ def summarize(
     ha2 = hit5_ratio(records, HA2_CATEGORIES)
     embed = [r.embed_ms for r in records]
     search = [r.search_ms for r in records]
-    total = [r.embed_ms + r.search_ms for r in records]
+    total = [r.embed_ms + r.search_ms + r.rerank_ms for r in records]
+    reranked = any(r.retriever == RERANK_RETRIEVER for r in records)
+    pool_hits = sum(1 for r in answerable if r.pool_first_relevant_rank is not None)
     return RetrievalSummary(
         run_id=run_id,
         question_set=question_set,
@@ -384,4 +430,14 @@ def summarize(
         verdicts=compute_verdicts(ha1, ha2, question_set == "measured"),
         deterministic=not nondeterministic,
         nondeterministic_questions=tuple(nondeterministic),
+        latency_rerank_ms=_latency([r.rerank_ms for r in records]) if reranked else None,
+        pool_hit=(
+            RatioValue(
+                numerator=pool_hits,
+                denominator=len(answerable),
+                value=pool_hits / len(answerable) if answerable else None,
+            )
+            if reranked
+            else None
+        ),
     )

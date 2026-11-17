@@ -159,7 +159,8 @@ def render_answer_report(
         "",
         "## Latency",
         "",
-        "Qdrant local mode, in-process, exact search; CPU. Total = embed + search + generation, "
+        "Qdrant local mode, in-process, exact search; CPU. Total = embed + search + "
+        f"{'rerank + ' if 'rerank' in summary.latency_ms else ''}generation, "
         "without client-side throttling. With few attempts p95 rests on a handful of "
         "observations.",
         "",
@@ -218,6 +219,7 @@ def write_processed(
     summary_path = processed_dir / "answer_summary.json"
     csv_path = processed_dir / "answers_by_attempt.csv"
     write_json(summary_path, summary)
+    reranked = any(r.rerank_ms > 0 for r in records)  # the column exists for rerank runs only
     columns = [
         "attempt_id",
         "question_id",
@@ -236,6 +238,7 @@ def write_processed(
         "missing_key_facts",
         "embed_ms",
         "search_ms",
+        *(["rerank_ms"] if reranked else []),
         "generation_ms",
         "total_ms",
         "prompt_tokens",
@@ -248,32 +251,32 @@ def write_processed(
         writer = csv.DictWriter(handle, fieldnames=columns)
         writer.writeheader()
         for r in latest_by_attempt(records).values():
-            writer.writerow(
-                {
-                    "attempt_id": r.attempt_id,
-                    "question_id": r.question_id,
-                    "repetition": r.repetition,
-                    "category": r.category,
-                    "outcome": r.outcome,
-                    "correct": "" if r.correct is None else r.correct,
-                    "false_refusal": "" if r.false_refusal is None else r.false_refusal,
-                    "correct_refusal": "" if r.correct_refusal is None else r.correct_refusal,
-                    "made_up_answer": "" if r.made_up_answer is None else r.made_up_answer,
-                    "context_hit": r.context_hit,
-                    "citations_valid": "" if r.citations_valid is None else r.citations_valid,
-                    "cites_relevant": "" if r.cites_relevant is None else r.cites_relevant,
-                    "unsupported_identifiers": " ".join(r.unsupported_identifiers),
-                    "invented_identifiers": " ".join(r.invented_identifiers),
-                    "missing_key_facts": " ".join(r.missing_key_facts),
-                    "embed_ms": round(r.embed_ms, 3),
-                    "search_ms": round(r.search_ms, 3),
-                    "generation_ms": round(r.generation_ms, 3),
-                    "total_ms": round(r.total_ms, 3),
-                    "prompt_tokens": r.usage.prompt_tokens,
-                    "completion_tokens": r.usage.completion_tokens,
-                    "total_tokens": r.usage.total_tokens,
-                    "attempts": r.attempts,
-                    "error_kind": r.error_kind or "",
-                }
-            )
+            row: dict[str, object] = {
+                "attempt_id": r.attempt_id,
+                "question_id": r.question_id,
+                "repetition": r.repetition,
+                "category": r.category,
+                "outcome": r.outcome,
+                "correct": "" if r.correct is None else r.correct,
+                "false_refusal": "" if r.false_refusal is None else r.false_refusal,
+                "correct_refusal": "" if r.correct_refusal is None else r.correct_refusal,
+                "made_up_answer": "" if r.made_up_answer is None else r.made_up_answer,
+                "context_hit": r.context_hit,
+                "citations_valid": "" if r.citations_valid is None else r.citations_valid,
+                "cites_relevant": "" if r.cites_relevant is None else r.cites_relevant,
+                "unsupported_identifiers": " ".join(r.unsupported_identifiers),
+                "invented_identifiers": " ".join(r.invented_identifiers),
+                "missing_key_facts": " ".join(r.missing_key_facts),
+                "embed_ms": round(r.embed_ms, 3),
+                "search_ms": round(r.search_ms, 3),
+                "rerank_ms": round(r.rerank_ms, 3),
+                "generation_ms": round(r.generation_ms, 3),
+                "total_ms": round(r.total_ms, 3),
+                "prompt_tokens": r.usage.prompt_tokens,
+                "completion_tokens": r.usage.completion_tokens,
+                "total_tokens": r.usage.total_tokens,
+                "attempts": r.attempts,
+                "error_kind": r.error_kind or "",
+            }
+            writer.writerow({k: v for k, v in row.items() if k in columns})
     return {"summary": summary_path, "csv": csv_path}

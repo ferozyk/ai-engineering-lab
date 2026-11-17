@@ -51,9 +51,12 @@ from rag_experiment.evaluation.retrieval_run import (
 from rag_experiment.generation.prompts import PromptVersionError
 from rag_experiment.ingestion.chunker import Chunk, chunk_corpus
 from rag_experiment.ingestion.parser import SpecError
+from rag_experiment.rerank.fake import FakeReranker
+from rag_experiment.rerank.provider import CrossEncoderReranker, Reranker, RerankError
 from rag_experiment.retrieval.base import Retriever
 from rag_experiment.retrieval.bm25 import BM25Index, BM25Retriever
 from rag_experiment.retrieval.hybrid import HybridRetriever
+from rag_experiment.retrieval.rerank import RerankRetriever
 from rag_experiment.retrieval.store import (
     IndexLockedError,
     IngestReport,
@@ -64,7 +67,7 @@ from rag_experiment.retrieval.store import (
 )
 from rag_experiment.retrieval.vector import DenseRetriever
 
-RetrieverName = Literal["dense", "bm25", "hybrid"]
+RetrieverName = Literal["dense", "bm25", "hybrid", "rerank"]
 RETRIEVERS: tuple[str, ...] = get_args(RetrieverName)
 
 _SPLIT_SUFFIX = re.compile(r":p\d+$")
@@ -269,6 +272,7 @@ class _Session:
     cache: EmbeddingCache
     store: QdrantStore | None
     index_dir: Path | None
+    reranker: Reranker | None = None
 
     def require_store(self) -> QdrantStore:
         """The vector store; absent only for lexical (BM25) sessions."""
@@ -291,7 +295,19 @@ def build_retriever(name: RetrieverName, session: _Session, config: ExperimentCo
     if name == "dense":
         return dense
     bm25 = BM25Retriever(BM25Index(session.chunks, hybrid.bm25_k1, hybrid.bm25_b))
-    return HybridRetriever(dense, bm25, hybrid.rrf_k, hybrid.candidate_depth)
+    fused = HybridRetriever(dense, bm25, hybrid.rrf_k, hybrid.candidate_depth)
+    if name == "hybrid":
+        return fused
+    if session.reranker is None:
+        raise ValueError("this session has no reranker")
+    return RerankRetriever(fused, session.reranker, config.rerank.candidate_depth)
+
+
+def _reranker_ids(session: _Session) -> tuple[str, str] | None:
+    """``(model_id, revision)`` of the session's reranker, or ``None`` when it has none."""
+    if session.reranker is None:
+        return None
+    return session.reranker.model_id, session.reranker.revision
 
 
 def _results_root(config: ExperimentConfig, fake: bool) -> Path:
@@ -316,6 +332,17 @@ def _make_provider(config: ExperimentConfig, fake: bool) -> EmbeddingProvider:
     return SentenceTransformerProvider(config.embedding)
 
 
+def _make_reranker(config: ExperimentConfig, fake: bool) -> Reranker:
+    if fake:
+        return FakeReranker()
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+    print(
+        f"Loading local reranker model {config.rerank.model_id} "
+        "(the first run downloads about 2.3 GB)..."
+    )
+    return CrossEncoderReranker(config.rerank)
+
+
 @contextmanager
 def _session(config: ExperimentConfig, fake: bool, retriever: str = "dense") -> Iterator[_Session]:
     corpus, chunks = _load(config)
@@ -335,7 +362,8 @@ def _session(config: ExperimentConfig, fake: bool, retriever: str = "dense") -> 
         )
     )
     with open_local_store(index_dir, collection) as store:
-        yield _Session(corpus, chunks, provider, cache, store, index_dir)
+        reranker = _make_reranker(config, fake) if retriever == "rerank" else None
+        yield _Session(corpus, chunks, provider, cache, store, index_dir, reranker)
 
 
 def _ingest_record_path(index_dir: Path, collection: str) -> Path:
@@ -428,7 +456,10 @@ def _cmd_retrieve(
                 else f" · ranks {dict(sorted(item.component_ranks.items()))}"
             )
             print(f"{item.rank} · {item.score:.4f} · {item.chunk.chunk_id}{mark}{parts}")
-        print(f"embed {result.embed_ms:.1f} ms, search {result.search_ms:.1f} ms")
+        timing = f"embed {result.embed_ms:.1f} ms, search {result.search_ms:.1f} ms"
+        if result.rerank_ms > 0:
+            timing += f", rerank {result.rerank_ms:.1f} ms"
+        print(timing)
         if show and result.chunks:
             print()
             print(result.chunks[0].chunk.content)
@@ -464,6 +495,7 @@ def _cmd_evaluate(
             collection=session.collection,
             started_at=started,
             deterministic=summary.deterministic,
+            reranker=_reranker_ids(session),
         )
     ingest_payload: dict[str, object] = {
         "this_invocation": report.model_dump(mode="json") if report else None,
@@ -476,6 +508,15 @@ def _cmd_evaluate(
         print("fake embeddings: dry run, files written under results/dry-run (not a measurement)")
     print(f"questions: {summary.n_questions} ({summary.n_excluded} unanswerable excluded)")
     print(f"deterministic: {summary.deterministic} {list(summary.nondeterministic_questions)}")
+    if summary.pool_hit is not None:
+        pool = summary.pool_hit
+        print(
+            f"relevant chunk among the {config.rerank.candidate_depth} candidates: "
+            f"{pool.numerator}/{pool.denominator}"
+        )
+    if summary.latency_rerank_ms is not None:
+        lat = summary.latency_rerank_ms
+        print(f"reranking latency: p50 {lat.p50:.1f} ms, p95 {lat.p95:.1f} ms (n={lat.n})")
     print()
     print("\n".join(metrics_table(summary)))
     print()
@@ -537,6 +578,7 @@ def _prepare_retrieval(
             dimension=session.provider.dimension,
             collection=session.collection,
             deterministic=deterministic,
+            reranker=_reranker_ids(session),
         )
 
 
@@ -671,6 +713,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ValueError,
         OSError,
         EmbeddingError,
+        RerankError,
         IndexLockedError,
         RunError,
         PricingError,

@@ -1,8 +1,8 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** Stage 3 in progress (architecture B)
+> **Status:** Stage 4 in progress (architecture C)
 > **Experiment version:** 0.1.0
-> **Last updated:** 2026-11-11
+> **Last updated:** 2026-11-17
 
 ## 1. Overview
 
@@ -104,9 +104,9 @@ Each architecture adds one piece to the previous one.
 
 | Architecture | Adds | Status |
 |---|---|---|
-| A. Baseline | Dense vector retrieval over structure-aware chunks | Planned for Stage 2 |
-| B. Hybrid | BM25 keyword search combined with dense search by Reciprocal Rank Fusion | Built; retrieval measured; answers pending |
-| C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Later milestone |
+| A. Baseline | Dense vector retrieval over structure-aware chunks | Built; retrieval and answers measured |
+| B. Hybrid | BM25 keyword search combined with dense search by Reciprocal Rank Fusion | Built; retrieval and answers measured |
+| C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Built; retrieval measured; answers pending |
 | D. Agentic | A LangGraph agent that plans, searches, checks the evidence and searches again | Later milestone |
 
 These are composable capabilities, not exclusive categories: architecture D can use C's retriever as its tool.
@@ -119,7 +119,7 @@ These are composable capabilities, not exclusive categories: architecture D can 
 | Vector store | Qdrant local mode (`qdrant-client`) | In-process, no server, persists to a folder | A |
 | Generation | OpenRouter through the `openai` SDK; model set by `LLM_MODEL` | Same access path as experiment 01; never hardcoded | A |
 | Keyword search | Hand-written BM25 (about 40 lines) | Small enough to read end to end | B |
-| Reranker | `BAAI/bge-reranker-v2-m3` cross-encoder | Same runtime as the embedding model | C |
+| Reranker | `BAAI/bge-reranker-v2-m3` cross-encoder via sentence-transformers (`CrossEncoder`), revision pinned in `configs/experiment.yaml`; about 2.3 GB downloaded once | Same runtime as the embedding model; reads the question and each candidate chunk together | C |
 | Agent orchestration | LangGraph | Only when the agentic milestone needs it | D |
 
 Size implications (the model card figures are listed first; the measured installation and weights sizes are in [architecture.md](docs/architecture.md) section 6):
@@ -195,6 +195,7 @@ uv run rag-experiment retrieve --question-id Q01 -k 5
 uv run rag-experiment evaluate-retrieval --set dev
 uv run rag-experiment evaluate-retrieval --set measured
 uv run rag-experiment evaluate-retrieval --set measured --retriever hybrid   # architecture B
+uv run rag-experiment evaluate-retrieval --set measured --retriever rerank   # architecture C; first run downloads the reranker
 uv run rag-experiment evaluate-retrieval --set measured --retriever bm25     # diagnostic, no model
 uv run rag-experiment compare --retrieval RUN_ID RUN_ID --out NAME           # side by side
 uv run rag-experiment preflight                   # offline checks, no request
@@ -210,7 +211,7 @@ make test-models                                  # tests that load the real emb
 - `index` embeds the chunks and builds the local Qdrant index under `.index/` (gitignored). It is idempotent (`--rebuild` forces a rebuild).
 - `retrieve` prints the top chunks for a question; `--question-id` takes the text from a question set and marks the relevant chunks, `--show` prints the top chunk.
 - `evaluate-retrieval` retrieves every question of a set twice (determinism check) and writes the run under `results/raw`, `results/processed` and `results/reports`.
-- `--retriever dense|bm25|hybrid` (default `dense`) selects the retrieval method on `retrieve`, `evaluate-retrieval`, `preflight`, `canary` and `run`. `hybrid` is BM25 plus dense search fused by Reciprocal Rank Fusion; `bm25` needs no embedding model and no index and is a diagnostic with no pre-registered hypotheses. Run ids carry the retriever name (for example `...-retrieval-measured-hybrid`); `analyse` and the default chart inputs use the committed retrieval run of the same retriever.
+- `--retriever dense|bm25|hybrid|rerank` (default `dense`) selects the retrieval method on `retrieve`, `evaluate-retrieval`, `preflight`, `canary` and `run`. `hybrid` is BM25 plus dense search fused by Reciprocal Rank Fusion; `rerank` re-orders the hybrid top 30 with a local cross-encoder (the reranker is loaded on first use; `--fake-embeddings` and `--fake` use a deterministic stand-in for both models); `bm25` needs no embedding model and no index and is a diagnostic with no pre-registered hypotheses. Run ids carry the retriever name (for example `...-retrieval-measured-hybrid`); `analyse` and the default chart inputs use the committed retrieval run of the same retriever.
 - `compare --retrieval RUN_ID [RUN_ID ...] [--answers RUN_ID ...] [--out NAME]` reads committed summaries only (no request, no model) and writes `results/processed/comparisons/<name>/comparison.json` and `results/reports/comparisons/<name>/comparison.md`: overall and per-category retrieval metrics, answer metrics, a per-question table and each run's verdict table. It contains numbers only, no interpretation.
 - `--fake-embeddings` on these commands uses a deterministic stand-in embedder for a dry run; its output goes to `results/dry-run/` and is not a measurement.
 - `preflight` checks the configuration, the prompt version, that `LLM_MODEL` and `OPENROUTER_API_KEY` are set (it prints "set", never the value), that the local index is complete, that the question sets are valid and the measured set matches its frozen checksum, the largest prompt, and the planned request count against the daily cap. `preflight --live` also looks the model up, resolves a price, reads the key's free-model counters and sends one tiny completion (it prints "live checks will send 1 model request" first).

@@ -341,6 +341,14 @@ def summarise_answers(
         "generation": _latency([r.generation_ms for r in scored]),
         "total": _latency([r.total_ms for r in scored]),
     }
+    if any(r.rerank_ms > 0 for r in scored):  # a rerank stage exists only for reranked runs
+        latency = {
+            "embed": latency["embed"],
+            "search": latency["search"],
+            "rerank": _latency([r.rerank_ms for r in scored]),
+            "generation": latency["generation"],
+            "total": latency["total"],
+        }
     tokens = {
         "prompt": _tokens([r.usage.prompt_tokens for r in scored]),
         "completion": _tokens([r.usage.completion_tokens for r in scored]),

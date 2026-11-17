@@ -10,7 +10,7 @@ Output::
 import json
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -36,6 +36,8 @@ class RetrievalRun:
     first_relevant_rank: dict[str, int | None]
     category: dict[str, str]
     excluded: frozenset[str]
+    # Rerank runs only: 1-based position of the first relevant chunk in the candidate pool.
+    pool_first_relevant_rank: dict[str, int | None] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -63,13 +65,18 @@ def load_retrieval_run(results_base: Path, run_id: str) -> RetrievalRun:
     ranks: dict[str, int | None] = {}
     categories: dict[str, str] = {}
     excluded: set[str] = set()
+    pool_ranks: dict[str, int | None] = {}
     for line in _read(results_base / "raw" / run_id / "retrieval.jsonl").splitlines():
         record = json.loads(line)
         ranks[record["question_id"]] = record["first_relevant_rank"]
         categories[record["question_id"]] = record["category"]
+        if "pool_first_relevant_rank" in record:
+            pool_ranks[record["question_id"]] = record["pool_first_relevant_rank"]
         if record["excluded"]:
             excluded.add(record["question_id"])
-    return RetrievalRun(run_id, meta["retriever"], summary, ranks, categories, frozenset(excluded))
+    return RetrievalRun(
+        run_id, meta["retriever"], summary, ranks, categories, frozenset(excluded), pool_ranks
+    )
 
 
 def load_answer_run(results_base: Path, run_id: str) -> AnswerRun:
@@ -92,6 +99,10 @@ def _ratio(value: RatioValue) -> str:
 
 def _rank(value: int | None) -> str:
     return "not in top 10" if value is None else str(value)
+
+
+def _pool_rank(value: int | None) -> str:
+    return "not in candidates" if value is None else str(value)
 
 
 def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> list[str]:
@@ -131,6 +142,10 @@ def build_comparison(
             "recall_at_5": s.overall.recall[5],
             "mrr": s.overall.mrr,
             "latency_total_p50_ms": s.latency_total_ms.p50,
+            "latency_rerank_p50_ms": (
+                None if s.latency_rerank_ms is None else s.latency_rerank_ms.p50
+            ),
+            "pool_hit": None if s.pool_hit is None else s.pool_hit.model_dump(),
             "hit_at_1_by_category": {c: s.by_category[c].hit[1] for c in s.by_category},
             "hit_at_5_by_category": {c: s.by_category[c].hit[5] for c in s.by_category},
             "verdicts": [v.model_dump() for v in s.verdicts],
@@ -151,6 +166,8 @@ def build_comparison(
             "citations_valid": s2.citations.citations_valid.model_dump(),
             "generation_p50_ms": s2.latency_ms["generation"].p50,
             "generation_p95_ms": s2.latency_ms["generation"].p95,
+            "rerank_p50_ms": s2.latency_ms["rerank"].p50 if "rerank" in s2.latency_ms else None,
+            "total_p50_ms": s2.latency_ms["total"].p50,
             "mean_total_tokens": s2.tokens["total"].mean,
             "estimated_cost_per_1000_questions_usd": s2.cost.per_1000_questions_usd,
             "cost_source": s2.cost.source,
@@ -173,6 +190,13 @@ def build_comparison(
                     if q.question_id == qid
                 },
             }
+            pools = {
+                r.run_id: r.pool_first_relevant_rank.get(qid)
+                for r in retrieval
+                if r.pool_first_relevant_rank
+            }
+            if pools:
+                per_question[qid]["pool_first_relevant_rank"] = pools
     return {
         "question_set": next(iter(sets)) if sets else None,
         "retrieval_runs": retrieval_rows,
@@ -199,8 +223,28 @@ def render_comparison(
         rows.append(["MRR", *(f"{r.summary.overall.mrr:.3f}" for r in retrieval)])
         rows.append(
             [
-                "latency p50, embed + search (ms)",
+                "latency p50, retrieval total (ms)",
                 *(f"{r.summary.latency_total_ms.p50:.2f}" for r in retrieval),
+            ]
+        )
+        rows.append(
+            [
+                "latency p50, rerank (ms)",
+                *(
+                    "-"
+                    if r.summary.latency_rerank_ms is None
+                    else f"{r.summary.latency_rerank_ms.p50:.2f}"
+                    for r in retrieval
+                ),
+            ]
+        )
+        rows.append(
+            [
+                "relevant chunk among candidates",
+                *(
+                    "-" if r.summary.pool_hit is None else _ratio(r.summary.pool_hit)
+                    for r in retrieval
+                ),
             ]
         )
         categories = sorted({c for r in retrieval for c in r.summary.by_category})
@@ -265,6 +309,20 @@ def render_comparison(
             ]
         )
         arows.append(
+            [
+                "rerank p50 (ms)",
+                *(
+                    f"{a.summary.latency_ms['rerank'].p50:.0f}"
+                    if "rerank" in a.summary.latency_ms
+                    else "-"
+                    for a in answers
+                ),
+            ]
+        )
+        arows.append(
+            ["total p50 (ms)", *(f"{a.summary.latency_ms['total'].p50:.0f}" for a in answers)]
+        )
+        arows.append(
             ["mean total tokens", *(f"{a.summary.tokens['total'].mean:.0f}" for a in answers)]
         )
         arows.append(
@@ -276,10 +334,12 @@ def render_comparison(
         out += ["## Answers", "", *_table(header, arows), ""]
     if retrieval:
         first = retrieval[0]
+        pooled = [r for r in retrieval if r.pool_first_relevant_rank]
         header = [
             "question",
             "category",
             *(f"first relevant rank: {r.retriever}" for r in retrieval),
+            *(f"candidate rank: {r.retriever}" for r in pooled),
             *(f"correct: {a.retriever} ({a.run_id})" for a in answers),
         ]
         qrows: list[list[str]] = []
@@ -288,6 +348,7 @@ def render_comparison(
                 continue
             row = [qid, first.category[qid]]
             row += [_rank(r.first_relevant_rank.get(qid)) for r in retrieval]
+            row += [_pool_rank(r.pool_first_relevant_rank.get(qid)) for r in pooled]
             for a in answers:
                 match = [q for q in a.summary.per_question if q.question_id == qid]
                 row.append(f"{match[0].correct}/{match[0].attempts}" if match else "n/a")

@@ -210,13 +210,21 @@ def chart_latency(summary: AnswerSummary, ctx: ChartContext, directory: Path) ->
         "Bars show p50, ticks show p95; client-side throttling excluded",
         ctx,
     )
-    stages = ("embed", "search", "generation")
-    labels = ("Query embedding", "Vector search", "Generation")
+    names = {
+        "embed": "Query embedding",
+        "search": "Vector search",
+        "rerank": "Reranking",
+        "generation": "Generation",
+    }
+    stages = tuple(stage for stage in names if stage in summary.latency_ms)
+    labels = tuple(names[stage] for stage in stages)
     p50 = [summary.latency_ms[s].p50 for s in stages]
     p95 = [summary.latency_ms[s].p95 for s in stages]
     use_log = all(v > 0 for v in p50 + p95)
-    ax.bar(range(3), p50, width=0.5, color=BLUE, label="p50")
-    ax.scatter(range(3), p95, marker="_", s=900, color=TEXT, linewidths=2, label="p95", zorder=3)
+    ax.bar(range(len(stages)), p50, width=0.5, color=BLUE, label="p50")
+    ax.scatter(
+        range(len(stages)), p95, marker="_", s=900, color=TEXT, linewidths=2, label="p95", zorder=3
+    )
     for index, (a, b) in enumerate(zip(p50, p95, strict=True)):
         ax.annotate(
             f"p50 {a:,.2f} / p95 {b:,.2f}",
@@ -229,7 +237,7 @@ def chart_latency(summary: AnswerSummary, ctx: ChartContext, directory: Path) ->
         )
     if use_log:
         ax.set_yscale("log")
-    ax.set_xticks(range(3))
+    ax.set_xticks(range(len(stages)))
     ax.set_xticklabels(labels)
     ax.set_xlabel("Pipeline stage")
     ax.set_ylabel("Latency (ms, log scale)" if use_log else "Latency (ms)")

@@ -138,3 +138,100 @@ def test_find_retrieval_run_filters_by_retriever(tmp_path: Path) -> None:
     assert find(tmp_path, "measured") == "20260101T000000Z-retrieval-measured-dense"
     assert find(tmp_path, "measured", "hybrid") == "20260102T000000Z-retrieval-measured-hybrid"
     assert find(tmp_path, "dev", "hybrid") is None
+
+
+# ----------------------------------------------------------------------- rerank (fake models)
+
+
+def test_evaluate_rerank_records_pool_diagnostics_and_rerank_latency(
+    results: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = cli.main(
+        ["evaluate-retrieval", "--set", "dev", "--retriever", "rerank", "--fake-embeddings"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "HC1: not applicable (development set)" in out and "HB1" not in out
+    assert "candidates:" in out and "reranking latency:" in out
+    raw = _only(results, "raw")
+    assert raw.name.endswith("-retrieval-dev-rerank-fake")
+    meta = json.loads((raw / "run_metadata.json").read_text("utf-8"))
+    assert meta["retriever"] == "rerank"
+    assert meta["rerank"]["revision"] == "fake" and meta["rerank"]["candidate_depth"] == 30
+    rows = [json.loads(x) for x in (raw / "retrieval.jsonl").read_text("utf-8").splitlines()]
+    assert all("rerank_ms" in r and "pool_first_relevant_rank" in r for r in rows)
+    first = rows[0]["ranked"][0]
+    assert first["component_ranks"]["hybrid"] >= 1 and "dense" in first["component_ranks"]
+    summary = RetrievalSummary.model_validate_json(
+        (results / "dry-run" / "processed" / raw.name / "retrieval_summary.json").read_text("utf-8")
+    )
+    assert summary.latency_rerank_ms is not None and summary.latency_rerank_ms.p50 > 0
+    assert summary.pool_hit is not None and summary.pool_hit.denominator > 0
+    total = summary.latency_total_ms.p50
+    assert total >= summary.latency_rerank_ms.p50
+    report = (results / "dry-run" / "reports" / raw.name / "retrieval_report.md").read_text("utf-8")
+    assert "| reranking |" in report and "among the 30 candidates" in report
+    csv_text = (
+        results / "dry-run" / "processed" / raw.name / "retrieval_by_question.csv"
+    ).read_text("utf-8")
+    assert "rerank_ms" in csv_text.splitlines()[0]
+
+
+def test_other_retrievers_keep_their_record_shape(
+    results: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["evaluate-retrieval", "--set", "dev", "--fake-embeddings"]) == 0
+    raw = _only(results, "raw")
+    text = (raw / "retrieval.jsonl").read_text("utf-8")
+    assert "rerank_ms" not in text and "pool_first_relevant_rank" not in text
+    assert "rerank" not in (raw / "run_metadata.json").read_text("utf-8")
+    summary_text = (
+        results / "dry-run" / "processed" / raw.name / "retrieval_summary.json"
+    ).read_text("utf-8")
+    assert "rerank" not in summary_text and "pool_hit" not in summary_text
+    report = (results / "dry-run" / "reports" / raw.name / "retrieval_report.md").read_text("utf-8")
+    assert "rerank" not in report
+
+
+def test_retrieve_command_with_rerank_shows_rerank_time(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code = cli.main(
+        ["retrieve", "access token scopes", "--retriever", "rerank", "-k", "3", "--fake-embeddings"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "'hybrid':" in out and ", rerank " in out
+
+
+def test_fake_answer_run_with_rerank_adds_a_rerank_stage(
+    results: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        cli, "_settings", lambda config: pytest.fail("settings were read in a fake run")
+    )
+    assert cli.main(["run", "--set", "dev", "--retriever", "rerank", "--fake"]) == 0
+    raw = _only(results, "raw")
+    assert raw.name.endswith("-answers-dev-rerank-fake")
+    paths = RunPaths(results / "dry-run", raw.name)
+    summary = AnswerSummary.model_validate_json(
+        (paths.processed / "answer_summary.json").read_text("utf-8")
+    )
+    assert list(summary.latency_ms) == ["embed", "search", "rerank", "generation", "total"]
+    assert [v.hypothesis for v in summary.verdicts] == ["HC3"]
+    assert summary.verdicts[0].verdict == "not applicable (simulated)"
+    header = (paths.processed / "answers_by_attempt.csv").read_text("utf-8").splitlines()[0]
+    assert "rerank_ms" in header
+    first = json.loads(paths.answers.read_text("utf-8").splitlines()[0])
+    assert first["rerank_ms"] > 0
+    assert first["total_ms"] == pytest.approx(
+        first["embed_ms"] + first["search_ms"] + first["rerank_ms"] + first["generation_ms"]
+    )
+    report = (paths.reports / "answer_report.md").read_text("utf-8")
+    assert "| rerank |" in report
+    meta = json.loads(paths.metadata.read_text("utf-8"))
+    assert meta["rerank"]["model_id"] == "fake-word-overlap"
+
+
+def test_retriever_choices_include_rerank() -> None:
+    assert cli.RETRIEVERS == ("dense", "bm25", "hybrid", "rerank")

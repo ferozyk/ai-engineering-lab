@@ -13,8 +13,9 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model_serializer
 
 from ai_lab.benchmarking import collect_environment, git_state
 from rag_experiment.config import ExperimentConfig
@@ -24,6 +25,7 @@ from rag_experiment.evaluation.relevance import relevant_chunk_ids
 from rag_experiment.evaluation.retrieval_metrics import (
     DIAGNOSTIC_TEXT,
     KS,
+    RERANK_RETRIEVER,
     QuestionRetrieval,
     RetrievalSummary,
     score_question,
@@ -56,6 +58,19 @@ class EmbeddingMetadata(BaseModel):
     batch_size: int
 
 
+class RerankMetadata(BaseModel):
+    """Reranker settings as used in the run (recorded for rerank runs only)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    model_id: str
+    revision: str
+    device: str
+    max_length: int
+    batch_size: int
+    candidate_depth: int
+
+
 class RetrievalRunMetadata(BaseModel):
     """Everything recorded about a retrieval run."""
 
@@ -86,6 +101,14 @@ class RetrievalRunMetadata(BaseModel):
     retriever: str
     torch_threads: int | None
     deterministic: bool
+    rerank: RerankMetadata | None = None  # omitted from the written file when not reranking
+
+    @model_serializer(mode="wrap")
+    def _omit_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if data.get("rerank") is None:
+            data.pop("rerank", None)
+        return data
 
 
 def make_run_id(set_name: str, retriever: str, fake: bool, now: datetime | None = None) -> str:
@@ -127,6 +150,8 @@ def run_questions(
                 embed_ms=first.embed_ms,
                 search_ms=first.search_ms,
                 excluded=excluded,
+                rerank_ms=first.rerank_ms,
+                candidate_ids=first.candidate_ids,
             )
         )
     return records, differing
@@ -156,8 +181,13 @@ def build_metadata(
     collection: str,
     started_at: datetime,
     deterministic: bool,
+    reranker: tuple[str, str] | None = None,
 ) -> RetrievalRunMetadata:
-    """Collect environment, versions and settings for the run."""
+    """Collect environment, versions and settings for the run.
+
+    ``reranker`` is ``(model_id, revision)`` of the reranker actually used; it is given for rerank
+    runs only and adds the ``rerank`` block.
+    """
     manifest = load_manifest(config.manifest_path)
     env = collect_environment(PACKAGES)
     sha, dirty = git_state(config.root)
@@ -201,6 +231,18 @@ def build_metadata(
         retriever=retriever_name,
         torch_threads=None if fake else _torch_threads(),
         deterministic=deterministic,
+        rerank=(
+            None
+            if reranker is None
+            else RerankMetadata(
+                model_id=reranker[0],
+                revision=reranker[1],
+                device=config.rerank.device,
+                max_length=config.rerank.max_length,
+                batch_size=config.rerank.batch_size,
+                candidate_depth=config.rerank.candidate_depth,
+            )
+        ),
     )
 
 
@@ -231,6 +273,11 @@ def _csv_rows(records: Sequence[QuestionRetrieval]) -> list[dict[str, object]]:
         row["reciprocal_rank"] = r.reciprocal_rank
         row["embed_ms"] = round(r.embed_ms, 3)
         row["search_ms"] = round(r.search_ms, 3)
+        if r.retriever == RERANK_RETRIEVER:
+            row["rerank_ms"] = round(r.rerank_ms, 3)
+            row["pool_first_relevant_rank"] = (
+                "" if r.pool_first_relevant_rank is None else r.pool_first_relevant_rank
+            )
         row["top3_chunk_ids"] = " ".join(c.chunk_id for c in r.ranked[:3])
         rows.append(row)
     return rows
@@ -317,6 +364,19 @@ def metrics_table(summary: RetrievalSummary) -> list[str]:
     return lines
 
 
+def _pool_lines(metadata: RetrievalRunMetadata, summary: RetrievalSummary) -> list[str]:
+    """The candidate-pool diagnostic line (rerank runs only), followed by a blank line."""
+    pool = summary.pool_hit
+    if pool is None or metadata.rerank is None:
+        return []
+    value = "n/a" if pool.value is None else f"{pool.value:.3f}"
+    return [
+        f"Relevant chunk among the {metadata.rerank.candidate_depth} candidates: "
+        f"{pool.numerator}/{pool.denominator} answerable questions = {value}",
+        "",
+    ]
+
+
 def render_report(
     metadata: RetrievalRunMetadata,
     summary: RetrievalSummary,
@@ -336,6 +396,16 @@ def render_report(
         f"checksum `{metadata.question_set_checksum}`",
         f"- Embedding model: `{emb.model_id}`, revision `{emb.revision}`, device {emb.device}, "
         f"dimension {emb.dimension}, normalised {emb.normalize}",
+        *(
+            []
+            if metadata.rerank is None
+            else [
+                f"- Reranker model: `{metadata.rerank.model_id}`, revision "
+                f"`{metadata.rerank.revision}`, device {metadata.rerank.device}, max length "
+                f"{metadata.rerank.max_length} tokens, candidates re-ordered: "
+                f"{metadata.rerank.candidate_depth}"
+            ]
+        ),
         f"- Retriever: {metadata.retriever}; collection `{metadata.collection}`",
         f"- Questions: {summary.n_questions} ({summary.n_excluded} unanswerable, excluded from "
         "metrics)",
@@ -348,6 +418,7 @@ def render_report(
         "",
         *metrics_table(summary),
         "",
+        *_pool_lines(metadata, summary),
         "## Hypothesis verdicts (frozen criteria, computed mechanically)",
         "",
     ]
@@ -399,11 +470,14 @@ def render_report(
         "| stage | n | p50 (ms) | p95 (ms) |",
         "|---|---|---|---|",
     ]
-    for name, lat in (
+    stages = [
         ("query embedding", summary.latency_embed_ms),
         ("vector search", summary.latency_search_ms),
-        ("total", summary.latency_total_ms),
-    ):
+    ]
+    if summary.latency_rerank_ms is not None:
+        stages.append(("reranking", summary.latency_rerank_ms))
+    stages.append(("total", summary.latency_total_ms))
+    for name, lat in stages:
         out.append(f"| {name} | {lat.n} | {lat.p50:.2f} | {lat.p95:.2f} |")
     out += ["", "## Indexing cost", ""]
     build = ingest_payload.get("index_build")

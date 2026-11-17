@@ -75,6 +75,20 @@ class HybridConfig(BaseModel):
     candidate_depth: int = Field(gt=0)  # top-N taken from each list before fusion
 
 
+class RerankConfig(BaseModel):
+    """Cross-encoder reranker settings. The model id and a pinned revision live here only."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    model_id: str = Field(min_length=1)
+    revision: str = Field(min_length=1)  # required: an unpinned reranker is not reproducible
+    device: Literal["cpu", "mps"]
+    batch_size: int = Field(gt=0)
+    max_length: int = Field(gt=0)  # tokens per question + chunk pair
+    candidate_depth: int = Field(gt=0)  # top-N of the hybrid ranking that is re-ordered
+    use_safetensors: bool | None = None
+
+
 class GenerationConfig(BaseModel):
     """Generation settings. The model id is not here: it comes from ``LLM_MODEL``."""
 
@@ -123,6 +137,7 @@ class ExperimentConfig(BaseModel):
     index: IndexConfig
     retrieval: RetrievalConfig
     hybrid: HybridConfig
+    rerank: RerankConfig
     generation: GenerationConfig
     run: RunConfig
     pricing: PricingConfig
@@ -132,6 +147,8 @@ class ExperimentConfig(BaseModel):
     def _depth_covers_evaluation(self) -> "ExperimentConfig":
         if self.hybrid.candidate_depth < self.retrieval.top_k_eval:
             raise ValueError("hybrid.candidate_depth must be >= retrieval.top_k_eval")
+        if self.rerank.candidate_depth < self.retrieval.top_k_eval:
+            raise ValueError("rerank.candidate_depth must be >= retrieval.top_k_eval")
         return self
 
     @property

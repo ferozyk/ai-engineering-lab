@@ -135,7 +135,13 @@ score(d) = Σ 1 / (k + rank_i(d))      with k = 60
 
 Each list contributes according to the document's rank in it. BM25 scores and cosine scores sit on different scales and cannot be added directly. Using ranks avoids calibrating one against the other.
 
-## 13. Agentic retrieval
+## 13. Reranking
+
+Preview for architecture C. A first-stage retriever compares vectors that were computed for the question and for each chunk separately, so the question never gets to "see" the chunk. A *cross-encoder* is a second, slower model that reads the question and one chunk together and scores how well that chunk answers it. Because the two texts are processed jointly, it can weigh details that a single vector summary of each text may blur, such as which of two similar endpoints matches the exact wording of the question.
+
+It is slow because it needs one model pass per candidate, so it is applied only to the shortlist the first stage returns. That is also its limit: it can only re-order the candidates it is given. A chunk that the first stage did not return is never scored, so reranking cannot recover it.
+
+## 14. Agentic retrieval
 
 Preview for architecture D. A single retrieval pass assumes one search finds everything. Some questions need several, such as "which calls do I need to download a statement starting from a customer ID?".
 
@@ -143,7 +149,7 @@ An agentic approach loops: plan what to look for, search, check whether the evid
 
 The cost is more model calls per question, which means more latency and more tokens. Whether that is worth it is what the experiment measures.
 
-## 14. Glossary
+## 15. Glossary
 
 - **Chunk:** the unit of text that is embedded and retrieved.
 - **Embedding:** a vector representing the meaning of a text.

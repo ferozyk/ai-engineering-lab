@@ -17,8 +17,9 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model_serializer
 
 from ai_lab.benchmarking import BudgetExhaustedError, PricingSnapshot, RequestBudget
 from ai_lab.llm import FreeModelDailyRequests, InfraErrorKind, LLMInfraError, Usage
@@ -96,6 +97,15 @@ class AnswerRecord(BaseModel):
     simulated: bool
     error_kind: str | None
     error_message: str | None
+    # Rerank only: 0.0 for every other retriever, and then omitted from the written record.
+    rerank_ms: float = 0.0
+
+    @model_serializer(mode="wrap")
+    def _omit_zero_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if self.rerank_ms == 0.0:
+            data.pop("rerank_ms", None)
+        return data
 
 
 class AnswerRunMetadata(RetrievalRunMetadata):
@@ -377,7 +387,8 @@ def build_record(
         embed_ms=retrieval.embed_ms,
         search_ms=retrieval.search_ms,
         generation_ms=generation_ms,
-        total_ms=retrieval.embed_ms + retrieval.search_ms + generation_ms,
+        rerank_ms=retrieval.rerank_ms,
+        total_ms=retrieval.embed_ms + retrieval.search_ms + retrieval.rerank_ms + generation_ms,
         client_wait_ms=generated.client_wait_ms if generated else 0.0,
         attempts=generated.attempts if generated else (error.attempts if error else 0),
         usage=generated.usage if generated else _usage_zero(),

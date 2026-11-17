@@ -235,3 +235,61 @@ def test_index_status_for_bm25_needs_no_index(
 ) -> None:
     result = index_status(experiment_config, corpus, chunks, "bm25")
     assert result.status == "pass" and "not needed" in result.detail
+
+
+def test_rerank_status_pinned_and_cache_aware(
+    monkeypatch: pytest.MonkeyPatch, experiment_config: ExperimentConfig, tmp_path: Path
+) -> None:
+    from huggingface_hub import constants
+
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))
+    rerank = experiment_config.rerank
+    absent = answer_commands.rerank_status(experiment_config)
+    assert absent.status == "pass" and "not in the local cache" in absent.detail
+    model_dir = tmp_path / f"models--{rerank.model_id.replace('/', '--')}"
+    (model_dir / "snapshots" / ("0" * 40)).mkdir(parents=True)
+    wrong = answer_commands.rerank_status(experiment_config)
+    assert wrong.status == "fail" and "pinned revision" in wrong.detail
+    (model_dir / "snapshots" / rerank.revision).mkdir()
+    present = answer_commands.rerank_status(experiment_config)
+    assert present.status == "pass" and "present in the local cache" in present.detail
+    assert not (tmp_path / "models--x").exists()  # nothing is downloaded or created
+
+
+def test_offline_checks_for_rerank_add_the_reranker_and_warn_without_a_run(
+    monkeypatch: pytest.MonkeyPatch,
+    experiment_config: ExperimentConfig,
+    corpus: Corpus,
+    chunks: list[Chunk],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        answer_commands, "index_status", lambda *a, **k: CheckResult("index", "pass", "ok")
+    )
+    monkeypatch.setattr(
+        answer_commands, "rerank_status", lambda config: CheckResult("reranker", "pass", "ok")
+    )
+    results = _by_name(
+        offline_checks(
+            experiment_config,
+            _settings(monkeypatch, key=True, model=True),
+            corpus,
+            chunks,
+            tmp_path,
+            None,
+            "rerank",
+        )
+    )
+    assert results["reranker"].status == "pass"
+    assert results["prompt_size"].status == "warn"
+    assert "reranker" not in _by_name(
+        offline_checks(
+            experiment_config,
+            _settings(monkeypatch, key=True, model=True),
+            corpus,
+            chunks,
+            EXP_ROOT / "results",
+            None,
+            "hybrid",
+        )
+    )

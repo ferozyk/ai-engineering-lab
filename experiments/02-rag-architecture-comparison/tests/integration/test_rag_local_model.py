@@ -1,4 +1,4 @@
-"""Tests that load the real embedding model. Opt in with ``pytest -m local_model``.
+"""Tests that load the real embedding and reranker models. Opt in with ``pytest -m local_model``.
 
 They need the model downloaded (or in the Hugging Face cache) and are never part of the default
 suite or CI.
@@ -14,6 +14,7 @@ from rag_experiment.embeddings.provider import EmbeddingCache, SentenceTransform
 from rag_experiment.evaluation.dataset import load_questions
 from rag_experiment.evaluation.relevance import relevant_chunk_ids
 from rag_experiment.ingestion.chunker import Chunk
+from rag_experiment.rerank.provider import CrossEncoderReranker
 from rag_experiment.retrieval.store import ingest, open_local_store
 from rag_experiment.retrieval.vector import DenseRetriever
 
@@ -59,3 +60,19 @@ def test_index_and_retrieve_one_dev_question(
     relevant = relevant_chunk_ids(question.sources, chunks)
     assert len(result.chunks) == 5
     assert any(c.chunk.chunk_id in relevant for c in result.chunks)
+
+
+def test_reranker_prefers_a_relevant_text_and_is_repeatable(
+    experiment_config: ExperimentConfig, chunks: list[Chunk]
+) -> None:
+    reranker = CrossEncoderReranker(experiment_config.rerank)
+    by_id = {c.chunk_id: c for c in chunks}
+    relevant = by_id["customers-api:listCustomerAccounts:operation"].content
+    irrelevant = by_id["payments-api:cancelPayment:operation"].content
+    query = "Which endpoint lists a customer's accounts?"
+    first = reranker.score(query, [relevant, irrelevant])
+    second = reranker.score(query, [relevant, irrelevant])
+    assert len(first) == 2 and all(isinstance(x, float) for x in first)
+    assert first[0] > first[1]
+    assert first == second
+    assert reranker.score(query, []) == []

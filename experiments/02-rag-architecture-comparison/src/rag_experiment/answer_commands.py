@@ -98,6 +98,7 @@ class PreparedRetrieval:
     dimension: int
     collection: str
     deterministic: bool
+    reranker: tuple[str, str] | None = None  # (model id, revision); rerank runs only
 
 
 @dataclass
@@ -207,6 +208,7 @@ def build_run_metadata(
         collection=retrieval.collection,
         started_at=started_at,
         deterministic=retrieval.deterministic,
+        reranker=retrieval.reranker,
     )
     records = load_records(paths.answers)
     latest = latest_by_attempt(records)
@@ -631,6 +633,33 @@ def index_status(
     return CheckResult("index", "pass", f"collection {collection} is up to date ({count} chunks)")
 
 
+def rerank_status(config: ExperimentConfig) -> CheckResult:
+    """The reranker is pinned and, if its files are cached locally, the pinned revision is there.
+
+    Nothing is downloaded and no model is loaded.
+    """
+    from huggingface_hub import constants
+
+    rerank = config.rerank
+    if not rerank.revision:
+        return CheckResult("reranker", "fail", "the reranker revision is not pinned")
+    model_dir = Path(constants.HF_HUB_CACHE) / f"models--{rerank.model_id.replace('/', '--')}"
+    label = f"{rerank.model_id} at revision {rerank.revision[:12]}"
+    if not (model_dir / "snapshots").is_dir():
+        return CheckResult(
+            "reranker",
+            "pass",
+            f"{label} is pinned; not in the local cache (downloaded on first use)",
+        )
+    if (model_dir / "snapshots" / rerank.revision).is_dir():
+        return CheckResult("reranker", "pass", f"{label} is pinned and present in the local cache")
+    return CheckResult(
+        "reranker",
+        "fail",
+        f"{rerank.model_id} is cached, but not at the pinned revision {rerank.revision[:12]}",
+    )
+
+
 def largest_prompt(
     config: ExperimentConfig, chunks: Sequence[Chunk], results_base: Path, run_id: str
 ) -> tuple[int, str]:
@@ -683,6 +712,8 @@ def offline_checks(
     else:
         results.append(CheckResult("api_key", "pass", "OPENROUTER_API_KEY is set"))
     results.append(index_status(config, corpus, chunks, retriever))
+    if retriever == "rerank":
+        results.append(rerank_status(config))
 
     problems: list[str] = []
     header_names = corpus_header_names(corpus)

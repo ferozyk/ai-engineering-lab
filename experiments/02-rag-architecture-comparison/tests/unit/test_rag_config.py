@@ -61,6 +61,8 @@ def _embedding_yaml(extra: str = "") -> str:
         "index: {dir: .index, collection_prefix: p}\n"
         "retrieval: {top_k_eval: 10, top_k_generation: 5}\n"
         "hybrid: {bm25_k1: 1.2, bm25_b: 0.75, rrf_k: 60, candidate_depth: 50}\n"
+        "rerank: {model_id: r/x, revision: abc, device: cpu, batch_size: 4, max_length: 64, "
+        "candidate_depth: 30}\n"
         "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
         "llm_seed: null, request_timeout_seconds: 30}\n"
         "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
@@ -161,5 +163,29 @@ def test_hybrid_config_is_loaded(tmp_path: Path, experiment_config: ExperimentCo
     ],
 )
 def test_invalid_hybrid_settings(tmp_path: Path, old: str, new: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))
+
+
+def test_rerank_config_is_loaded(tmp_path: Path, experiment_config: ExperimentConfig) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert config.rerank.model_id == "r/x" and config.rerank.revision == "abc"
+    assert config.rerank.candidate_depth == 30 and config.rerank.use_safetensors is None
+    assert experiment_config.rerank.candidate_depth == 30
+    assert len(experiment_config.rerank.revision) == 40
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("revision: abc", "revision: ''"),
+        ("revision: abc, ", ""),
+        ("max_length: 64", "max_length: 0"),
+        ("candidate_depth: 30", "candidate_depth: 9"),
+        ("candidate_depth: 30", "candidate_depth: 30, extra: 1"),
+        ("model_id: r/x", "model_id: ''"),
+    ],
+)
+def test_invalid_rerank_settings(tmp_path: Path, old: str, new: str) -> None:
     with pytest.raises(ConfigError):
         load_config(_write(tmp_path, _embedding_yaml().replace(old, new)))

@@ -172,6 +172,8 @@ def test_cli_validate_dataset_fails_on_a_broken_file(
         "index: {dir: .index, collection_prefix: p}\n"
         "retrieval: {top_k_eval: 10, top_k_generation: 5}\n"
         "hybrid: {bm25_k1: 1.2, bm25_b: 0.75, rrf_k: 60, candidate_depth: 50}\n"
+        "rerank: {model_id: r/x, revision: abc, device: cpu, batch_size: 4, max_length: 64, "
+        "candidate_depth: 30}\n"
         "generation: {prompt_version: a-1.0, temperature: 0.0, max_output_tokens: 100, "
         "request_timeout_seconds: 30}\n"
         "run: {repetitions: 3, order_seed: 1, rate_limit_per_minute: 15, "
