@@ -56,8 +56,10 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 # Typographic minus/en dash are intentional in chart and report text.
+# (E501 for the visuals: long copy strings are kept readable on one line.)
 "experiments/01-mcp-vs-code-mode/src/mcp_vs_code_mode/bench/charts.py" = ["RUF001"]
 "experiments/01-mcp-vs-code-mode/src/mcp_vs_code_mode/bench/linkedin.py" = ["RUF001"]
+"experiments/02-rag-architecture-comparison/src/rag_experiment/visuals/*.py" = ["RUF001", "E501"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

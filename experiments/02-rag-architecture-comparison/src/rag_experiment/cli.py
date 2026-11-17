@@ -67,6 +67,8 @@ from rag_experiment.retrieval.store import (
     open_local_store,
 )
 from rag_experiment.retrieval.vector import DenseRetriever
+from rag_experiment.visuals import render
+from rag_experiment.visuals.draw import LayoutError
 
 RetrieverName = Literal["dense", "bm25", "hybrid", "rerank"]
 RETRIEVERS: tuple[str, ...] = get_args(RetrieverName)
@@ -164,6 +166,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--answers", nargs="*", default=[], metavar="RUN_ID", help="answer run ids"
     )
     compare_cmd.add_argument("--out", metavar="NAME", help="output name (default: a timestamp)")
+    visuals = sub.add_parser(
+        "linkedin-visuals", help="render the sharing visuals from committed results (no requests)"
+    )
+    visuals.add_argument("what", choices=("carousel", "infographic", "all"))
+    visuals.add_argument("--out-dir", type=Path, default=None, help="output folder")
     return parser
 
 
@@ -709,6 +716,14 @@ def _cmd_compare(
     return 0
 
 
+def _cmd_visuals(config: ExperimentConfig, what: str, out_dir: Path | None) -> int:
+    outputs = render.render(config, out_dir or render.default_out_dir(config), what)
+    for path in outputs.files:
+        print(f"wrote: {path}")
+    print(f"numbers: {outputs.numbers_file} ({outputs.numbers_written} values)")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point; returns the process exit code."""
     args = _build_parser().parse_args(argv)
@@ -737,6 +752,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_evaluate(config, args.question_set, args.fake_embeddings, args.retriever)
         if args.command == "preflight":
             return _cmd_preflight(config, args.live, args.retrieval_run, args.retriever)
+        if args.command == "linkedin-visuals":
+            return _cmd_visuals(config, args.what, args.out_dir)
         if args.command == "compare":
             return _cmd_compare(config, args.retrieval, args.answers, args.out)
         if args.command == "canary":
@@ -777,6 +794,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         PricingError,
         OpenRouterError,
         PromptVersionError,
+        LayoutError,
     ) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
