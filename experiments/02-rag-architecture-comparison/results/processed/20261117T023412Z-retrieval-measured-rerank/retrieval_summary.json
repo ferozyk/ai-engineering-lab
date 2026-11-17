@@ -1,0 +1,279 @@
+{
+  "run_id": "20261117T023412Z-retrieval-measured-rerank",
+  "question_set": "measured",
+  "n_questions": 40,
+  "n_excluded": 6,
+  "overall": {
+    "n": 34,
+    "hit": {
+      "1": 0.5882352941176471,
+      "3": 0.7647058823529411,
+      "5": 0.8235294117647058,
+      "10": 0.9705882352941176
+    },
+    "recall": {
+      "1": 0.4568627450980392,
+      "3": 0.6696078431372549,
+      "5": 0.7941176470588235,
+      "10": 0.9117647058823529
+    },
+    "precision": {
+      "1": 0.5882352941176471,
+      "3": 0.3137254901960784,
+      "5": 0.23529411764705882,
+      "10": 0.13529411764705884
+    },
+    "mrr": 0.7084500466853408
+  },
+  "by_category": {
+    "authentication": {
+      "n": 5,
+      "hit": {
+        "1": 0.6,
+        "3": 0.8,
+        "5": 0.8,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.33999999999999997,
+        "3": 0.62,
+        "5": 0.7,
+        "10": 0.9
+      },
+      "precision": {
+        "1": 0.6,
+        "3": 0.4,
+        "5": 0.32,
+        "10": 0.18
+      },
+      "mrr": 0.7333333333333333
+    },
+    "comparison": {
+      "n": 3,
+      "hit": {
+        "1": 0.6666666666666666,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.27777777777777773,
+        "3": 0.5555555555555555,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.6666666666666666,
+        "3": 0.4444444444444444,
+        "5": 0.4666666666666666,
+        "10": 0.2333333333333333
+      },
+      "mrr": 0.8333333333333334
+    },
+    "endpoint_discovery": {
+      "n": 5,
+      "hit": {
+        "1": 0.6,
+        "3": 0.8,
+        "5": 0.8,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.6,
+        "3": 0.8,
+        "5": 0.8,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.6,
+        "3": 0.26666666666666666,
+        "5": 0.16,
+        "10": 0.1
+      },
+      "mrr": 0.7285714285714285
+    },
+    "exact_identifier": {
+      "n": 6,
+      "hit": {
+        "1": 1.0,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.9166666666666666,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 1.0,
+        "3": 0.38888888888888884,
+        "5": 0.23333333333333336,
+        "10": 0.11666666666666668
+      },
+      "mrr": 1.0
+    },
+    "multi_endpoint": {
+      "n": 4,
+      "hit": {
+        "1": 0.0,
+        "3": 0.25,
+        "5": 0.25,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.0,
+        "3": 0.125,
+        "5": 0.125,
+        "10": 0.625
+      },
+      "precision": {
+        "1": 0.0,
+        "3": 0.08333333333333333,
+        "5": 0.05,
+        "10": 0.125
+      },
+      "mrr": 0.2361111111111111
+    },
+    "schema": {
+      "n": 5,
+      "hit": {
+        "1": 0.8,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "recall": {
+        "1": 0.6,
+        "3": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "precision": {
+        "1": 0.8,
+        "3": 0.4666666666666666,
+        "5": 0.28,
+        "10": 0.14
+      },
+      "mrr": 0.8666666666666666
+    },
+    "semantic": {
+      "n": 6,
+      "hit": {
+        "1": 0.3333333333333333,
+        "3": 0.5,
+        "5": 0.8333333333333334,
+        "10": 0.8333333333333334
+      },
+      "recall": {
+        "1": 0.25,
+        "3": 0.4166666666666667,
+        "5": 0.8333333333333334,
+        "10": 0.8333333333333334
+      },
+      "precision": {
+        "1": 0.3333333333333333,
+        "3": 0.16666666666666666,
+        "5": 0.20000000000000004,
+        "10": 0.10000000000000002
+      },
+      "mrr": 0.5
+    }
+  },
+  "ha1_group": {
+    "numerator": 9,
+    "denominator": 11,
+    "value": 0.8181818181818182
+  },
+  "ha2_group": {
+    "numerator": 6,
+    "denominator": 6,
+    "value": 1.0
+  },
+  "paraphrase_pairs": [
+    {
+      "original": "Q103",
+      "paraphrase": "Q104",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": null
+    },
+    {
+      "original": "Q105",
+      "paraphrase": "Q106",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 3
+    },
+    {
+      "original": "Q107",
+      "paraphrase": "Q108",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 1
+    },
+    {
+      "original": "Q109",
+      "paraphrase": "Q110",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 4
+    },
+    {
+      "original": "Q111",
+      "paraphrase": "Q112",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 2
+    },
+    {
+      "original": "Q113",
+      "paraphrase": "Q114",
+      "original_first_relevant_rank": 1,
+      "paraphrase_first_relevant_rank": 1
+    }
+  ],
+  "latency_embed_ms": {
+    "n": 40,
+    "p50": 1725.5965624935925,
+    "p95": 2627.9149359907024
+  },
+  "latency_search_ms": {
+    "n": 40,
+    "p50": 4.505271033849567,
+    "p95": 11.426296946592624
+  },
+  "latency_total_ms": {
+    "n": 40,
+    "p50": 9223.677499569021,
+    "p95": 12283.523528714428
+  },
+  "verdicts": [
+    {
+      "hypothesis": "HC1",
+      "criterion": "MRR (top 10) over answerable questions >= 0.85",
+      "verdict": "not supported",
+      "evidence": "MRR = 0.708; architecture B: 0.782"
+    },
+    {
+      "hypothesis": "HC2",
+      "criterion": "overall Hit@5 >= 32/34",
+      "verdict": "not supported",
+      "evidence": "Hit@5 = 28/34 = 0.824; architecture B: 30/34"
+    },
+    {
+      "hypothesis": "HC3",
+      "criterion": "correct answerable attempts >= 80/102",
+      "verdict": "pending (needs generation)",
+      "evidence": ""
+    }
+  ],
+  "deterministic": true,
+  "nondeterministic_questions": [],
+  "latency_rerank_ms": {
+    "n": 40,
+    "p50": 7538.493833504617,
+    "p95": 10072.777795774162
+  },
+  "pool_hit": {
+    "numerator": 33,
+    "denominator": 34,
+    "value": 0.9705882352941176
+  }
+}
