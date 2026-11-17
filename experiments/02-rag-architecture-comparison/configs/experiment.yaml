@@ -42,7 +42,7 @@ agent:
   max_searches: 3              # frozen: searches per question
   results_per_search: 5        # frozen: the hybrid retriever's top 5 per query
   max_context_chunks: 10       # frozen: distinct chunks, first-retrieved order
-  max_planned_queries: 3       # queries the planner may propose; searches never exceed max_searches
+  max_planned_queries: 2       # leaves at least one search for a refined query; searches never exceed max_searches
 run:
   repetitions: 3
   order_seed: 20261111

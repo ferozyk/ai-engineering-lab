@@ -198,7 +198,7 @@ def test_agent_config_is_loaded(tmp_path: Path, experiment_config: ExperimentCon
     assert config.agent.prompt_version == "d-1.0" and config.agent.max_searches == 3
     agent = experiment_config.agent  # the frozen settings of architecture D
     assert (agent.prompt_version, agent.max_searches, agent.results_per_search) == ("d-1.0", 3, 5)
-    assert (agent.max_context_chunks, agent.max_planned_queries) == (10, 3)
+    assert (agent.max_context_chunks, agent.max_planned_queries) == (10, 2)
 
 
 @pytest.mark.parametrize(

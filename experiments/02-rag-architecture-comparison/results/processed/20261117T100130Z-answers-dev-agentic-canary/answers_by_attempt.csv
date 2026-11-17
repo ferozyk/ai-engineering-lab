@@ -1,0 +1,4 @@
+attempt_id,question_id,repetition,category,outcome,correct,false_refusal,correct_refusal,made_up_answer,context_hit,citations_valid,cites_relevant,unsupported_identifiers,invented_identifiers,missing_key_facts,embed_ms,search_ms,agent_ms,generation_ms,total_ms,prompt_tokens,completion_tokens,total_tokens,attempts,model_calls,searches,sources_covered,n_sources,error_kind
+Q05-r1,Q05,1,multi_endpoint,answered,False,False,,,True,True,True,,,POST /oauth/token,2577.007,11.16,8539.648,5123.501,16251.316,4049,1579,5628,3,3,3,3,4,
+Q14-r1,Q14,1,unanswerable,refused,,,True,False,False,,,,,,398.752,5.522,5868.777,2377.741,8650.793,4262,1301,5563,3,3,3,0,0,
+Q01-r1,Q01,1,endpoint_discovery,answered,True,False,,,True,True,True,,,,417.562,7.404,3072.481,1375.885,4873.331,4050,597,4647,3,3,3,1,1,

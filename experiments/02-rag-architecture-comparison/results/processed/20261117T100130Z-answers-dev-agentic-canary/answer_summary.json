@@ -1,0 +1,350 @@
+{
+  "run_id": "20261117T100130Z-answers-dev-agentic-canary",
+  "question_set": "dev",
+  "simulated": false,
+  "n_attempts": 3,
+  "n_scored": 3,
+  "n_infra_errors": 0,
+  "overall": {
+    "n": 3,
+    "outcomes": {
+      "answered": 2,
+      "refused": 1
+    },
+    "answerable": {
+      "numerator": 1,
+      "denominator": 2,
+      "value": 0.5
+    },
+    "false_refusals": {
+      "numerator": 0,
+      "denominator": 2,
+      "value": 0.0
+    },
+    "correct_refusals": {
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1.0
+    }
+  },
+  "by_category": {
+    "endpoint_discovery": {
+      "n": 1,
+      "outcomes": {
+        "answered": 1
+      },
+      "answerable": {
+        "numerator": 1,
+        "denominator": 1,
+        "value": 1.0
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "multi_endpoint": {
+      "n": 1,
+      "outcomes": {
+        "answered": 1
+      },
+      "answerable": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      },
+      "correct_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "unanswerable": {
+      "n": 1,
+      "outcomes": {
+        "refused": 1
+      },
+      "answerable": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "false_refusals": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "correct_refusals": {
+        "numerator": 1,
+        "denominator": 1,
+        "value": 1.0
+      }
+    }
+  },
+  "per_question": [
+    {
+      "question_id": "Q01",
+      "category": "endpoint_discovery",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 1,
+      "correct": 1,
+      "outcomes": [
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    },
+    {
+      "question_id": "Q05",
+      "category": "multi_endpoint",
+      "must_abstain": false,
+      "context_hit": true,
+      "attempts": 1,
+      "correct": 0,
+      "outcomes": [
+        "answered"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": [
+        "POST /oauth/token"
+      ]
+    },
+    {
+      "question_id": "Q14",
+      "category": "unanswerable",
+      "must_abstain": true,
+      "context_hit": false,
+      "attempts": 1,
+      "correct": 1,
+      "outcomes": [
+        "refused"
+      ],
+      "repetitions_agree": true,
+      "missing_key_facts": []
+    }
+  ],
+  "ha3_hit": {
+    "numerator": 1,
+    "denominator": 2,
+    "value": 0.5
+  },
+  "ha3_miss": {
+    "numerator": 0,
+    "denominator": 0,
+    "value": null
+  },
+  "verdicts": [
+    {
+      "hypothesis": "HD1",
+      "criterion": "multi_endpoint attempts whose collected context covers every labelled source >= 9/12",
+      "verdict": "not applicable (development set)",
+      "evidence": "full source coverage 0/1 = 0.000; architecture B: 3/12"
+    },
+    {
+      "hypothesis": "HD2",
+      "criterion": "correct answerable attempts >= 80/102",
+      "verdict": "not applicable (development set)",
+      "evidence": "correct 1/2 = 0.500; architecture B: 78/102"
+    },
+    {
+      "hypothesis": "HD3",
+      "criterion": "correct refusals on unanswerable attempts >= 17/18",
+      "verdict": "not applicable (development set)",
+      "evidence": "correct refusals 1/1 = 1.000; architecture B: 18/18"
+    }
+  ],
+  "guardrails": {
+    "correct_refusal": {
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1.0
+    },
+    "made_up_answer": {
+      "numerator": 0,
+      "denominator": 1,
+      "value": 0.0
+    },
+    "unanswerable_invalid": 0,
+    "unanswerable_cut_off": 0,
+    "false_refusal": {
+      "numerator": 0,
+      "denominator": 2,
+      "value": 0.0
+    },
+    "mentions_endpoint_on_unanswerable": 0
+  },
+  "groundedness": {
+    "with_unsupported": {
+      "numerator": 0,
+      "denominator": 3,
+      "value": 0.0
+    },
+    "with_invented": {
+      "numerator": 0,
+      "denominator": 3,
+      "value": 0.0
+    },
+    "top_unsupported": [],
+    "top_invented": []
+  },
+  "citations": {
+    "citations_valid": {
+      "numerator": 2,
+      "denominator": 2,
+      "value": 1.0
+    },
+    "cites_relevant": {
+      "numerator": 2,
+      "denominator": 2,
+      "value": 1.0
+    }
+  },
+  "latency_ms": {
+    "embed": {
+      "n": 3,
+      "p50": 417.56154294125736,
+      "p95": 2361.0629034461454
+    },
+    "search": {
+      "n": 3,
+      "p50": 7.403792231343687,
+      "p95": 10.784494574181736
+    },
+    "agent": {
+      "n": 3,
+      "p50": 5868.77724993974,
+      "p95": 8272.560624429025
+    },
+    "generation": {
+      "n": 3,
+      "p50": 2377.741208067164,
+      "p95": 4848.924908274785
+    },
+    "total": {
+      "n": 3,
+      "p50": 8650.792540982366,
+      "p95": 15491.263805504423
+    }
+  },
+  "tokens": {
+    "prompt": {
+      "n": 3,
+      "mean": 4120.333333333333,
+      "p50": 4050.0,
+      "p95": 4240.8
+    },
+    "completion": {
+      "n": 3,
+      "mean": 1159.0,
+      "p50": 1301.0,
+      "p95": 1551.2
+    },
+    "total": {
+      "n": 3,
+      "mean": 5279.333333333333,
+      "p50": 5563.0,
+      "p95": 5621.5
+    },
+    "reasoning": {
+      "n": 3,
+      "mean": 994.3333333333334,
+      "p50": 1140.0,
+      "p95": 1337.1
+    }
+  },
+  "tokens_by_category": {
+    "endpoint_discovery": [
+      4647
+    ],
+    "multi_endpoint": [
+      5628
+    ],
+    "unanswerable": [
+      5563
+    ]
+  },
+  "cost": {
+    "per_1000_questions_usd": 1.1975499999999997,
+    "run_total_usd": 0.0035926499999999993,
+    "source": "paid_variant",
+    "note": "Estimated, not billed. Estimated at the paid variant's list price (nvidia/nemotron-3.5-super-vl) captured 2026-11-17"
+  },
+  "requests": {
+    "sent": 9,
+    "failed": 0,
+    "retried": 0,
+    "infra_error_attempts": 0
+  },
+  "agent": {
+    "n_attempts": 3,
+    "model_calls": {
+      "mean": 3.0,
+      "p50": 3.0,
+      "max": 3,
+      "distribution": {
+        "3": 3
+      }
+    },
+    "searches": {
+      "mean": 3.0,
+      "p50": 3.0,
+      "max": 3,
+      "distribution": {
+        "3": 3
+      }
+    },
+    "context_chunks_mean": 10.0,
+    "context_chunks_max": 10,
+    "needs_retrieval_false": 0,
+    "plan_parse_errors": 0,
+    "judge_parse_errors": 0,
+    "first_judge_enough": {
+      "numerator": 2,
+      "denominator": 3,
+      "value": 0.6666666666666666
+    },
+    "full_coverage_by_category": {
+      "endpoint_discovery": {
+        "numerator": 1,
+        "denominator": 1,
+        "value": 1.0
+      },
+      "multi_endpoint": {
+        "numerator": 0,
+        "denominator": 1,
+        "value": 0.0
+      }
+    },
+    "sources_covered_by_question": {
+      "Q05": [
+        3
+      ],
+      "Q01": [
+        1
+      ]
+    },
+    "n_sources_by_question": {
+      "Q05": 4,
+      "Q01": 1
+    },
+    "multi_endpoint_queries": {
+      "Q05": [
+        "customer accounts endpoint",
+        "account statements endpoint",
+        "download statement endpoint"
+      ]
+    }
+  }
+}

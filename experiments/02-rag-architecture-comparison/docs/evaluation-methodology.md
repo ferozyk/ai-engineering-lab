@@ -227,6 +227,8 @@ Frozen before any architecture D measurement, on the same frozen measured set. A
 
 Fixed settings: a LangGraph graph with plan, search, judge and answer steps. The search tool is the architecture B retriever (unchanged settings), returning its top 5 per query; the agent may search at most 3 times per question. The answer step uses the same answer contract, refusal rules, model, temperature 0 and three repetitions as A–C; its context is every chunk the agent retrieved, without duplicates, in first-retrieved order, capped at 10 chunks. Model calls per question are between 3 and 5.
 
+Implementation setting fixed on the development set, before any measured run: the planner proposes at most 2 queries, so at least one of the 3 searches remains for a refined query. A development canary with a limit of 3 showed the planner always using all 3 searches up front, which left no search for the judge's refinement step.
+
 Because the agent chooses its own queries, its retrieval can differ between repetitions; each attempt is scored on the context it actually collected.
 
 - **HD1:** on the `multi_endpoint` questions (4 questions × 3 repetitions), the collected context contains a relevant chunk for every labelled source in at least 9 of 12 attempts (architecture B's top 5: 3 of 12).
