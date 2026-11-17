@@ -1,6 +1,6 @@
 # 02 — RAG Architecture Comparison
 
-> **Status:** Stage 5 in progress (architecture D)
+> **Status:** All four architectures measured; LinkedIn content in preparation
 > **Experiment version:** 0.1.0
 > **Last updated:** 2026-11-17
 
@@ -152,11 +152,72 @@ Definitions and caveats are in [docs/evaluation-methodology.md](docs/evaluation-
 
 ## 12. Results
 
-> Results pending. Do not fill in until benchmarks have been run.
+All runs use the frozen measured question set (40 questions: 34 answerable, 6 unanswerable), the same corpus (186 chunks), the same generation model (`nvidia/nemotron-3.5-super-vl:free` through OpenRouter), the same answer prompt (`a-1.0`), temperature 0 and three repetitions per question (102 answerable and 18 unanswerable attempts). Every run was made from a clean, committed tree; its git SHA is in its `run_metadata.json`. The side-by-side numbers come from [`results/reports/comparisons/a-b-c-d/comparison.md`](results/reports/comparisons/a-b-c-d/comparison.md).
+
+### Retrieval (34 answerable questions, deterministic)
+
+| measure | A: dense | B: hybrid | C: hybrid + rerank |
+|---|---|---|---|
+| Hit@1 | 19/34 (0.559) | **24/34 (0.706)** | 20/34 (0.588) |
+| Hit@5 | **32/34 (0.941)** | 30/34 (0.882) | 28/34 (0.824) |
+| Hit@10 | **34/34 (1.000)** | 32/34 (0.941) | 33/34 (0.971) |
+| Recall@5 | **0.843** | 0.775 | 0.794 |
+| MRR | 0.748 | **0.782** | 0.708 |
+| retrieval latency p50 (CPU) | **123 ms** | 130 ms | 8,640 ms |
+
+Architecture D has no separate retrieval run: the agent chooses its queries during the answer run, so its retrieval is measured there (source coverage below). In C, a relevant chunk was among the 30 reranked candidates for 33 of 34 questions.
+
+### Answers
+
+| measure | A: dense | B: hybrid | C: hybrid + rerank | D: agentic |
+|---|---|---|---|---|
+| correct (answerable) | 77/102 (0.755) | 78/102 (0.765) | 78/102 (0.765) | **85/102 (0.833)** |
+| false refusal (answerable) | 9/102 | 10/102 | 13/102 | **1/102** |
+| correct refusal (unanswerable) | **18/18** | **18/18** | **18/18** | 17/18 |
+| made-up answer (unanswerable) | **0/18** | **0/18** | **0/18** | 1/18 |
+| answers with invented identifiers | 0/120 | 0/120 | 0/120 | 0/120 |
+| citation validity | 93/93 | 92/92 | 89/89 | 101/101 |
+| `multi_endpoint` attempts with every labelled source in context | 3/12 | 3/12 | 0/12 | **9/12** |
+| model calls per attempt (mean / max) | 1 / 1 | 1 / 1 | 1 / 1 | 3.25 / 5 |
+| total latency p50 | **2.2 s** | 2.5 s | 13.2 s | 14.2 s |
+| mean total tokens per attempt | 1,435 | 1,471 | 1,479 | 4,703 |
+| estimated cost per 1,000 questions (USD) | **0.33** | 0.36 | 0.36 | 1.10 |
+
+Costs are estimates at the paid variant's list price; the runs used the free tier. D made 390 requests for 120 attempts (92 attempts used 3 calls, 26 used 4, 2 used 5) and searched 2.18 times per attempt on average. No run had a failed attempt; C needed one retry.
+
+### Hypotheses
+
+| hypothesis | verdict | evidence |
+|---|---|---|
+| HA1: dense Hit@5 on `semantic` + `endpoint_discovery` ≥ 9/11 | supported | 10/11 |
+| HA2: `exact_identifier` Hit@5 at least 0.20 below HA1 | not supported | 6/6, above HA1 |
+| HA3: correctness ≥ 0.80 with a context hit, ≤ 0.20 with a miss | supported | 77/96 = 0.802 with a hit; 0/6 with a miss |
+| HA4: correct refusal ≥ 0.80 | supported | 18/18 |
+| HB1: hybrid Hit@1 on `exact_identifier` + `schema` ≥ 8/11 | not supported | 7/11 (A: 6/11) |
+| HB2: hybrid Hit@5 ≥ 31/34 | not supported | 30/34 (A: 32/34) |
+| HB3: hybrid correctness ≥ 0.755 | supported | 78/102 (A: 77/102) |
+| HC1: rerank MRR ≥ 0.85 | not supported | 0.708 (B: 0.782) |
+| HC2: rerank Hit@5 ≥ 32/34 | not supported | 28/34 (B: 30/34) |
+| HC3: rerank correctness ≥ 80/102 | not supported | 78/102 (B: 78/102) |
+| HD1: agent covers every `multi_endpoint` source in ≥ 9/12 attempts | supported | 9/12 (B: 3/12) |
+| HD2: agent correctness ≥ 80/102 | supported | 85/102 (B: 78/102) |
+| HD3: agent correct refusals ≥ 17/18 | supported | 17/18 (B: 18/18) |
+
+Per-run reports, with per-question tables and charts, are under `results/reports/` and `results/charts/`.
 
 ## 13. Analysis
 
-> Results pending. Do not fill in until benchmarks have been run.
+Author interpretation of the results above. With 34 answerable questions, one question moves correctness by three attempts, so differences of one or two attempts are within noise.
+
+**Retrieval quality and answer quality moved separately.** B ranked the right chunk first more often than A (24 vs 19 of 34) but lost two questions from the top 5, and C lost more. Answer correctness barely moved (77, 78, 78). The generator usually answers correctly when any relevant chunk is in its context (HA3: 0.802 with a hit), so ranking a chunk first instead of third changes little; losing it from the context changes everything.
+
+**B changed which questions were answered, not how many.** Keyword search helped where the question used the documentation's own words (Q125, a list of scopes, moved from rank 8 to 3) and hurt where it did not. In Q106 ("the biggest quantity of clients … finding people by surname", meaning `pageSize`), dense search ranked the answer second, BM25 did not find it in its top 50, and Reciprocal Rank Fusion favoured chunks found half-way down both lists, pushing the answer out of the top 10. Net: +1 answer.
+
+**C's reranker fixed B's paraphrase losses but was misled by a catch-all chunk.** It recovered Q101, Q106 and Q108, but it ranked the `bearerAuth` security scheme, a compact list of every scope ("Read customer profiles, linked accounts and consents … Initiate, read and cancel payments"), highly for many questions; the corpus has one copy per API, and three or more copies filled the top 5 for 8 questions. An independent check with `transformers` reproduced the reranker's scores exactly, so this is the model's judgement on this content, not a defect. Some of those picks are defensible: Q123 ("which scope cancels a payment?") was answered correctly from the scope list, which the relevance labels do not count. C also added about 7.5 s per question on CPU, and query embedding slowed from about 0.1 s to 1.4–2.1 s (p50) whenever the reranker was loaded in the same process (observed in every C run; the cause was not isolated).
+
+**D improved answers by covering more of what a question needs.** It is the only architecture that moved correctness beyond noise (85 vs 77–78) and it nearly eliminated false refusals (1 vs 9–13). The gains come from questions a single search could not cover: Q104 ("which web address do I get back for checking on a custom report?"), which no single-search architecture answered, was answered in all three attempts after the agent split it into two searches; on the four `multi_endpoint` questions the collected context was complete in 9 of 12 attempts against 3 of 12 for B. The price is about 3.3 model calls, 3.3 times the tokens and 6 times the latency of A. The extra context also made the model more willing to answer: in one attempt of Q138 ("which endpoint exports all the personal data held about a customer?") the judge reported missing evidence twice, but the answer step still offered `GET /v1/customers/{customerId}`, a real endpoint but a wrong answer.
+
+**A development canary changed one agent setting before measurement.** With a limit of 3 planned queries the planner always used all 3 searches up front, leaving none for the judge's refinement; the limit was set to 2 on the development set before the measured run. This is recorded in the methodology.
 
 ## 14. Limitations
 
@@ -170,11 +231,13 @@ Definitions and caveats are in [docs/evaluation-methodology.md](docs/evaluation-
 
 ## 15. Conclusion
 
-> Results pending. Do not fill in until benchmarks have been run.
+On this corpus and question set, a plain dense retriever (A) was a strong baseline: fast, cheap, never made anything up and answered about three quarters of the questions correctly. Adding keyword search (B) or a reranker (C) changed which questions were answered without improving how many, and the reranker cost several seconds per question. An agent that plans, checks its evidence and searches again (D) gave the most correct answers and the fewest false refusals, at roughly three times the cost and six times the latency, and with one wrong answer to a question that should have been declined.
+
+The practical rule the results support: start with the simplest retriever, measure where it fails, and add a component only when the failures point to it. Agentic retrieval earns its cost when questions span several steps or are worded far from the documentation; hybrid search and reranking need to be validated on your own content, because catch-all or duplicated reference sections can work against them.
 
 ## Milestones
 
-1. Stage 1: design documentation (this stage).
+1. Stage 1: design documentation.
 2. Stage 2: baseline A (parser, chunker, embeddings, Qdrant, generator, CLI), then measured evaluation of A.
 3. Architecture B (hybrid), then evaluation.
 4. Architecture C (rerank), then evaluation.
