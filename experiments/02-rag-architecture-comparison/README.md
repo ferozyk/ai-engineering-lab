@@ -27,7 +27,7 @@ How do different retrieval strategies and agentic orchestration approaches affec
 
 ## 4. Hypotheses
 
-Architecture A hypotheses were **frozen on 2026-11-11**, before any retrieval or answer was measured. Exact definitions are in [docs/evaluation-methodology.md](docs/evaluation-methodology.md) section 8. All are evaluated on the frozen measured question set (Q101–Q140). Verdicts are computed mechanically from the frozen criteria; architecture C is not yet measured.
+Architecture A hypotheses were **frozen on 2026-11-11**, before any retrieval or answer was measured. Exact definitions are in [docs/evaluation-methodology.md](docs/evaluation-methodology.md) section 8. All are evaluated on the frozen measured question set (Q101–Q140). Verdicts are computed mechanically from the frozen criteria; architecture D is not yet measured.
 
 - **HA1** (*supported*): baseline dense retrieval reaches Hit@5 of at least 0.80 on the `semantic` and `endpoint_discovery` questions combined.
 - **HA2** (*not supported*): baseline Hit@5 on `exact_identifier` questions is at least 20 points lower than on `semantic` and `endpoint_discovery` combined.
@@ -36,9 +36,9 @@ Architecture A hypotheses were **frozen on 2026-11-11**, before any retrieval or
 - **HB1** (*not supported*): hybrid retrieval ranks a relevant chunk first for at least 8 of the 11 `exact_identifier` and `schema` questions (architecture A: 6/11).
 - **HB2** (*not supported*): hybrid retrieval keeps a relevant chunk in the top 5 for at least 31 of 34 answerable questions (architecture A: 32/34).
 - **HB3** (*supported*): answer correctness with hybrid retrieval is at least 0.755 (architecture A: 77/102).
-- **HC1** (*unverified*): reranking the hybrid top 30 with a cross-encoder raises MRR to at least 0.85 (architecture B: 0.782).
-- **HC2** (*unverified*): reranking keeps a relevant chunk in the top 5 for at least 32 of 34 answerable questions (architecture B: 30/34).
-- **HC3** (*unverified*): answer correctness with reranking is at least 80/102 (architecture B: 78/102).
+- **HC1** (*not supported*): reranking the hybrid top 30 with a cross-encoder raises MRR to at least 0.85 (architecture B: 0.782).
+- **HC2** (*not supported*): reranking keeps a relevant chunk in the top 5 for at least 32 of 34 answerable questions (architecture B: 30/34).
+- **HC3** (*not supported*): answer correctness with reranking is at least 80/102 (architecture B: 78/102).
 - **HD** (*unverified*): placeholder for the agentic milestone, defined in the methodology document.
 
 Architecture B hypotheses were frozen on 2026-11-11 and architecture C hypotheses on 2026-11-17, each before any measurement of that architecture.
@@ -106,7 +106,7 @@ Each architecture adds one piece to the previous one.
 |---|---|---|
 | A. Baseline | Dense vector retrieval over structure-aware chunks | Built; retrieval and answers measured |
 | B. Hybrid | BM25 keyword search combined with dense search by Reciprocal Rank Fusion | Built; retrieval and answers measured |
-| C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Built; retrieval measured; answers pending |
+| C. Hybrid + rerank | A cross-encoder that re-scores the fused candidates | Built; retrieval and answers measured |
 | D. Agentic | A LangGraph agent that plans, searches, checks the evidence and searches again | Later milestone |
 
 These are composable capabilities, not exclusive categories: architecture D can use C's retriever as its tool.
