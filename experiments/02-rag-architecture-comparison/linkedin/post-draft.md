@@ -1,6 +1,6 @@
 # LinkedIn post draft
 
-Status: draft for review. Every number comes from the committed comparison report (`results/reports/comparisons/a-b-c-d/comparison.md`). Visuals: an 11-slide PDF carousel and a single infographic, generated locally from the same data (not committed).
+Status: draft for review. Every number comes from the committed comparison report (`results/reports/comparisons/a-b-c-d/comparison.md`). Visuals: an 11-slide PDF carousel and a single cheat-sheet infographic with evidence labels, generated locally from the same data (not committed).
 
 Link: https://github.com/ferozyk/ai-engineering-lab/tree/master/experiments/02-rag-architecture-comparison
 
@@ -24,7 +24,7 @@ What surprised me:
 
 My takeaway: start simple, measure where it fails, and add one piece only when the failures point to it.
 
-Small, synthetic test (40 questions, each asked 3 times), so read it as direction, not law. Code, data and method are open: [link]
+Small, synthetic test (40 questions, each asked 3 times) on one small, clean manual, so read it as direction, not law. Hybrid search and rerankers are built for larger, messier, code-heavy documents; that is exactly what I am testing next. Code, data and method are open: [link]
 
 What would you have expected to win?
 
@@ -64,7 +64,7 @@ The cost: about 3.3 model calls per question, roughly 3× the estimated cost and
 2. Validate "standard upgrades" on your own content. A catch-all reference section and duplicated text worked against the reranker.
 3. An agent loop earned its cost on everyday wording and on not giving up too early. More complete evidence for multi-step questions did not, by itself, add right answers. For simple lookups, the plain design is cheaper and nearly as good.
 
-Caveats: a small synthetic test, one AI model (a free model through OpenRouter), estimated costs, and CPU-only latencies. Treat it as direction, not law.
+Caveats: a small synthetic test on one small, clean manual, one AI model (a free model through OpenRouter), estimated costs, and CPU-only latencies. Treat it as direction, not law. The conditions hybrid search and rerankers are designed for (large, messy, code-heavy documents) were not part of this test; the next experiment builds them on purpose.
 
 Everything is open, including the code, data, run records and pre-registered hypotheses: [link]
 
