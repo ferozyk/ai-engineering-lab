@@ -19,7 +19,6 @@ from rag_experiment.visuals.draw import (
     SERIES,
     WIDTH,
     Canvas,
-    LayoutError,
     shade,
     tint,
 )
@@ -765,7 +764,7 @@ def slide_finale(numbers: Numbers, font: str) -> Canvas:
     h = len(lines) * c.line_height(12, 1.3) + 40
     y += 6
     if y + h > HEIGHT - 96:
-        raise LayoutError(f"slide-11: closing banner ends at {y + h:.0f}px, into the footer")
+        c.problems.append(f"closing banner ends at {y + h:.0f}px, into the footer")
     c.rect(MARGIN, y, CONTENT_W, h, fc="#E9FBF4", ec=SERIES["D"], lw=3.0, radius=14)
     c.paragraph(MARGIN + 32, y + 20, rule, 12, CONTENT_W - 64, "bold", color=NAVY, factor=1.3)
     return c

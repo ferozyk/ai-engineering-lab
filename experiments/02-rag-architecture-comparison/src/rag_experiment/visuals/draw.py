@@ -112,6 +112,8 @@ class Canvas:
         self.ax.axis("off")
         self.renderer = self._agg.get_renderer()  # type: ignore[no-untyped-call]
         self.placed: list[Placed] = []
+        # Layout problems found while drawing (e.g. a block pushed into the footer).
+        self.problems: list[str] = []
 
     def props(self, size: float, weight: str = "normal") -> FontProperties:
         return FontProperties(family=self.font, weight=weight, size=size)
@@ -324,7 +326,7 @@ class Canvas:
 
     def check(self) -> list[str]:
         """Problems found: too small, outside the side margins or the page, overlapping."""
-        problems: list[str] = []
+        problems: list[str] = list(self.problems)
         boxes = self.extents()
         for placed, x0, y0, x1, y1 in boxes:
             if placed.size_pt < MIN_TEXT_PT - 1e-6:
