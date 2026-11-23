@@ -1,7 +1,6 @@
 """Load the committed results, render the visuals and write ``numbers.json``."""
 
 import json
-from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,7 +11,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from rag_experiment.config import ExperimentConfig
 from rag_experiment.corpus import load_corpus
 from rag_experiment.evaluation.answer_run import load_records
-from rag_experiment.evaluation.coverage import CoverageContext, attempt_coverage
 from rag_experiment.evaluation.dataset import load_questions
 from rag_experiment.ingestion.chunker import chunk_corpus
 from rag_experiment.visuals.data import (
@@ -26,7 +24,7 @@ from rag_experiment.visuals.data import (
     dig,
     read_json,
 )
-from rag_experiment.visuals.draw import BG, Canvas, LayoutError, resolve_font
+from rag_experiment.visuals.draw import Canvas, LayoutError, resolve_font
 from rag_experiment.visuals.infographic import build_infographic
 from rag_experiment.visuals.slides import build_slides
 
@@ -37,9 +35,9 @@ ANSWER_RUNS = {
     "D": "20261117T173854Z-answers-measured-agentic",
 }
 INGEST_RUN = "20261110T204546Z-retrieval-measured-dense"
-OUTPUT_SUBDIR = Path("linkedin/visual-assets/linkedin-post-02")
-CAROUSEL_PDF = "rag_patterns_carousel.pdf"
-INFOGRAPHIC_PNG = "rag_patterns_infographic.png"
+OUTPUT_SUBDIR = Path("linkedin/visual-assets/linkedin-post-03")
+CAROUSEL_PDF = "rag_story_carousel.pdf"
+INFOGRAPHIC_PNG = "rag_story_infographic.png"
 
 
 @dataclass(frozen=True)
@@ -76,29 +74,37 @@ def load_inputs(config: ExperimentConfig) -> tuple[dict[str, RunInputs], Setup]:
     ingest_chunks = int(dig(ingest, "index_build.chunks", f"{INGEST_RUN}/ingest.json"))
     if ingest_chunks != len(chunks):
         raise VisualsDataError(f"corpus has {len(chunks)} chunks, the indexed run {ingest_chunks}")
-    ctx = CoverageContext(questions={q.id: q for q in questions}, chunks=chunks)
-
-    def coverage(question_id: str, context_ids: Collection[str]) -> tuple[int, int]:
-        return attempt_coverage(ctx, question_id, context_ids)
-
+    per_q = dig(comparison, "per_question.Q120", COMPARISON_PATH)
+    pool = dig(per_q, "pool_first_relevant_rank", COMPARISON_PATH)
+    final = dig(per_q, "first_relevant_rank", COMPARISON_PATH)
+    pool_rank, final_rank = _rerank_entry(pool), _rerank_entry(final)
     return runs, Setup(
         chunk_count=ingest_chunks,
         n_apis=len(list(config.corpus_dir.glob("*.yaml"))),
         n_answerable_questions=sum(1 for q in questions if not q.constraints.must_abstain),
         n_trick_questions=sum(1 for q in questions if q.constraints.must_abstain),
         question_text={q.id: q.question for q in questions},
-        coverage=coverage,
+        q120_pool_rank=pool_rank,
+        q120_final_rank=final_rank,
     )
+
+
+def _rerank_entry(by_run: dict[str, int]) -> int:
+    """The single value recorded for the reranking retrieval run."""
+    found = [v for k, v in by_run.items() if k.endswith("-retrieval-measured-rerank")]
+    if len(found) != 1:
+        raise VisualsDataError("expected exactly one reranking retrieval run in comparison.json")
+    return int(found[0])
 
 
 def write_pdf(canvases: list[Canvas], path: Path) -> None:
     """One page per canvas."""
     with (
         rc_context({"pdf.fonttype": 42}),
-        PdfPages(path, metadata={"Title": "RAG patterns"}) as pdf,
+        PdfPages(path, metadata={"Title": "Four ways to build a RAG assistant"}) as pdf,
     ):
         for canvas in canvases:
-            pdf.savefig(canvas.fig, facecolor=BG)
+            pdf.savefig(canvas.fig, facecolor=canvas.bg)
 
 
 def _check(canvases: dict[str, Canvas]) -> None:
@@ -130,10 +136,10 @@ def render(config: ExperimentConfig, out_dir: Path, what: str) -> Outputs:
         pdf_path = out_dir / CAROUSEL_PDF
         with (
             rc_context({"pdf.fonttype": 42}),
-            PdfPages(pdf_path, metadata={"Title": "RAG patterns"}) as pdf,
+            PdfPages(pdf_path, metadata={"Title": "Four ways to build a RAG assistant"}) as pdf,
         ):
             for canvas in slides:
-                pdf.savefig(canvas.fig, facecolor=BG)
+                pdf.savefig(canvas.fig, facecolor=canvas.bg)
         files.append(pdf_path)
     _check(canvases)  # after saving, so a flagged page can still be inspected
     numbers_file = out_dir / "numbers.json"
@@ -157,7 +163,7 @@ def _write_numbers(
     payload = {
         "font": font,
         "canvas": "1080x1350 px (5.4 x 6.75 in at 200 dpi)",
-        "colours": "Okabe-Ito set (A #0072B2, B #E69F00, C #CC79A7, D #009E73); validator not run",
+        "colours": "Okabe-Ito set (1 Semantic #0072B2, 2 Hybrid #E69F00, 3 Hybrid + Reranker #CC79A7, 4 Agentic #009E73); validator not run",
         "model_id": model,
         "question_set_checksum": checksum,
         "answer_runs": {x: r.run_id for x, r in runs.items()},

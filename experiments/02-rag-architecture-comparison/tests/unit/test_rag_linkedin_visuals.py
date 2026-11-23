@@ -1,7 +1,7 @@
 """Derivation, wrapping and smoke renders of the sharing visuals (no results files needed)."""
 
 import re
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +9,7 @@ import pytest
 from PIL import Image
 
 from rag_experiment.evaluation.answer_run import AnswerRecord
+from rag_experiment.visuals.cheatsheet import HINT, MEASURED, NOT_SHOWN, rows
 from rag_experiment.visuals.data import (
     Numbers,
     RunInputs,
@@ -21,6 +22,7 @@ from rag_experiment.visuals.data import (
 )
 from rag_experiment.visuals.draw import HEIGHT, WIDTH, Canvas, resolve_font, wrap_words
 from rag_experiment.visuals.infographic import build_infographic
+from rag_experiment.visuals.iso import Iso, cuboid_faces
 from rag_experiment.visuals.render import write_pdf
 from rag_experiment.visuals.slides import build_slides, slide_cover
 
@@ -32,6 +34,16 @@ FIGURES = {
     "B": (62, 8, 18, 0, 2400.0, 0.36, 1.0, 3),
     "C": (62, 9, 18, 0, 13000.0, 0.35, 1.0, 0),
     "D": (70, 1, 17, 1, 14000.0, 1.00, 3.25, 9),
+}
+
+
+# question -> (category, right answers out of 3 for techniques A, B, C, D)
+QUESTIONS = {
+    "Q104": ("semantic", (0, 0, 0, 3)),
+    "Q125": ("authentication", (0, 3, 3, 3)),
+    "Q108": ("semantic", (3, 0, 2, 3)),
+    "Q120": ("endpoint_discovery", (3, 3, 0, 3)),
+    "Q128": ("multi_endpoint", (0, 3, 3, 3)),
 }
 
 
@@ -58,14 +70,15 @@ def _runs(
     runs: dict[str, RunInputs] = {}
     for x, f in FIGURES.items():
         records: list[AnswerRecord] = []
-        for rep in (1, 2, 3):
-            for qid in ("Q104", "Q128", "Q138"):
+        for qid, (category, counts) in QUESTIONS.items():
+            for rep in (1, 2, 3):
                 records.append(
                     make_record(
                         attempt_id=f"{qid}-r{rep}",
                         question_id=qid,
                         repetition=rep,
-                        correct=(x == "D"),
+                        category=category,
+                        correct=rep <= counts["ABCD".index(x)],
                         outcome="answered",
                         queries=("one", "two"),
                     )
@@ -88,18 +101,20 @@ def _runs(
     return runs
 
 
-def _coverage(question_id: str, context_ids: Collection[str]) -> tuple[int, int]:
-    return (2, 2) if question_id == "Q128" else (1, 1)
-
-
 def _setup() -> Setup:
     return Setup(
         chunk_count=186,
         n_apis=5,
         n_answerable_questions=34,
         n_trick_questions=6,
-        question_text={"Q104": "What `X`?", "Q128": "Which calls?"},
-        coverage=_coverage,
+        question_text={
+            "Q104": "What `X`?",
+            "Q125": "Which scopes?",
+            "Q108": "How long?",
+            "Q120": "Which endpoint?",
+        },
+        q120_pool_rank=1,
+        q120_final_rank=7,
     )
 
 
@@ -126,7 +141,16 @@ def test_derived_numbers(make_record: RecordFactory) -> None:
     assert get["q104.text"].value == "What X?"
     assert get["q104.D.right"].value == 3
     assert get["q104.A.right"].value == 0
-    assert get["q128.D.covered"].value == 2
+    assert get["q125.A.right"].value == 0
+    assert get["q125.B.right"].value == 3
+    assert get["q108.C.right"].value == 2
+    assert get["q120.C.right"].value == 0
+    assert get["q120.B.tries"].value == 3
+    assert get["q120.pool_rank"].value == 1
+    assert get["q120.final_rank"].value == 7
+    assert get["gain.questions"].value == 2
+    assert get["gain.semantic"].value == 2
+    assert get["B.multi_correct"].value == 3
     assert get["q104.D.query2"].value == "two"
 
 
@@ -195,9 +219,69 @@ def test_smoke_render(make_record: RecordFactory, tmp_path: Path) -> None:
         with Image.open(path) as image:
             assert image.size == (WIDTH, HEIGHT)
     assert isinstance(cover, Canvas)
-    slides = build_slides(numbers, font)
-    assert len(slides) == 9
+    assert len(build_slides(numbers, font)) == 11
+
+
+def _all_canvases(make_record: RecordFactory) -> tuple[Numbers, dict[str, Canvas]]:
+    numbers = build_numbers(_runs(make_record), _setup())
+    font = resolve_font()
+    canvases = {f"slide-{i}": c for i, c in enumerate(build_slides(numbers, font), start=1)}
+    canvases["infographic"] = build_infographic(numbers, font)
+    return numbers, canvases
+
+
+def test_every_page_renders_at_full_size_and_pdf_has_11_pages(
+    make_record: RecordFactory, tmp_path: Path
+) -> None:
+    _, canvases = _all_canvases(make_record)
+    for name, canvas in canvases.items():
+        path = tmp_path / f"{name}.png"
+        canvas.save_png(path)
+        with Image.open(path) as image:
+            assert image.size == (1080, 1350), name
     pdf = tmp_path / "c.pdf"
-    write_pdf(slides, pdf)
-    pages = re.findall(rb"/Type\s*/Page\b", pdf.read_bytes())
-    assert len(pages) == 9
+    write_pdf([c for n, c in canvases.items() if n.startswith("slide-")], pdf)
+    assert len(re.findall(rb"/Type\s*/Page\b", pdf.read_bytes())) == 11
+
+
+def test_no_letter_labels_on_any_page(make_record: RecordFactory) -> None:
+    _, canvases = _all_canvases(make_record)
+    for name, canvas in canvases.items():
+        for placed in canvas.placed:
+            text = placed.text.strip()
+            assert text not in {"A", "B", "C", "D"}, (name, text)
+            assert not re.match(r"Pattern [A-D]\b", text), (name, text)
+
+
+def test_isometric_projection_of_a_unit_cube() -> None:
+    iso = Iso(0.0, 0.0, 1.0)
+    top = cuboid_faces(iso, 0, 0, 0, 1, 1, 1)["top"]
+    half = 3**0.5 / 2
+    expected = [(0.0, -1.0), (half, -0.5), (0.0, 0.0), (-half, -0.5)]
+    for got, want in zip(top, expected, strict=True):
+        assert got == pytest.approx(want)
+
+
+def test_tower_height_is_proportional_to_value() -> None:
+    iso = Iso(100.0, 500.0, 2.0)
+
+    def height(value: float) -> float:
+        left = cuboid_faces(iso, 0, 0, 0, 10, 10, value)["left"]
+        return left[0][1] - left[3][1]  # a vertical edge: bottom minus top
+
+    assert height(77) / height(85) == pytest.approx(77 / 85)
+    assert height(0.0) == pytest.approx(0.0)
+    assert height(40) == pytest.approx(40 * 2.0)
+
+
+def test_cheat_sheet_rows_label_the_evidence(make_record: RecordFactory) -> None:
+    numbers = build_numbers(_runs(make_record), _setup())
+    numbers.slide = "t"
+    table = rows(numbers)
+    assert table["A"].evidence == MEASURED
+    assert table["D"].evidence == MEASURED
+    assert table["B"].evidence == HINT
+    assert table["C"].evidence == NOT_SHOWN
+    assert f"≈{numbers.entries['slowC'].value}\u00d7" in table["C"].watch_out
+    assert f"≈{numbers.entries['costRatio'].value}\u00d7" in table["D"].watch_out
+    assert {"slowC", "costRatio", "timeRatio", "D.made_up"} <= set(numbers.used_entries())

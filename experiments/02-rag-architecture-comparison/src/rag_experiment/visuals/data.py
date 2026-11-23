@@ -6,7 +6,7 @@ on a slide.
 """
 
 import json
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -16,7 +16,6 @@ from rag_experiment.evaluation.answer_run import AnswerRecord, latest_by_attempt
 
 ARCHITECTURES = ("A", "B", "C", "D")
 COMPARISON_PATH = "results/processed/comparisons/a-b-c-d/comparison.json"
-CoverageFn = Callable[[str, Collection[str]], tuple[int, int]]
 Scalar = int | float | str
 
 
@@ -105,7 +104,8 @@ class Setup:
     n_answerable_questions: int
     n_trick_questions: int
     question_text: Mapping[str, str]
-    coverage: CoverageFn
+    q120_pool_rank: int
+    q120_final_rank: int
 
 
 def read_json(path: Path) -> Any:
@@ -273,8 +273,13 @@ def build_numbers(runs: Mapping[str, RunInputs], setup: Setup) -> Numbers:
     return numbers
 
 
+MOMENT_QUESTIONS = ("Q104", "Q125", "Q108", "Q120")
+
+
 def _add_examples(numbers: Numbers, runs: Mapping[str, RunInputs], setup: Setup) -> None:
-    for qid, key in (("Q104", "q104"), ("Q128", "q128")):
+    """Per-question scores of the "moments that mattered", straight from the answer records."""
+    for qid in MOMENT_QUESTIONS:
+        key = qid.lower()
         text = setup.question_text.get(qid)
         if text is None:
             raise VisualsDataError(f"question {qid} not found")
@@ -284,46 +289,35 @@ def _add_examples(numbers: Numbers, runs: Mapping[str, RunInputs], setup: Setup)
             "datasets/evaluation/questions-measured.jsonl",
             f"{qid}.question, backticks removed",
         )
-    for x, run in runs.items():
-        rows = _attempts(run.records, "Q104")
-        src = f"results/raw/{run.run_id}/answers.jsonl"
-        numbers.add(
-            f"q104.{x}.right",
-            sum(1 for r in rows if r.correct),
-            src,
-            "Q104 attempts with correct = true",
-        )
-        numbers.add(f"q104.{x}.tries", len(rows), src, "Q104 attempts")
+        for x, run in runs.items():
+            rows = _attempts(run.records, qid)
+            src = f"results/raw/{run.run_id}/answers.jsonl"
+            numbers.add(
+                f"{key}.{x}.right",
+                sum(1 for r in rows if r.correct),
+                src,
+                f"{qid} attempts with correct = true",
+            )
+            numbers.add(f"{key}.{x}.tries", len(rows), src, f"{qid} attempts")
     d_first = _attempts(runs["D"].records, "Q104")[0]
     if len(d_first.queries) != 2:
         raise VisualsDataError(f"expected 2 agent queries for Q104, got {len(d_first.queries)}")
     d_src = f"results/raw/{runs['D'].run_id}/answers.jsonl"
     numbers.add("q104.D.query1", d_first.queries[0], d_src, "Q104-r1 queries[0]")
     numbers.add("q104.D.query2", d_first.queries[1], d_src, "Q104-r1 queries[1]")
-    for x in ("B", "D"):
-        rows = _attempts(runs[x].records, "Q128")
-        cov = [setup.coverage(r.question_id, r.context_chunk_ids) for r in rows]
-        found = sorted({c[0] for c in cov})
-        needed = {c[1] for c in cov}
-        if len(found) != 1 or len(needed) != 1:
-            raise VisualsDataError(f"Q128 coverage of {x} differs between tries: {cov}")
-        src = f"results/raw/{runs[x].run_id}/answers.jsonl"
-        numbers.add(
-            f"q128.{x}.covered",
-            found[0],
-            src,
-            "evaluation.coverage.attempt_coverage over Q128 attempts (same in every try)",
-        )
-        numbers.add(f"q128.{x}.needed", next(iter(needed)), src, "labelled sources of Q128")
-        numbers.add(f"q128.{x}.tries", len(rows), src, "Q128 attempts")
-    trick = [r for r in latest_by_attempt(runs["D"].records).values() if r.question_id == "Q138"]
     numbers.add(
-        "q138.D.answered",
-        sum(1 for r in trick if r.outcome != "refused"),
-        d_src,
-        "Q138 attempts not refused",
+        "q120.pool_rank",
+        setup.q120_pool_rank,
+        COMPARISON_PATH,
+        "per_question.Q120.pool_first_relevant_rank (rerank retrieval run): rank of the right "
+        "passage among the candidates handed to the reranker",
     )
-    numbers.add("q138.D.tries", len(trick), d_src, "Q138 attempts")
+    numbers.add(
+        "q120.final_rank",
+        setup.q120_final_rank,
+        COMPARISON_PATH,
+        "per_question.Q120.first_relevant_rank (rerank retrieval run): rank after reranking",
+    )
 
 
 def _correct_by_question(run: RunInputs) -> tuple[dict[str, int], dict[str, str]]:

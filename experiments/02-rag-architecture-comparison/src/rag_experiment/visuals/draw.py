@@ -9,7 +9,7 @@ from matplotlib.artist import Artist
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
-from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
+from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Polygon, Rectangle
 
 WIDTH = 1080
 HEIGHT = 1350
@@ -17,13 +17,20 @@ DPI = 200
 PX_PER_PT = DPI / 72
 MARGIN = 64
 MIN_MARGIN = 48
-MIN_TEXT_PT = 9.0
+MIN_TEXT_PT = 9.5
 
 BG = "#FAFAF7"
 INK = "#1B1F24"
 MUTED = "#5B6470"
 HAIRLINE = "#D9DDE3"
+NAVY = "#0F1B2D"
+LIGHT_INK = "#F4F6F8"
+LIGHT_MUTED = "#A9B4C2"
+DARK_HAIRLINE = "#2A3B55"
 SERIES = {"A": "#0072B2", "B": "#E69F00", "C": "#CC79A7", "D": "#009E73"}
+# Text on a technique colour: white on the blue, dark ink on the three lighter colours (contrast).
+ON_SERIES = {"A": "#FFFFFF", "B": INK, "C": INK, "D": INK}
+ORDER = {"A": 1, "B": 2, "C": 3, "D": 4}
 FONT_CANDIDATES = ("Avenir Next", "Helvetica Neue", "Helvetica", "Arial")
 FALLBACK_FONT = "DejaVu Sans"
 REPO = "github.com/ferozyk/ai-engineering-lab"
@@ -64,12 +71,18 @@ def wrap_words(text: str, max_px: float, measure: Callable[[str], float]) -> lis
     return lines
 
 
-def tint(color: str, amount: float = 0.18) -> str:
+def tint(color: str, amount: float = 0.18, bg_color: str = BG) -> str:
     """The colour mixed towards the background (a light fill for a coloured outline)."""
-    bg = [int(BG[i : i + 2], 16) for i in (1, 3, 5)]
+    bg = [int(bg_color[i : i + 2], 16) for i in (1, 3, 5)]
     fg = [int(color[i : i + 2], 16) for i in (1, 3, 5)]
     mixed = [round(b + (f - b) * amount) for b, f in zip(bg, fg, strict=True)]
     return "#" + "".join(f"{v:02X}" for v in mixed)
+
+
+def shade(color: str, factor: float) -> str:
+    """The colour scaled towards black (factor < 1 darkens)."""
+    parts = [int(color[i : i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{min(255, round(v * factor)):02X}" for v in parts)
 
 
 @dataclass(frozen=True)
@@ -84,9 +97,14 @@ class Placed:
 class Canvas:
     """One page. Coordinates are pixels with the origin at the top left."""
 
-    def __init__(self, font: str) -> None:
+    def __init__(self, font: str, dark: bool = False) -> None:
         self.font = font
-        self.fig = Figure(figsize=(WIDTH / DPI, HEIGHT / DPI), dpi=DPI, facecolor=BG)
+        self.dark = dark
+        self.bg = NAVY if dark else BG
+        self.ink = LIGHT_INK if dark else INK
+        self.muted = LIGHT_MUTED if dark else MUTED
+        self.hair = DARK_HAIRLINE if dark else HAIRLINE
+        self.fig = Figure(figsize=(WIDTH / DPI, HEIGHT / DPI), dpi=DPI, facecolor=self.bg)
         self._agg = FigureCanvasAgg(self.fig)
         self.ax = self.fig.add_axes((0, 0, 1, 1))
         self.ax.set_xlim(0, WIDTH)
@@ -117,12 +135,19 @@ class Canvas:
         text: str,
         size: float,
         weight: str = "normal",
-        color: str = INK,
+        color: str | None = None,
         ha: str = "left",
         va: str = "top",
     ) -> None:
         artist = self.ax.text(
-            x, y, text, fontproperties=self.props(size, weight), color=color, ha=ha, va=va
+            x,
+            y,
+            text,
+            fontproperties=self.props(size, weight),
+            color=color or self.ink,
+            ha=ha,
+            va=va,
+            zorder=6,
         )
         self.placed.append(Placed(text, size, artist))
 
@@ -134,7 +159,7 @@ class Canvas:
         size: float,
         max_px: float,
         weight: str = "normal",
-        color: str = INK,
+        color: str | None = None,
         ha: str = "left",
         factor: float = 1.32,
     ) -> float:
@@ -152,10 +177,13 @@ class Canvas:
         w: float,
         h: float,
         fc: str = "none",
-        ec: str = HAIRLINE,
+        ec: str | None = None,
         lw: float = 1.0,
         radius: float = 0.0,
+        alpha: float = 1.0,
+        z: float = 1.0,
     ) -> None:
+        edge = ec or self.hair
         if radius > 0:
             patch: Rectangle | FancyBboxPatch = FancyBboxPatch(
                 (x + radius, y + radius),
@@ -163,55 +191,128 @@ class Canvas:
                 h - 2 * radius,
                 boxstyle=f"round,pad={radius},rounding_size={radius}",
                 fc=fc,
-                ec=ec,
+                ec=edge,
                 lw=lw,
+                alpha=alpha,
+                zorder=z,
             )
         else:
-            patch = Rectangle((x, y), w, h, fc=fc, ec=ec, lw=lw)
+            patch = Rectangle((x, y), w, h, fc=fc, ec=edge, lw=lw, alpha=alpha, zorder=z)
         self.ax.add_patch(patch)
 
-    def line(
-        self, x0: float, y0: float, x1: float, y1: float, color: str = HAIRLINE, lw: float = 1.0
+    def card(
+        self,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        accent: str | None = None,
+        fc: str | None = None,
+        radius: float = 16.0,
     ) -> None:
-        self.ax.plot([x0, x1], [y0, y1], color=color, lw=lw, solid_capstyle="butt")
+        """A rounded card with a soft shadow and an optional coloured left accent bar."""
+        fill = fc or ("#16263F" if self.dark else "#FFFFFF")
+        self.rect(x + 3, y + 7, w, h, fc="#000000", ec="none", radius=radius, alpha=0.07, z=0.5)
+        self.rect(x, y, w, h, fc=fill, ec=self.hair, lw=0.8, radius=radius, z=1.0)
+        if accent:
+            self.rect(x, y + radius, 7, h - 2 * radius, fc=accent, ec="none", z=1.2)
 
-    def badge(self, letter: str, cx: float, cy: float, r: float) -> None:
-        """A circle in the pattern's colour with its white letter."""
-        self.ax.add_patch(Circle((cx, cy), r, fc=SERIES[letter], ec="none"))
-        self.text(cx, cy + r * 0.04, letter, r * 0.47, "bold", "#FFFFFF", ha="center", va="center")
+    def poly(
+        self,
+        points: list[tuple[float, float]],
+        fc: str = "none",
+        ec: str = "none",
+        lw: float = 0.8,
+        alpha: float = 1.0,
+        z: float = 2.0,
+    ) -> Polygon:
+        patch = Polygon(points, closed=True, fc=fc, ec=ec, lw=lw, alpha=alpha, zorder=z)
+        patch.set_joinstyle("round")
+        self.ax.add_patch(patch)
+        return patch
 
-    def dot(self, cx: float, cy: float, r: float, color: str) -> None:
-        self.ax.add_patch(Circle((cx, cy), r, fc=color, ec="none"))
+    def line(
+        self,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        color: str | None = None,
+        lw: float = 1.0,
+        dashed: bool = False,
+        z: float = 2.0,
+    ) -> None:
+        self.polyline([(x0, y0), (x1, y1)], color, lw, dashed, z)
+
+    def polyline(
+        self,
+        points: list[tuple[float, float]],
+        color: str | None = None,
+        lw: float = 1.0,
+        dashed: bool = False,
+        z: float = 2.0,
+        round_caps: bool = False,
+    ) -> None:
+        self.ax.plot(
+            [p[0] for p in points],
+            [p[1] for p in points],
+            color=color or self.hair,
+            lw=lw,
+            solid_capstyle="round" if round_caps else "butt",
+            linestyle=(0, (1.5, 3.2)) if dashed else "-",
+            dash_capstyle="round",
+            zorder=z,
+        )
+
+    def badge(self, key: str, cx: float, cy: float, r: float) -> None:
+        """A circle in the technique's colour with its order number (1-4)."""
+        self.ax.add_patch(Circle((cx, cy), r, fc=SERIES[key], ec="none", zorder=4))
+        self.text(
+            cx,
+            cy + r * 0.04,
+            str(ORDER[key]),
+            max(9.5, r * 0.62),
+            "bold",
+            ON_SERIES[key],
+            ha="center",
+            va="center",
+        )
+
+    def dot(
+        self, cx: float, cy: float, r: float, color: str, ec: str = "none", z: float = 3.0
+    ) -> None:
+        self.ax.add_patch(Circle((cx, cy), r, fc=color, ec=ec, lw=1.6, zorder=z))
 
     def arrow(
         self,
         start: tuple[float, float],
         end: tuple[float, float],
-        color: str = MUTED,
+        color: str | None = None,
         rad: float = 0.0,
         lw: float = 1.4,
+        scale: float = 16.0,
     ) -> None:
         self.ax.add_patch(
             FancyArrowPatch(
                 start,
                 end,
                 arrowstyle="-|>",
-                mutation_scale=16,
-                color=color,
+                mutation_scale=scale,
+                color=color or self.muted,
                 lw=lw,
                 connectionstyle=f"arc3,rad={rad}",
                 shrinkA=0,
                 shrinkB=0,
+                zorder=3,
             )
         )
 
-    def footer(self, page: int, total: int, extra: str | None = None) -> None:
+    def footer(self, extra: str | None = None, text: str | None = None) -> None:
         y = HEIGHT - 62
         self.line(MARGIN, y - 20, WIDTH - MARGIN, y - 20)
-        self.text(MARGIN, y, f"Experiment 02 · {REPO}", 9, color=MUTED)
-        self.text(WIDTH - MARGIN, y, f"{page} / {total}", 9, color=MUTED, ha="right")
+        self.text(MARGIN, y, text or f"Experiment 02 \u00b7 {REPO}", 9.5, color=self.muted)
         if extra:
-            self.text(MARGIN, y - 62, extra, 9, color=MUTED)
+            self.text(WIDTH - MARGIN, y, extra, 9.5, color=self.muted, ha="right")
 
     def extents(self) -> list[tuple[Placed, float, float, float, float]]:
         """Each text's box as (placed, x0, y0, x1, y1) in top-left pixel coordinates."""
@@ -239,4 +340,4 @@ class Canvas:
         return problems
 
     def save_png(self, path: Path) -> None:
-        self.fig.savefig(path, dpi=DPI, facecolor=BG)
+        self.fig.savefig(path, dpi=DPI, facecolor=self.bg)
