@@ -43,7 +43,8 @@ from rag_experiment.agent.prompts import (
     check_agent_prompt_version,
 )
 from rag_experiment.config import ConfigError, ExperimentConfig
-from rag_experiment.corpus import Corpus, load_corpus, load_manifest
+from rag_experiment.corpus import Corpus, corpus_checksum, load_corpus, load_manifest
+from rag_experiment.corpus_gen import differences, generate
 from rag_experiment.embeddings.provider import SentenceTransformerProvider
 from rag_experiment.evaluation import charts
 from rag_experiment.evaluation.answer_analysis import AnswerSummary, summarise_answers
@@ -129,8 +130,8 @@ class Setup:
 
 
 def question_path(config: ExperimentConfig, set_name: str) -> Path:
-    """The question file of a set."""
-    return config.questions_measured if set_name == "measured" else config.questions_dev
+    """The question file of a set; a set that has not been written yet is an error."""
+    return config.require_question_set(set_name)
 
 
 def select_questions(
@@ -182,10 +183,12 @@ def _one_line(text: str) -> str:
 
 
 def coverage_context(config: ExperimentConfig, chunks: Sequence[Chunk]) -> CoverageContext:
-    """The labelled questions of both sets and the chunks, for source coverage."""
+    """The labelled questions of the sets bound to the config's corpus, for source coverage."""
     questions: dict[str, Question] = {}
-    for path in (config.questions_dev, config.questions_measured):
-        for question in load_questions(path):
+    for entry in config.question_sets.values():
+        if entry.corpus != config.corpus_name or not entry.path.is_file():
+            continue
+        for question in load_questions(entry.path):
             questions[question.id] = question
     return CoverageContext(questions, chunks)
 
@@ -671,8 +674,9 @@ def analyse_run(
     """Rebuild the summary, report and charts of a run from its raw files (no requests)."""
     paths = find_run(results_base, run_id)
     metadata = AnswerRunMetadata.model_validate_json(paths.metadata.read_text(encoding="utf-8"))
+    config = config.for_set(metadata.question_set)
     questions = select_questions(config, metadata.question_set, metadata.question_ids)
-    chunks = chunk_corpus(load_corpus(config.corpus_dir), config.chunking)
+    chunks = chunk_corpus(load_corpus(config.corpus_dir, config.corpus_name), config.chunking)
     summary, notes = write_outputs(
         paths,
         metadata,
@@ -749,6 +753,31 @@ def rerank_status(config: ExperimentConfig) -> CheckResult:
         "fail",
         f"{rerank.model_id} is cached, but not at the pinned revision {rerank.revision[:12]}",
     )
+
+
+def corpora_checks(config: ExperimentConfig) -> list[CheckResult]:
+    """Both corpora match the checksums in the manifest, and the large one matches its generator."""
+    manifest = load_manifest(config.manifest_path)
+    expected = {"clean": manifest.corpus_checksum}
+    expected.update({n: e.checksum for n, e in (manifest.corpora or {}).items()})
+    parts: list[str] = []
+    failed = False
+    for name, folder in config.corpora.items():
+        actual = corpus_checksum(folder)
+        ok = expected.get(name) == actual
+        failed = failed or not ok
+        parts.append(f"{name} {actual[:12]} {'matches' if ok else 'DIFFERS FROM'} the manifest")
+    results = [CheckResult("corpora", "fail" if failed else "pass", "; ".join(parts))]
+    if "large" in config.corpora:
+        drift = differences(config.corpora["large"], generate(config.corpora["clean"]).files)
+        results.append(
+            CheckResult(
+                "large_corpus",
+                "fail" if drift else "pass",
+                "matches generate-corpus --check" if not drift else f"differs: {drift[:3]}",
+            )
+        )
+    return results
 
 
 def largest_prompt(
@@ -829,6 +858,8 @@ def offline_checks(
         results.append(
             CheckResult("questions", "pass", f"valid; measured checksum {digest[:12]} is frozen")
         )
+
+    results += corpora_checks(config)
 
     run_id = (
         None

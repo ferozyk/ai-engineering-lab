@@ -1,0 +1,522 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Beneficiaries API (v3)
+  version: 3.0.0
+  description: Stores the payees a customer can send money to. This is version 3 of the Beneficiaries API. The scopes are beneficiaries:read, beneficiaries:write and beneficiaries:admin. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Beneficiaries
+  description: Operations on beneficiaries.
+paths:
+  /v3/beneficiaries:
+    get:
+      operationId: listBeneficiaries
+      summary: List beneficiaries
+      description: 'Returns a page of beneficiaries, newest first. Use `pageSize` to choose how many come back, up to 100, and `pageToken` to fetch the next page. This operation is deprecated: use searchBeneficiaries instead.'
+      deprecated: true
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of beneficiaries to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return beneficiaries in this state.
+        schema:
+          type: string
+          enum:
+          - pending
+          - active
+          - suspended
+          - removed
+      responses:
+        '200':
+          description: A page of beneficiaries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeneficiaryList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-BEN-001` when the beneficiary request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-003` when the customer is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createBeneficiary
+      summary: Create a beneficiary
+      description: Creates a beneficiary for the authenticated customer. Send an `Idempotency-Key` header so that a retried request does not create a second beneficiary.
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:write
+        apiKey: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the creation.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The beneficiary to create.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiaryCreate'
+      responses:
+        '201':
+          description: The beneficiary was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Beneficiary'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-BEN-001` when the beneficiary request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-003` when the customer is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the beneficiary. The Problem `code` is `ERR-BEN-008` when the beneficiary is suspended.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-BEN-012` when the payment is above the weekly limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v3/beneficiaries/{beneficiaryId}:
+    get:
+      operationId: getBeneficiary
+      summary: Get a beneficiary
+      description: Returns one beneficiary by its identifier, with its current state and every field described in the Beneficiary schema.
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:read
+        apiKey: []
+      parameters:
+      - name: beneficiaryId
+        in: path
+        required: true
+        description: Identifier of the beneficiary.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The beneficiary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Beneficiary'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-004` when the application is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The beneficiary was not found. The Problem `code` is `ERR-BEN-005` when no beneficiary exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      operationId: closeBeneficiary
+      summary: Close a beneficiary
+      description: Closes a beneficiary. A closed beneficiary cannot be reopened.
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:admin
+        apiKey: []
+      parameters:
+      - name: beneficiaryId
+        in: path
+        required: true
+        description: Identifier of the beneficiary.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The beneficiary was closed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Beneficiary'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-003` when the customer is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The beneficiary was not found. The Problem `code` is `ERR-BEN-005` when no beneficiary exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the beneficiary. The Problem `code` is `ERR-BEN-009` when the beneficiary is removed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v3/beneficiaries/{beneficiaryId}/verify:
+    post:
+      operationId: verifyBeneficiary
+      summary: Verify a beneficiary
+      description: Confirms the payee details with a small test credit before the beneficiary becomes active.
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:admin
+        apiKey: []
+      parameters:
+      - name: beneficiaryId
+        in: path
+        required: true
+        description: Identifier of the beneficiary.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to verify a beneficiary.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyBeneficiaryRequest'
+      responses:
+        '200':
+          description: The action was applied and the beneficiary is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Beneficiary'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-BEN-002` when the beneficiary request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-003` when the customer is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The beneficiary was not found. The Problem `code` is `ERR-BEN-006` when the beneficiary belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the beneficiary. The Problem `code` is `ERR-BEN-007` when the beneficiary is pending; or `ERR-BEN-010` when the beneficiary is blocked.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-BEN-011` when the payment is above the daily limit when pending items are counted as well; or `ERR-BEN-013` when the payment is above the single limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v3/beneficiaries/search:
+    post:
+      operationId: searchBeneficiaries
+      summary: Search beneficiaries
+      description: Finds beneficiaries that match every filter in the request body. Use it instead of listing when you need to filter by more than one field.
+      tags:
+      - Beneficiaries
+      security:
+      - bearerAuth:
+        - beneficiaries:read
+        apiKey: []
+      requestBody:
+        required: true
+        description: Filters that every returned beneficiary must match.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiarySearch'
+      responses:
+        '200':
+          description: A page of beneficiaries that match the search.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeneficiaryList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-BEN-001` when the beneficiary request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-BEN-003` when the customer is not allowed to use this beneficiary.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Beneficiaries API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            beneficiaries:read: Read beneficiaries and their current state.
+            beneficiaries:write: Create, change and close beneficiaries.
+            beneficiaries:admin: Run privileged actions such as verify a beneficiary.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    Beneficiary:
+      type: object
+      description: A beneficiary.
+      required:
+      - id
+      - status
+      - label
+      properties:
+        id:
+          type: string
+          description: Identifier of the beneficiary.
+        status:
+          type: string
+          enum:
+          - pending
+          - active
+          - suspended
+          - removed
+          description: Lifecycle state of the beneficiary.
+        label:
+          type: string
+          description: Name shown to the customer.
+        accountNumber:
+          type: string
+          description: Account number of the payee.
+        limit:
+          type: number
+          minimum: 0
+          maximum: 20000
+          description: Payment limit for this beneficiary.
+        reference:
+          type: string
+          description: Default payment reference for this beneficiary.
+    BeneficiaryList:
+      type: object
+      description: A page of beneficiaries.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Beneficiary'
+          description: The beneficiaries on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    BeneficiaryCreate:
+      type: object
+      description: Fields of a new beneficiary.
+      required:
+      - label
+      - accountNumber
+      properties:
+        label:
+          type: string
+          description: Name shown to the customer.
+        accountNumber:
+          type: string
+          description: Account number of the payee.
+        limit:
+          type: number
+          minimum: 0
+          maximum: 20000
+          description: Payment limit for this beneficiary.
+        reference:
+          type: string
+          description: Default payment reference for this beneficiary.
+    VerifyBeneficiaryRequest:
+      type: object
+      description: Details of the request to verify a beneficiary.
+      required:
+      - code
+      properties:
+        code:
+          type: string
+          description: Confirmation code the customer received.
+    BeneficiarySearch:
+      type: object
+      description: Filters of a beneficiary search. Every filter that is given must match.
+      properties:
+        status:
+          type: string
+          enum:
+          - pending
+          - active
+          - suspended
+          - removed
+          description: Lifecycle state of the beneficiary.
+        label:
+          type: string
+          description: Name shown to the customer.
+        createdAfter:
+          type: string
+          format: date-time
+          description: Only beneficiaries created after this instant.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-BEN-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

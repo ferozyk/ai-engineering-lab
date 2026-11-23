@@ -395,20 +395,45 @@ def _rerank_retrieval(
     return (_hc1(records, frozen, base), _hc2(records, frozen, base), pending)
 
 
-# Registry: retriever name -> retrieval-time verdicts. A retriever absent here has none.
-_RETRIEVAL: dict[str, Callable[[Sequence[QuestionRetrieval], bool, Path], tuple[Verdict, ...]]] = {
-    "dense": _dense_retrieval,
-    "hybrid": _hybrid_retrieval,
-    "rerank": _rerank_retrieval,
+RetrievalVerdicts = Callable[[Sequence[QuestionRetrieval], bool, Path], tuple[Verdict, ...]]
+
+# Registry keyed by (question set, retriever) -> retrieval-time verdicts. A pair that is absent has
+# none. The hypotheses of architectures A to D were registered for the clean corpus, so they apply
+# to the dev and measured sets (the dev set reports them as "not applicable"). The stress set has
+# no entries until its hypotheses are pre-registered.
+_RETRIEVAL: dict[tuple[str, str], RetrievalVerdicts] = {
+    (question_set, retriever): compute
+    for question_set in ("dev", "measured")
+    for retriever, compute in (
+        ("dense", _dense_retrieval),
+        ("hybrid", _hybrid_retrieval),
+        ("rerank", _rerank_retrieval),
+    )
 }
 
+_ANSWER_HYPOTHESES = frozenset(
+    (question_set, retriever)
+    for question_set in ("dev", "measured")
+    for retriever in ("hybrid", "rerank", "agentic")
+)
 
-_ANSWER_HYPOTHESES = frozenset({"hybrid", "rerank", "agentic"})
+STRESS_SET = "stress"
+NOT_PREREGISTERED = Verdict(
+    hypothesis="stress",
+    criterion="hypotheses are written and frozen before the stress set is measured",
+    verdict="not pre-registered yet",
+    evidence="",
+)
 
 
-def has_hypotheses(retriever: str) -> bool:
-    """Whether the retriever has pre-registered hypotheses."""
-    return retriever in _RETRIEVAL
+def _registry_set(question_set: str) -> str:
+    """The registry row for a set: unknown names behave like the measured set, as before."""
+    return question_set if question_set in ("dev", "measured", STRESS_SET) else "measured"
+
+
+def has_hypotheses(retriever: str, question_set: str = "measured") -> bool:
+    """Whether the retriever has pre-registered hypotheses for the question set."""
+    return (_registry_set(question_set), retriever) in _RETRIEVAL
 
 
 def apply_retrieval_verdicts(
@@ -417,10 +442,16 @@ def apply_retrieval_verdicts(
     retriever: str,
     results_dir: Path,
 ) -> RetrievalSummary:
-    """The summary with the retriever's own verdicts. Dense summaries are returned unchanged."""
+    """The summary with the retriever's own verdicts. Dense summaries are returned unchanged.
+
+    The stress set has no registered hypotheses yet: every retriever gets one "not
+    pre-registered yet" row.
+    """
+    if summary.question_set == STRESS_SET:
+        return summary.model_copy(update={"verdicts": (NOT_PREREGISTERED,)})
     if retriever == "dense":
         return summary
-    compute = _RETRIEVAL.get(retriever)
+    compute = _RETRIEVAL.get((_registry_set(summary.question_set), retriever))
     verdicts = (
         () if compute is None else compute(records, summary.question_set == "measured", results_dir)
     )
@@ -438,9 +469,11 @@ def apply_answer_verdicts(
     ``coverage`` is needed for ``agentic``: HD1's baseline is computed from architecture B's
     committed records.
     """
+    if summary.question_set == STRESS_SET:
+        return summary.model_copy(update={"verdicts": (NOT_PREREGISTERED,)})
     if retriever == "dense":
         return summary
-    if retriever not in _ANSWER_HYPOTHESES:
+    if (_registry_set(summary.question_set), retriever) not in _ANSWER_HYPOTHESES:
         return summary.model_copy(update={"verdicts": ()})
     applicability: str | None = None
     if summary.simulated:

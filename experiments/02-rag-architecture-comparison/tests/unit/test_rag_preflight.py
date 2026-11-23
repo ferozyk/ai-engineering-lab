@@ -95,6 +95,8 @@ def test_offline_checks_report_key_state_without_the_value(
     assert by_name["config"].status == "pass" and by_name["questions"].status == "pass"
     assert by_name["prompt_size"].status == "pass" and "characters" in by_name["prompt_size"].detail
     assert "123 requests" in by_name["request_plan"].detail
+    assert by_name["corpora"].status == "pass" and "large" in by_name["corpora"].detail
+    assert by_name["large_corpus"].status == "pass"
     assert SECRET not in format_report(ok)
 
     monkeypatch.delenv("OPENROUTER_API_KEY")

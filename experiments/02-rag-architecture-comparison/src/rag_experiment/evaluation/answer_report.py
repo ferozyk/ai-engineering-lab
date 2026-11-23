@@ -16,6 +16,7 @@ from rag_experiment.evaluation.answer_run import (
     latest_by_attempt,
     write_json,
 )
+from rag_experiment.evaluation.intervals import answer_interval_lines
 from rag_experiment.evaluation.retrieval_metrics import DIAGNOSTIC_TEXT, RatioValue
 
 # Copied from docs/evaluation-methodology.md section 9 (a test checks they still match).
@@ -139,7 +140,8 @@ def render_answer_report(
     out += [
         "## Setup",
         "",
-        f"- Corpus: version {metadata.corpus_version}, checksum `{metadata.corpus_checksum}`",
+        f"- Corpus: {metadata.corpus + ', ' if metadata.corpus else ''}version "
+        f"{metadata.corpus_version}, checksum `{metadata.corpus_checksum}`",
         f"- Question set: {metadata.question_set}, version {metadata.question_set_version}, "
         f"checksum `{metadata.question_set_checksum}`"
         + (f"; canary subset {', '.join(metadata.question_ids)}" if metadata.is_canary else ""),
@@ -174,6 +176,7 @@ def render_answer_report(
         "",
         *_results_table(summary),
         "",
+        *answer_interval_lines(summary),
         "## Hypotheses (frozen criteria, computed mechanically)",
         "",
     ]

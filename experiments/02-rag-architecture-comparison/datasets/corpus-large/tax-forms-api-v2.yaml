@@ -1,0 +1,481 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Tax Forms API (v2)
+  version: 2.0.0
+  description: Prepares the tax forms that customers file each year. This is version 2 of the Tax Forms API. The scopes are tax-forms:read and tax-forms:write. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Tax Forms
+  description: Operations on tax forms.
+paths:
+  /v2/tax-forms:
+    get:
+      operationId: listTaxForms
+      summary: List tax forms
+      description: Returns a page of tax forms, newest first. Use `pageSize` to choose how many come back, up to 200, and `pageToken` to fetch the next page.
+      tags:
+      - Tax Forms
+      security:
+      - bearerAuth:
+        - tax-forms:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of tax forms to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 200
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return tax forms in this state.
+        schema:
+          type: string
+          enum:
+          - draft
+          - submitted
+          - accepted
+          - rejected
+      responses:
+        '200':
+          description: A page of tax forms.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxFormList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-TAX-001` when the tax form request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-TAX-003` when the customer is not allowed to use this tax form.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createTaxForm
+      summary: Create a tax form
+      description: Creates a tax form for the authenticated customer. Send an `Idempotency-Key` header so that a retried request does not create a second tax form.
+      tags:
+      - Tax Forms
+      security:
+      - bearerAuth:
+        - tax-forms:write
+        apiKey: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the creation.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The tax form to create.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxFormCreate'
+      responses:
+        '201':
+          description: The tax form was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxForm'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-TAX-001` when the tax form request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-TAX-003` when the customer is not allowed to use this tax form.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the tax form. The Problem `code` is `ERR-TAX-008` when the tax form is submitted; or `ERR-TAX-010` when the tax form is withdrawn.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-TAX-012` when the submission is above the per-year limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/tax-forms/{taxFormId}:
+    get:
+      operationId: getTaxForm
+      summary: Get a tax form
+      description: Returns one tax form by its identifier, with its current state and every field described in the TaxForm schema.
+      tags:
+      - Tax Forms
+      security:
+      - bearerAuth:
+        - tax-forms:read
+        apiKey: []
+      parameters:
+      - name: taxFormId
+        in: path
+        required: true
+        description: Identifier of the tax form.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The tax form.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxForm'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-TAX-004` when the application is not allowed to use this tax form.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The tax form was not found. The Problem `code` is `ERR-TAX-005` when no tax form exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/tax-forms/{taxFormId}/submit:
+    post:
+      operationId: submitTaxForm
+      summary: Submit a tax form
+      description: Sends the completed form to the tax authority and locks it against further edits.
+      tags:
+      - Tax Forms
+      security:
+      - bearerAuth:
+        - tax-forms:write
+        apiKey: []
+      parameters:
+      - name: taxFormId
+        in: path
+        required: true
+        description: Identifier of the tax form.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to submit a tax form.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitTaxFormRequest'
+      responses:
+        '200':
+          description: The action was applied and the tax form is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxForm'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-TAX-002` when the tax form request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-TAX-003` when the customer is not allowed to use this tax form.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The tax form was not found. The Problem `code` is `ERR-TAX-006` when the tax form belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the tax form. The Problem `code` is `ERR-TAX-007` when the tax form is draft; or `ERR-TAX-009` when the tax form is rejected.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-TAX-011` when the submission is above the daily limit; or `ERR-TAX-013` when the submission is above the lifetime limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/tax-forms/search:
+    post:
+      operationId: searchTaxForms
+      summary: Search tax forms
+      description: Finds tax forms that match every filter in the request body. Use it instead of listing when you need to filter by more than one field.
+      tags:
+      - Tax Forms
+      security:
+      - bearerAuth:
+        - tax-forms:read
+        apiKey: []
+      requestBody:
+        required: true
+        description: Filters that every returned tax form must match.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxFormSearch'
+      responses:
+        '200':
+          description: A page of tax forms that match the search.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxFormList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-TAX-001` when the tax form request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-TAX-003` when the customer is not allowed to use this tax form.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Tax Forms API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            tax-forms:read: Read tax forms and their current state.
+            tax-forms:write: Create, change and close tax forms.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    TaxForm:
+      type: object
+      description: A tax form.
+      required:
+      - id
+      - status
+      - taxYear
+      properties:
+        id:
+          type: string
+          description: Identifier of the tax form.
+        status:
+          type: string
+          enum:
+          - draft
+          - submitted
+          - accepted
+          - rejected
+          description: Filing state of the tax form.
+        taxYear:
+          type: integer
+          minimum: 0
+          description: Calendar year the form covers.
+        type:
+          type: string
+          enum:
+          - income
+          - capital_gains
+          - interest
+          description: Kind of tax form.
+        reference:
+          type: string
+          description: Filing reference from the tax authority.
+        expiresOn:
+          type: string
+          format: date
+          description: Date after which the form can no longer be amended.
+    TaxFormList:
+      type: object
+      description: A page of tax forms.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxForm'
+          description: The tax forms on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    TaxFormCreate:
+      type: object
+      description: Fields of a new tax form.
+      required:
+      - taxYear
+      - type
+      properties:
+        taxYear:
+          type: integer
+          minimum: 0
+          description: Calendar year the form covers.
+        type:
+          type: string
+          enum:
+          - income
+          - capital_gains
+          - interest
+          description: Kind of tax form.
+        reference:
+          type: string
+          description: Filing reference from the tax authority.
+        expiresOn:
+          type: string
+          format: date
+          description: Date after which the form can no longer be amended.
+    SubmitTaxFormRequest:
+      type: object
+      description: Details of the request to submit a tax form.
+      required:
+      - declaration
+      properties:
+        declaration:
+          type: string
+          description: Text of the declaration the customer accepted.
+    TaxFormSearch:
+      type: object
+      description: Filters of a tax form search. Every filter that is given must match.
+      properties:
+        status:
+          type: string
+          enum:
+          - draft
+          - submitted
+          - accepted
+          - rejected
+          description: Filing state of the tax form.
+        taxYear:
+          type: integer
+          minimum: 0
+          description: Calendar year the form covers.
+        createdAfter:
+          type: string
+          format: date-time
+          description: Only tax forms created after this instant.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-TAX-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

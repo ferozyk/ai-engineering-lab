@@ -21,8 +21,21 @@ from ai_lab.config import ConfigurationError, Settings, load_settings
 from ai_lab.llm import OpenRouterError
 from rag_experiment import answer_commands
 from rag_experiment.answer_commands import PreparedRetrieval, RunError
-from rag_experiment.config import ConfigError, ExperimentConfig, default_config_path, load_config
-from rag_experiment.corpus import Corpus, load_corpus, load_manifest
+from rag_experiment.config import (
+    QUESTION_SET_NAMES,
+    ConfigError,
+    ExperimentConfig,
+    default_config_path,
+    load_config,
+)
+from rag_experiment.corpus import Corpus, corpus_checksum, load_corpus, load_manifest
+from rag_experiment.corpus_gen import (
+    GateError,
+    check_generated,
+    differences,
+    generate,
+    write_files,
+)
 from rag_experiment.embeddings.fake import FakeEmbeddingProvider
 from rag_experiment.embeddings.provider import (
     EmbeddingCache,
@@ -32,6 +45,7 @@ from rag_experiment.embeddings.provider import (
 )
 from rag_experiment.evaluation import compare
 from rag_experiment.evaluation.answer_run import AnswerRunMetadata, find_run
+from rag_experiment.evaluation.corpus_facts import load_corpus_facts
 from rag_experiment.evaluation.coverage import CoverageContext
 from rag_experiment.evaluation.dataset import (
     Question,
@@ -78,6 +92,7 @@ AGENTIC_RETRIEVAL_MESSAGE = (
     "agentic retrieval needs the model; its retrieval is measured inside the answer run"
 )
 
+CORPORA: tuple[str, ...] = ("clean", "large")
 _SPLIT_SUFFIX = re.compile(r":p\d+$")
 _CHUNK_TYPES = (
     "operation",
@@ -100,13 +115,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="path to experiment.yaml (default: shipped config)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    corpus_help = "which corpus to use (default: clean)"
     chunks = sub.add_parser("chunks", help="list the chunks of the corpus")
+    chunks.add_argument("--corpus", choices=CORPORA, default="clean", help=corpus_help)
     chunks.add_argument("--document", metavar="ID", help="only this document")
     chunks.add_argument("--type", dest="chunk_type", choices=_CHUNK_TYPES, help="only this type")
     chunks.add_argument("--full", action="store_true", help="print each chunk's content")
     show = sub.add_parser("show-chunk", help="print one chunk with its metadata")
     show.add_argument("chunk_id")
-    sub.add_parser("validate-dataset", help="validate the corpus and both question files")
+    show.add_argument("--corpus", choices=CORPORA, default="clean", help=corpus_help)
+    sub.add_parser(
+        "validate-dataset", help="validate both corpora and every question file that exists"
+    )
+    generate_cmd = sub.add_parser(
+        "generate-corpus", help="generate the large corpus (deterministic; no model needed)"
+    )
+    generate_cmd.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate in memory and fail if the committed files differ",
+    )
 
     fake_help = "use the deterministic fake embedder (dry run, nothing is measured)"
 
@@ -120,10 +148,12 @@ def _build_parser() -> argparse.ArgumentParser:
         )
 
     index = sub.add_parser("index", help="embed the chunks and build the local Qdrant index")
+    index.add_argument("--corpus", choices=CORPORA, default="clean", help=corpus_help)
     index.add_argument("--rebuild", action="store_true", help="rebuild even if up to date")
     index.add_argument("--fake-embeddings", action="store_true", help=fake_help)
     retrieve = sub.add_parser("retrieve", help="retrieve the top chunks for a question")
     retrieve.add_argument("question", nargs="?", help="question text")
+    retrieve.add_argument("--corpus", choices=CORPORA, default="clean", help=corpus_help)
     retrieve.add_argument("-k", type=int, default=5, help="number of chunks (default 5)")
     retrieve.add_argument("--question-id", help="take the text from a question set; marks hits")
     retrieve.add_argument("--show", action="store_true", help="print the top chunk's content")
@@ -132,7 +162,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate = sub.add_parser(
         "evaluate-retrieval", help="compute retrieval metrics on a question set (no LLM calls)"
     )
-    evaluate.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
+    evaluate.add_argument("--set", dest="question_set", choices=QUESTION_SET_NAMES, required=True)
     evaluate.add_argument("--fake-embeddings", action="store_true", help=fake_help)
     add_retriever(evaluate)
 
@@ -148,7 +178,7 @@ def _build_parser() -> argparse.ArgumentParser:
     canary.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
     add_retriever(canary)
     run = sub.add_parser("run", help="generate and score answers for a question set")
-    run.add_argument("--set", dest="question_set", choices=("dev", "measured"), required=True)
+    run.add_argument("--set", dest="question_set", choices=QUESTION_SET_NAMES, required=True)
     run.add_argument("--resume", metavar="RUN_ID", help="continue an interrupted run")
     run.add_argument("--fake", action="store_true", help="simulate the model (no network)")
     run.add_argument("--retrieval-run", metavar="RUN_ID", help=retrieval_help)
@@ -175,7 +205,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load(config: ExperimentConfig) -> tuple[Corpus, list[Chunk]]:
-    corpus = load_corpus(config.corpus_dir)
+    corpus = load_corpus(config.corpus_dir, config.corpus_name)
     return corpus, chunk_corpus(corpus, config.chunking)
 
 
@@ -220,14 +250,24 @@ def _cmd_show_chunk(config: ExperimentConfig, chunk_id: str) -> int:
     return 2
 
 
-def _cmd_validate(config: ExperimentConfig) -> int:
-    corpus, chunks = _load(config)
+def _manifest_checksum(config: ExperimentConfig, name: str) -> str | None:
     manifest = load_manifest(config.manifest_path)
-    problems: list[str] = []
-    if manifest.corpus_checksum != corpus.checksum:
+    if name == "clean":
+        return manifest.corpus_checksum
+    entry = (manifest.corpora or {}).get(name)
+    return None if entry is None else entry.checksum
+
+
+def _validate_corpus(config: ExperimentConfig, name: str, problems: list[str]) -> None:
+    """Validate one named corpus and every question set bound to it that has been written."""
+    bound = config.for_corpus(name)
+    corpus, chunks = _load(bound)
+    expected = _manifest_checksum(config, name)
+    if expected != corpus.checksum:
         problems.append(
-            f"manifest corpus_checksum {manifest.corpus_checksum} does not match {corpus.checksum}"
+            f"[{name}] manifest corpus checksum {expected} does not match {corpus.checksum}"
         )
+    print(f"corpus: {name}")
     print(f"corpus version: {corpus.version}")
     print(f"corpus checksum: {corpus.checksum}")
     print(f"documents: {len(corpus.specs)}")
@@ -238,12 +278,22 @@ def _cmd_validate(config: ExperimentConfig) -> int:
         print(f"  {chunk_type}: {by_type.get(chunk_type, 0)}")
     print(f"max chunk length: {max(len(c.content) for c in chunks)} chars")
     print(f"split chunks: {sum(1 for c in chunks if _SPLIT_SUFFIX.search(c.chunk_id))}")
+    if name == "large":
+        problems += [f"[large] {d}" for d in _large_corpus_differences(config)]
 
     header_names = corpus_header_names(corpus)
-    for label, path in (("dev", config.questions_dev), ("measured", config.questions_measured)):
+    facts = load_corpus_facts(bound.corpus_dir)
+    for label in config.question_sets:
+        if config.question_set_corpus(label) != name:
+            continue
+        path = config.question_set_path(label)
+        if not path.is_file():
+            print(f"questions ({label}): not written yet")
+            continue
         questions = load_questions(path)
         problems.extend(
-            f"[{label}] {p}" for p in validate_question_set(questions, corpus, chunks, header_names)
+            f"[{label}] {p}"
+            for p in validate_question_set(questions, corpus, chunks, header_names, facts)
         )
         per_category = Counter(q.category for q in questions)
         pairs = sum(1 for q in questions if q.paraphrase_of is not None)
@@ -252,12 +302,62 @@ def _cmd_validate(config: ExperimentConfig) -> int:
             print(f"  {category}: {per_category[category]}")
         print(f"  paraphrase pairs: {pairs}")
 
+
+def _cmd_validate(config: ExperimentConfig) -> int:
+    problems: list[str] = []
+    for name in config.corpora:
+        _validate_corpus(config, name, problems)
+        print()
     if problems:
-        print(f"\n{len(problems)} problem(s):")
+        print(f"{len(problems)} problem(s):")
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print("\nno problems found")
+    print("no problems found")
+    return 0
+
+
+def _large_corpus_differences(config: ExperimentConfig) -> list[str]:
+    """Differences between the committed large corpus and a fresh generation."""
+    generated = generate(config.corpora["clean"])
+    return differences(config.corpora["large"], generated.files)
+
+
+def _cmd_generate_corpus(config: ExperimentConfig, check: bool) -> int:
+    """Generate (or, with ``--check``, verify) the large corpus."""
+    clean = config.corpora["clean"]
+    target = config.corpora["large"]
+    generated = generate(clean)
+    originals = {p.name: p.read_bytes() for p in sorted(clean.glob("*.yaml"))}
+    report = check_generated(generated.files, originals, config.chunking)
+    if check:
+        problems = differences(target, generated.files)
+        if problems:
+            print(f"{target} does not match the generator:")
+            for problem in problems:
+                print(f"  - {problem}")
+            return 1
+        print(f"{target} matches the generator")
+    else:
+        write_files(target, generated.files)
+        print(f"wrote {len(generated.files)} files to {target}")
+    print(f"documents: {report.documents} ({report.documents - len(originals)} generated)")
+    print(f"operations: {report.operations}")
+    print(f"chunks: {report.chunks}")
+    for chunk_type in _CHUNK_TYPES:
+        print(f"  {chunk_type}: {report.by_type.get(chunk_type, 0)}")
+    limit = config.chunking.max_chunk_chars
+    print(f"max chunk length: {report.max_chunk_chars} chars (limit {limit})")
+    print(f"split chunks: {report.split_chunks}")
+    kinds = Counter(c["kind"] for c in generated.changes)
+    print(f"version differences: {len(generated.changes)}")
+    for kind in sorted(kinds):
+        print(f"  {kind}: {kinds[kind]}")
+    codes = {i["code"] for i in generated.identifiers}
+    print(
+        f"look-alike error codes: {len(codes)} ({len(generated.identifiers)} per-version entries)"
+    )
+    print(f"corpus checksum: {corpus_checksum(target)}")
     return 0
 
 
@@ -431,9 +531,19 @@ def _cmd_index(config: ExperimentConfig, rebuild: bool, fake: bool) -> int:
 
 
 def _find_question(config: ExperimentConfig, question_id: str) -> Question:
-    for path in (config.questions_dev, config.questions_measured):
+    """A question of any written set. It must belong to the corpus the command is working on."""
+    for name in config.question_sets:
+        path = config.question_set_path(name)
+        if not path.is_file():
+            continue
         for question in load_questions(path):
             if question.id == question_id:
+                bound = config.question_set_corpus(name)
+                if bound != config.corpus_name:
+                    raise ValueError(
+                        f"question {question_id} is in the {name} set, which uses the {bound} "
+                        f"corpus; pass --corpus {bound}"
+                    )
                 return question
     raise ValueError(f"no question with id {question_id!r}")
 
@@ -483,7 +593,8 @@ def _cmd_retrieve(
 def _cmd_evaluate(
     config: ExperimentConfig, set_name: str, fake: bool, retriever_name: RetrieverName = "dense"
 ) -> int:
-    path = config.questions_measured if set_name == "measured" else config.questions_dev
+    config = config.for_set(set_name)
+    path = config.require_question_set(set_name)
     questions = load_questions(path)
     started = datetime.now(UTC)
     with _session(config, fake, retriever_name) as session:
@@ -645,6 +756,8 @@ def _cmd_answers(
     retrieval_run: str | None,
     retriever_name: str = "dense",
 ) -> int:
+    config = config.for_set(set_name)
+    config.require_question_set(set_name)
     results_base = _results_root_base(config)
     if not fake:  # fail on missing credentials before loading the embedding model
         settings = _settings(config)
@@ -703,11 +816,14 @@ def _cmd_compare(
 ) -> int:
     coverage: CoverageContext | None = None
     if answers:
-        _, chunks = _load(config)
+        # The large corpus contains every clean-corpus chunk, so its chunks cover all sets.
+        stress_written = config.question_set_path("stress").is_file()
+        _, chunks = _load(config.for_corpus("large" if stress_written else "clean"))
         questions = {
             q.id: q
-            for path in (config.questions_dev, config.questions_measured)
-            for q in load_questions(path)
+            for name in config.question_sets
+            if config.question_set_path(name).is_file()
+            for q in load_questions(config.question_set_path(name))
         }
         coverage = CoverageContext(questions=questions, chunks=chunks)
     paths = compare.run_compare(_results_root_base(config), retrieval, answers, out, coverage)
@@ -730,17 +846,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         config = load_config(args.config or default_config_path())
         if args.command == "chunks":
-            return _cmd_chunks(config, args.document, args.chunk_type, args.full)
+            return _cmd_chunks(
+                config.for_corpus(args.corpus), args.document, args.chunk_type, args.full
+            )
         if args.command == "show-chunk":
-            return _cmd_show_chunk(config, args.chunk_id)
+            return _cmd_show_chunk(config.for_corpus(args.corpus), args.chunk_id)
+        if args.command == "generate-corpus":
+            return _cmd_generate_corpus(config, args.check)
         if args.command == "index":
-            return _cmd_index(config, args.rebuild, args.fake_embeddings)
+            return _cmd_index(config.for_corpus(args.corpus), args.rebuild, args.fake_embeddings)
         if args.command in ("retrieve", "evaluate-retrieval") and args.retriever == AGENTIC:
             print(f"Error: {AGENTIC_RETRIEVAL_MESSAGE}", file=sys.stderr)
             return 2
         if args.command == "retrieve":
             return _cmd_retrieve(
-                config,
+                config.for_corpus(args.corpus),
                 args.question,
                 args.k,
                 args.question_id,
@@ -795,6 +915,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         OpenRouterError,
         PromptVersionError,
         LayoutError,
+        GateError,
     ) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2

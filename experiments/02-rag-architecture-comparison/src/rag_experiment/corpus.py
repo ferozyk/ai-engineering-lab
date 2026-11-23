@@ -12,6 +12,25 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from rag_experiment.ingestion.parser import InvalidSpecError, ParsedSpec, load_raw, parse_spec
 
 
+class CorpusEntry(BaseModel):
+    """Version and checksum of one named corpus."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    version: str
+    checksum: str
+
+
+class StressEntry(BaseModel):
+    """Version and status of the stress question set (a draft has no checksum yet)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    version: str
+    status: Literal["draft", "frozen"]
+    checksum: str | None = None
+
+
 class Manifest(BaseModel):
     """``datasets/manifest.json``: versions and checksums of the corpus and question set."""
 
@@ -24,6 +43,19 @@ class Manifest(BaseModel):
     eval_measured_status: Literal["draft", "frozen"]
     # sha256 of questions-measured.jsonl, recorded when the set is frozen.
     eval_measured_checksum: str | None = None
+    # Experiment 02b: every named corpus and the stress question set. The keys above stay as they
+    # are and describe the ``clean`` corpus, which ``corpora["clean"]`` repeats.
+    corpora: dict[str, CorpusEntry] | None = None
+    stress: StressEntry | None = None
+
+    def version_of(self, name: str) -> str:
+        """The version of a named corpus (``clean`` falls back to the top-level key)."""
+        entry = (self.corpora or {}).get(name)
+        if entry is not None:
+            return entry.version
+        if name == "clean":
+            return self.corpus_version
+        raise InvalidSpecError(f"manifest has no corpus named {name!r}")
 
 
 @dataclass(frozen=True)
@@ -34,6 +66,7 @@ class Corpus:
     documents: Mapping[str, Mapping[str, object]]
     version: str
     checksum: str
+    name: str = "clean"
 
 
 def corpus_checksum(corpus_dir: Path) -> str:
@@ -53,7 +86,7 @@ def load_manifest(path: Path) -> Manifest:
         raise InvalidSpecError(f"{path}: cannot read manifest ({exc})") from exc
 
 
-def load_corpus(corpus_dir: Path) -> Corpus:
+def load_corpus(corpus_dir: Path, name: str = "clean") -> Corpus:
     """Parse every ``*.yaml`` file in name order. The version comes from the sibling manifest."""
     paths = sorted(corpus_dir.glob("*.yaml"))
     if not paths:
@@ -62,6 +95,7 @@ def load_corpus(corpus_dir: Path) -> Corpus:
     return Corpus(
         specs=tuple(parse_spec(p) for p in paths),
         documents={p.stem: load_raw(p) for p in paths},
-        version=manifest.corpus_version,
+        version=manifest.version_of(name),
         checksum=corpus_checksum(corpus_dir),
+        name=name,
     )

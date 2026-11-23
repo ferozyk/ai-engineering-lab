@@ -1,0 +1,566 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Deposits API (v2)
+  version: 2.0.0
+  description: Handles fixed-term deposits and their maturity. This is version 2 of the Deposits API. The scopes are deposits:read and deposits:write. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Deposits
+  description: Operations on deposits.
+paths:
+  /v2/deposits:
+    get:
+      operationId: listDeposits
+      summary: List deposits
+      description: Returns a page of deposits, newest first. Use `pageSize` to choose how many come back, up to 50, and `pageToken` to fetch the next page.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of deposits to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return deposits in this state.
+        schema:
+          type: string
+          enum:
+          - open
+          - matured
+          - withdrawn
+          - closed
+      responses:
+        '200':
+          description: A page of deposits.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-DEP-001` when the deposit request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-003` when the customer is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createDeposit
+      summary: Create a deposit
+      description: Creates a deposit for the authenticated customer. Send an `Idempotency-Key` header so that a retried request does not create a second deposit.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:write
+        apiKey: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the creation.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The deposit to create.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositCreate'
+      responses:
+        '201':
+          description: The deposit was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-DEP-001` when the deposit request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-003` when the customer is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the deposit. The Problem `code` is `ERR-DEP-008` when the deposit is withdrawn; or `ERR-DEP-011` when the deposit is pledged.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-DEP-013` when the withdrawal is above the partial limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/deposits/{depositId}:
+    get:
+      operationId: getDeposit
+      summary: Get a deposit
+      description: Returns one deposit by its identifier, with its current state and every field described in the Deposit schema.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:read
+        apiKey: []
+      parameters:
+      - name: depositId
+        in: path
+        required: true
+        description: Identifier of the deposit.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The deposit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-004` when the application is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The deposit was not found. The Problem `code` is `ERR-DEP-005` when no deposit exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      operationId: updateDeposit
+      summary: Update a deposit
+      description: Changes the writable fields of a deposit. Fields that are left out stay as they are.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:write
+        apiKey: []
+      parameters:
+      - name: depositId
+        in: path
+        required: true
+        description: Identifier of the deposit.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the change.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The fields to change on the deposit.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositUpdate'
+      responses:
+        '200':
+          description: The deposit after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-DEP-001` when the deposit request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-003` when the customer is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The deposit was not found. The Problem `code` is `ERR-DEP-005` when no deposit exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the deposit. The Problem `code` is `ERR-DEP-009` when the deposit is closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-DEP-014` when the withdrawal is above the daily limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/deposits/{depositId}/withdraw:
+    post:
+      operationId: withdrawDeposit
+      summary: Withdraw a deposit
+      description: Pays the deposit back to the linked current account, subject to the early withdrawal rules.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:write
+        apiKey: []
+      parameters:
+      - name: depositId
+        in: path
+        required: true
+        description: Identifier of the deposit.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to withdraw a deposit.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawDepositRequest'
+      responses:
+        '200':
+          description: The action was applied and the deposit is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-DEP-002` when the deposit request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-003` when the customer is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The deposit was not found. The Problem `code` is `ERR-DEP-006` when the deposit belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the deposit. The Problem `code` is `ERR-DEP-007` when the deposit is matured; or `ERR-DEP-010` when the deposit is locked.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-DEP-012` when the withdrawal is above the early limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/deposits/search:
+    post:
+      operationId: searchDeposits
+      summary: Search deposits
+      description: Finds deposits that match every filter in the request body. Use it instead of listing when you need to filter by more than one field.
+      tags:
+      - Deposits
+      security:
+      - bearerAuth:
+        - deposits:read
+        apiKey: []
+      requestBody:
+        required: true
+        description: Filters that every returned deposit must match.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositSearch'
+      responses:
+        '200':
+          description: A page of deposits that match the search.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-DEP-001` when the deposit request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-DEP-003` when the customer is not allowed to use this deposit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Deposits API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            deposits:read: Read deposits and their current state.
+            deposits:write: Create, change and close deposits.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    Deposit:
+      type: object
+      description: A deposit.
+      required:
+      - id
+      - status
+      - amount
+      properties:
+        id:
+          type: string
+          description: Identifier of the deposit.
+        status:
+          type: string
+          enum:
+          - open
+          - matured
+          - withdrawn
+          - closed
+          description: Lifecycle state of the deposit.
+        amount:
+          type: number
+          minimum: 0
+          maximum: 1000000
+          description: Amount placed on deposit.
+        maturityDate:
+          type: string
+          format: date
+          description: Date on which the term ends.
+        interestRate:
+          type: number
+          description: Fixed annual interest rate as a percentage.
+        reference:
+          type: string
+          description: Deposit certificate reference.
+    DepositList:
+      type: object
+      description: A page of deposits.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deposit'
+          description: The deposits on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    DepositCreate:
+      type: object
+      description: Fields of a new deposit.
+      required:
+      - amount
+      - maturityDate
+      properties:
+        amount:
+          type: number
+          minimum: 0
+          maximum: 1000000
+          description: Amount placed on deposit.
+        maturityDate:
+          type: string
+          format: date
+          description: Date on which the term ends.
+        interestRate:
+          type: number
+          description: Fixed annual interest rate as a percentage.
+        reference:
+          type: string
+          description: Deposit certificate reference.
+    DepositUpdate:
+      type: object
+      description: Fields of a deposit that can be changed.
+      properties:
+        maturityDate:
+          type: string
+          format: date
+          description: Date on which the term ends.
+        interestRate:
+          type: number
+          description: Fixed annual interest rate as a percentage.
+        reference:
+          type: string
+          description: Deposit certificate reference.
+    WithdrawDepositRequest:
+      type: object
+      description: Details of the request to withdraw a deposit.
+      required:
+      - amount
+      properties:
+        amount:
+          type: number
+          minimum: 0
+          maximum: 1000000
+          description: Amount to withdraw.
+    DepositSearch:
+      type: object
+      description: Filters of a deposit search. Every filter that is given must match.
+      properties:
+        status:
+          type: string
+          enum:
+          - open
+          - matured
+          - withdrawn
+          - closed
+          description: Lifecycle state of the deposit.
+        amount:
+          type: number
+          minimum: 0
+          maximum: 1000000
+          description: Amount placed on deposit.
+        createdAfter:
+          type: string
+          format: date-time
+          description: Only deposits created after this instant.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-DEP-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

@@ -1,0 +1,5735 @@
+[
+  {
+    "code": "ERR-BEN-001",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries/get/responses/400",
+    "meaning": "The beneficiary request is missing a required field.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-002",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/400",
+    "meaning": "The beneficiary request has a field of the wrong type.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-003",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries/get/responses/403",
+    "meaning": "The customer is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-004",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}/get/responses/403",
+    "meaning": "The application is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-005",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}/get/responses/404",
+    "meaning": "No beneficiary exists with that identifier.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-006",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/404",
+    "meaning": "The beneficiary belongs to a different customer.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-007",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is pending.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-008",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries/post/responses/409",
+    "meaning": "The beneficiary is suspended.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-009",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}/delete/responses/409",
+    "meaning": "The beneficiary is removed.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-010",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is blocked.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-011",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the daily limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-012",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries/post/responses/422",
+    "meaning": "The payment is above the weekly limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-013",
+    "document": "beneficiaries-api-v1",
+    "location": "#/paths/~1v1~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the single limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-BEN-001",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries/get/responses/400",
+    "meaning": "The beneficiary request is missing a required field.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-002",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/400",
+    "meaning": "The beneficiary request has a field of the wrong type.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-003",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries/get/responses/403",
+    "meaning": "The customer is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-004",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}/get/responses/403",
+    "meaning": "The application is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-005",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}/get/responses/404",
+    "meaning": "No beneficiary exists with that identifier.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-006",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/404",
+    "meaning": "The beneficiary belongs to a different customer.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-007",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is pending.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-008",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries/post/responses/409",
+    "meaning": "The beneficiary is suspended.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-009",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}/delete/responses/409",
+    "meaning": "The beneficiary is removed.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-010",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is blocked.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-011",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the daily limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-012",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries/post/responses/422",
+    "meaning": "The payment is above the weekly limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-013",
+    "document": "beneficiaries-api-v2",
+    "location": "#/paths/~1v2~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the single limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-BEN-001",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries/get/responses/400",
+    "meaning": "The beneficiary request is missing a required field.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-002",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/400",
+    "meaning": "The beneficiary request has a field of the wrong type.",
+    "product": "beneficiaries",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-003",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries/get/responses/403",
+    "meaning": "The customer is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-004",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}/get/responses/403",
+    "meaning": "The application is not allowed to use this beneficiary.",
+    "product": "beneficiaries",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-005",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}/get/responses/404",
+    "meaning": "No beneficiary exists with that identifier.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-006",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/404",
+    "meaning": "The beneficiary belongs to a different customer.",
+    "product": "beneficiaries",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-007",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is pending.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-008",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries/post/responses/409",
+    "meaning": "The beneficiary is suspended.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-009",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}/delete/responses/409",
+    "meaning": "The beneficiary is removed.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-010",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/409",
+    "meaning": "The beneficiary is blocked.",
+    "product": "beneficiaries",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-011",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the daily limit when pending items are counted as well.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-012",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries/post/responses/422",
+    "meaning": "The payment is above the weekly limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-BEN-013",
+    "document": "beneficiaries-api-v3",
+    "location": "#/paths/~1v3~1beneficiaries~1{beneficiaryId}~1verify/post/responses/422",
+    "meaning": "The payment is above the single limit.",
+    "product": "beneficiaries",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-CRD-001",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards/get/responses/400",
+    "meaning": "The card request is missing a required field.",
+    "product": "cards",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-002",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/400",
+    "meaning": "The card request has a field of the wrong type.",
+    "product": "cards",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-003",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards/get/responses/403",
+    "meaning": "The customer is not allowed to use this card.",
+    "product": "cards",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-004",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}/get/responses/403",
+    "meaning": "The application is not allowed to use this card.",
+    "product": "cards",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-005",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}/get/responses/404",
+    "meaning": "No card exists with that identifier.",
+    "product": "cards",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-006",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/404",
+    "meaning": "The card belongs to a different customer.",
+    "product": "cards",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-007",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is frozen.",
+    "product": "cards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-008",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is blocked.",
+    "product": "cards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-009",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is expired.",
+    "product": "cards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-010",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is cancelled.",
+    "product": "cards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-011",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is replaced.",
+    "product": "cards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-012",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the daily limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-013",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the monthly limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-014",
+    "document": "cards-api-v1",
+    "location": "#/paths/~1v1~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the per-transaction limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-CRD-001",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards/get/responses/400",
+    "meaning": "The card request is missing a required field.",
+    "product": "cards",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-002",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/400",
+    "meaning": "The card request has a field of the wrong type.",
+    "product": "cards",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-003",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards/get/responses/403",
+    "meaning": "The customer is not allowed to use this card.",
+    "product": "cards",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-004",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}/get/responses/403",
+    "meaning": "The application is not allowed to use this card.",
+    "product": "cards",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-005",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}/get/responses/404",
+    "meaning": "No card exists with that identifier.",
+    "product": "cards",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-006",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/404",
+    "meaning": "The card belongs to a different customer.",
+    "product": "cards",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-007",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is frozen.",
+    "product": "cards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-008",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is blocked.",
+    "product": "cards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-009",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is expired.",
+    "product": "cards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-010",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is cancelled.",
+    "product": "cards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-011",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/409",
+    "meaning": "The card is replaced.",
+    "product": "cards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-012",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the daily limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-013",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the monthly limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-CRD-014",
+    "document": "cards-api-v2",
+    "location": "#/paths/~1v2~1cards~1{cardId}~1freeze/post/responses/422",
+    "meaning": "The spend is above the per-transaction limit.",
+    "product": "cards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-001",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits/get/responses/400",
+    "meaning": "The deposit request is missing a required field.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-002",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}~1withdraw/post/responses/400",
+    "meaning": "The deposit request has a field of the wrong type.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-003",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits/get/responses/403",
+    "meaning": "The customer is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-004",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}/get/responses/403",
+    "meaning": "The application is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-005",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}/get/responses/404",
+    "meaning": "No deposit exists with that identifier.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-006",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}~1withdraw/post/responses/404",
+    "meaning": "The deposit belongs to a different customer.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-007",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is matured.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-008",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits/post/responses/409",
+    "meaning": "The deposit is withdrawn.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-009",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}/patch/responses/409",
+    "meaning": "The deposit is closed.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-010",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is locked.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-011",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits/post/responses/409",
+    "meaning": "The deposit is pledged.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-012",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}~1withdraw/post/responses/422",
+    "meaning": "The withdrawal is above the early limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-013",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits/post/responses/422",
+    "meaning": "The withdrawal is above the partial limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-014",
+    "document": "deposits-api-v1",
+    "location": "#/paths/~1v1~1deposits~1{depositId}/patch/responses/422",
+    "meaning": "The withdrawal is above the daily limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DEP-001",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits/get/responses/400",
+    "meaning": "The deposit request is missing a required field.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-002",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}~1withdraw/post/responses/400",
+    "meaning": "The deposit request has a field of the wrong type.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-003",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits/get/responses/403",
+    "meaning": "The customer is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-004",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}/get/responses/403",
+    "meaning": "The application is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-005",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}/get/responses/404",
+    "meaning": "No deposit exists with that identifier.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-006",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}~1withdraw/post/responses/404",
+    "meaning": "The deposit belongs to a different customer.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-007",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is matured.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-008",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits/post/responses/409",
+    "meaning": "The deposit is withdrawn.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-009",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}/patch/responses/409",
+    "meaning": "The deposit is closed.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-010",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is locked.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-011",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits/post/responses/409",
+    "meaning": "The deposit is pledged.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-012",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}~1withdraw/post/responses/422",
+    "meaning": "The withdrawal is above the early limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-013",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits/post/responses/422",
+    "meaning": "The withdrawal is above the partial limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-014",
+    "document": "deposits-api-v2",
+    "location": "#/paths/~1v2~1deposits~1{depositId}/patch/responses/422",
+    "meaning": "The withdrawal is above the daily limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DEP-001",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits/get/responses/400",
+    "meaning": "The deposit request is missing a required field.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-002",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}~1withdraw/post/responses/400",
+    "meaning": "The deposit request has a field of the wrong type.",
+    "product": "deposits",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-003",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits/get/responses/403",
+    "meaning": "The customer is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-004",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}/get/responses/403",
+    "meaning": "The application is not allowed to use this deposit.",
+    "product": "deposits",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-005",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}/get/responses/404",
+    "meaning": "No deposit exists with that identifier.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-006",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}~1withdraw/post/responses/404",
+    "meaning": "The deposit belongs to a different customer.",
+    "product": "deposits",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-007",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is matured.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-008",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits/post/responses/409",
+    "meaning": "The deposit is withdrawn.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-009",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}/patch/responses/409",
+    "meaning": "The deposit is closed.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-010",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}~1withdraw/post/responses/409",
+    "meaning": "The deposit is locked.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-011",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits/post/responses/409",
+    "meaning": "The deposit is pledged.",
+    "product": "deposits",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-012",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}~1withdraw/post/responses/422",
+    "meaning": "The withdrawal is above the early limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-013",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits/post/responses/422",
+    "meaning": "The withdrawal is above the partial limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DEP-014",
+    "document": "deposits-api-v3",
+    "location": "#/paths/~1v3~1deposits~1{depositId}/patch/responses/422",
+    "meaning": "The withdrawal is above the daily limit.",
+    "product": "deposits",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DDB-001",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits/get/responses/400",
+    "meaning": "The direct debit request is missing a required field.",
+    "product": "direct-debits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-002",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/400",
+    "meaning": "The direct debit request has a field of the wrong type.",
+    "product": "direct-debits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-003",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits/get/responses/403",
+    "meaning": "The customer is not allowed to use this direct debit.",
+    "product": "direct-debits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-004",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}/get/responses/403",
+    "meaning": "The application is not allowed to use this direct debit.",
+    "product": "direct-debits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-005",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}/get/responses/404",
+    "meaning": "No direct debit exists with that identifier.",
+    "product": "direct-debits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-006",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/404",
+    "meaning": "The direct debit belongs to a different customer.",
+    "product": "direct-debits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-007",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/409",
+    "meaning": "The direct debit is pending.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-008",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits/post/responses/409",
+    "meaning": "The direct debit is suspended.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-009",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/409",
+    "meaning": "The direct debit is cancelled.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-010",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits/post/responses/409",
+    "meaning": "The direct debit is lapsed.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-011",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/422",
+    "meaning": "The collection is above the single limit.",
+    "product": "direct-debits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-012",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits/post/responses/422",
+    "meaning": "The collection is above the monthly limit.",
+    "product": "direct-debits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-013",
+    "document": "direct-debits-api-v1",
+    "location": "#/paths/~1v1~1direct-debits~1{directDebitId}~1suspend/post/responses/422",
+    "meaning": "The collection is above the annual limit.",
+    "product": "direct-debits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DDB-001",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits/get/responses/400",
+    "meaning": "The direct debit request is missing a required field.",
+    "product": "direct-debits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-002",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/400",
+    "meaning": "The direct debit request has a field of the wrong type.",
+    "product": "direct-debits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-003",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits/get/responses/403",
+    "meaning": "The customer is not allowed to use this direct debit.",
+    "product": "direct-debits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-004",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}/get/responses/403",
+    "meaning": "The application is not allowed to use this direct debit.",
+    "product": "direct-debits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-005",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}/get/responses/404",
+    "meaning": "No direct debit exists with that identifier.",
+    "product": "direct-debits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-006",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/404",
+    "meaning": "The direct debit belongs to a different customer.",
+    "product": "direct-debits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-007",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/409",
+    "meaning": "The direct debit is pending.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-008",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits/post/responses/409",
+    "meaning": "The direct debit is suspended.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-009",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/409",
+    "meaning": "The direct debit is cancelled.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-010",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits/post/responses/409",
+    "meaning": "The direct debit is lapsed.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-011",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/409",
+    "meaning": "The collection is above the single limit.",
+    "product": "direct-debits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-012",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits/post/responses/422",
+    "meaning": "The collection is above the monthly limit.",
+    "product": "direct-debits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DDB-013",
+    "document": "direct-debits-api-v2",
+    "location": "#/paths/~1v2~1direct-debits~1{directDebitId}~1suspend/post/responses/422",
+    "meaning": "The collection is above the annual limit.",
+    "product": "direct-debits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-001",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes/get/responses/400",
+    "meaning": "The dispute request is missing a required field.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-002",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/400",
+    "meaning": "The dispute request has a field of the wrong type.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-003",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes/get/responses/403",
+    "meaning": "The customer is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-004",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}/get/responses/403",
+    "meaning": "The application is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-005",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}/get/responses/404",
+    "meaning": "No dispute exists with that identifier.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-006",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/404",
+    "meaning": "The dispute belongs to a different customer.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-007",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is under review.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-008",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes/post/responses/409",
+    "meaning": "The dispute is escalated.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-009",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is resolved.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-010",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes/post/responses/409",
+    "meaning": "The dispute is withdrawn.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-011",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the per-case limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-012",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes/post/responses/422",
+    "meaning": "The claim is above the monthly limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-013",
+    "document": "disputes-api-v1",
+    "location": "#/paths/~1v1~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the annual limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DSP-001",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes/get/responses/400",
+    "meaning": "The dispute request is missing a required field.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-002",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/400",
+    "meaning": "The dispute request has a field of the wrong type.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-003",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes/get/responses/403",
+    "meaning": "The customer is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-004",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}/get/responses/403",
+    "meaning": "The application is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-005",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}/get/responses/404",
+    "meaning": "No dispute exists with that identifier.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-006",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/404",
+    "meaning": "The dispute belongs to a different customer.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-007",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is under review.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-008",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes/post/responses/409",
+    "meaning": "The dispute is escalated.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-009",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is resolved.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-010",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes/post/responses/409",
+    "meaning": "The dispute is withdrawn.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-011",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the per-case limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-012",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes/post/responses/422",
+    "meaning": "The claim is above the monthly limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-013",
+    "document": "disputes-api-v2",
+    "location": "#/paths/~1v2~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the annual limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DSP-001",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes/get/responses/400",
+    "meaning": "The dispute request is missing a required field.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-002",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/400",
+    "meaning": "The dispute request has a field of the wrong type.",
+    "product": "disputes",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-003",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes/get/responses/403",
+    "meaning": "The customer is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-004",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}/get/responses/403",
+    "meaning": "The application is not allowed to use this dispute.",
+    "product": "disputes",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-005",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}/get/responses/404",
+    "meaning": "No dispute exists with that identifier.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-006",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/404",
+    "meaning": "The dispute belongs to a different customer.",
+    "product": "disputes",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-007",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is under review.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-008",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes/post/responses/409",
+    "meaning": "The dispute is escalated.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-009",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/409",
+    "meaning": "The dispute is resolved.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-010",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes/post/responses/409",
+    "meaning": "The dispute is withdrawn.",
+    "product": "disputes",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-011",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the per-case limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-012",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes/post/responses/422",
+    "meaning": "The claim is above the monthly limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DSP-013",
+    "document": "disputes-api-v3",
+    "location": "#/paths/~1v3~1disputes~1{disputeId}~1escalate/post/responses/422",
+    "meaning": "The claim is above the annual limit.",
+    "product": "disputes",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-DOC-001",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents/get/responses/400",
+    "meaning": "The document request is missing a required field.",
+    "product": "documents",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-002",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/400",
+    "meaning": "The document request has a field of the wrong type.",
+    "product": "documents",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-003",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents/get/responses/403",
+    "meaning": "The customer is not allowed to use this document.",
+    "product": "documents",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-004",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}/get/responses/403",
+    "meaning": "The application is not allowed to use this document.",
+    "product": "documents",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-005",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}/get/responses/404",
+    "meaning": "No document exists with that identifier.",
+    "product": "documents",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-006",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/404",
+    "meaning": "The document belongs to a different customer.",
+    "product": "documents",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-007",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is uploaded.",
+    "product": "documents",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-008",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is rejected.",
+    "product": "documents",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-009",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is archived.",
+    "product": "documents",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-010",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is quarantined.",
+    "product": "documents",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-011",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the daily limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-012",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the per-file limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-013",
+    "document": "documents-api-v1",
+    "location": "#/paths/~1v1~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the total limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-DOC-001",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents/get/responses/400",
+    "meaning": "The document request is missing a required field and the error is reported before any other check.",
+    "product": "documents",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-002",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/400",
+    "meaning": "The document request has a field of the wrong type.",
+    "product": "documents",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-003",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents/get/responses/403",
+    "meaning": "The customer is not allowed to use this document.",
+    "product": "documents",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-004",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}/get/responses/403",
+    "meaning": "The application is not allowed to use this document.",
+    "product": "documents",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-005",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}/get/responses/404",
+    "meaning": "No document exists with that identifier.",
+    "product": "documents",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-006",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/404",
+    "meaning": "The document belongs to a different customer.",
+    "product": "documents",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-007",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is uploaded.",
+    "product": "documents",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-008",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is rejected.",
+    "product": "documents",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-009",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is archived.",
+    "product": "documents",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-010",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/409",
+    "meaning": "The document is quarantined.",
+    "product": "documents",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-011",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the daily limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-012",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the per-file limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-DOC-013",
+    "document": "documents-api-v2",
+    "location": "#/paths/~1v2~1documents~1{documentId}~1archive/post/responses/422",
+    "meaning": "The upload is above the total limit.",
+    "product": "documents",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-001",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes/get/responses/400",
+    "meaning": "The quote request is missing a required field.",
+    "product": "fx",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-002",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/400",
+    "meaning": "The quote request has a field of the wrong type.",
+    "product": "fx",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-003",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes/get/responses/403",
+    "meaning": "The customer is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-004",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}/get/responses/403",
+    "meaning": "The application is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-005",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}/get/responses/404",
+    "meaning": "No quote exists with that identifier.",
+    "product": "fx",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-006",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/404",
+    "meaning": "The quote belongs to a different customer.",
+    "product": "fx",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-007",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is expired.",
+    "product": "fx",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-008",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is executed.",
+    "product": "fx",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-009",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is cancelled.",
+    "product": "fx",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-010",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is superseded.",
+    "product": "fx",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-011",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the daily limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-012",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the monthly limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-013",
+    "document": "fx-api-v1",
+    "location": "#/paths/~1v1~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the single-deal limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-FXR-001",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes/get/responses/400",
+    "meaning": "The quote request is missing a required field.",
+    "product": "fx",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-002",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/400",
+    "meaning": "The quote request has a field of the wrong type.",
+    "product": "fx",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-003",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes/get/responses/403",
+    "meaning": "The customer is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-004",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}/get/responses/403",
+    "meaning": "The application is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-005",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}/get/responses/404",
+    "meaning": "No quote exists with that identifier.",
+    "product": "fx",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-006",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/404",
+    "meaning": "The quote belongs to a different customer.",
+    "product": "fx",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-007",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is expired.",
+    "product": "fx",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-008",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is executed.",
+    "product": "fx",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-009",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is cancelled.",
+    "product": "fx",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-010",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is superseded.",
+    "product": "fx",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-011",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The conversion is above the daily limit.",
+    "product": "fx",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-012",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the monthly limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-013",
+    "document": "fx-api-v2",
+    "location": "#/paths/~1v2~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the single-deal limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-FXR-001",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes/get/responses/400",
+    "meaning": "The quote request is missing a required field.",
+    "product": "fx",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-002",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/400",
+    "meaning": "The quote request has a field of the wrong type.",
+    "product": "fx",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-003",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes/get/responses/403",
+    "meaning": "The customer is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-004",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}/get/responses/403",
+    "meaning": "The application is not allowed to use this quote.",
+    "product": "fx",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-005",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}/get/responses/404",
+    "meaning": "No quote exists with that identifier.",
+    "product": "fx",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-006",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/404",
+    "meaning": "The quote belongs to a different customer.",
+    "product": "fx",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-007",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The quote is expired.",
+    "product": "fx",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-008",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is executed.",
+    "product": "fx",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-009",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is cancelled and the change was made by the issuer.",
+    "product": "fx",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-010",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The quote is superseded.",
+    "product": "fx",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-011",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/409",
+    "meaning": "The conversion is above the daily limit.",
+    "product": "fx",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-012",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the monthly limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-FXR-013",
+    "document": "fx-api-v3",
+    "location": "#/paths/~1v3~1fx-quotes~1{quoteId}~1convert/post/responses/422",
+    "meaning": "The conversion is above the single-deal limit.",
+    "product": "fx",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-INS-001",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies/get/responses/400",
+    "meaning": "The policy request is missing a required field.",
+    "product": "insurance",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-002",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/400",
+    "meaning": "The policy request has a field of the wrong type.",
+    "product": "insurance",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-003",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies/get/responses/403",
+    "meaning": "The customer is not allowed to use this policy.",
+    "product": "insurance",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-004",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}/get/responses/403",
+    "meaning": "The application is not allowed to use this policy.",
+    "product": "insurance",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-005",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}/get/responses/404",
+    "meaning": "No policy exists with that identifier.",
+    "product": "insurance",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-006",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/404",
+    "meaning": "The policy belongs to a different customer.",
+    "product": "insurance",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-007",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is quoted.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-008",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is lapsed.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-009",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is cancelled.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-010",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is suspended.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-011",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the per-claim limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-012",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the annual limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-013",
+    "document": "insurance-api-v1",
+    "location": "#/paths/~1v1~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the lifetime limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-INS-001",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies/get/responses/400",
+    "meaning": "The policy request is missing a required field.",
+    "product": "insurance",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-002",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/400",
+    "meaning": "The policy request has a field of the wrong type.",
+    "product": "insurance",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-003",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies/get/responses/403",
+    "meaning": "The customer is not allowed to use this policy.",
+    "product": "insurance",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-004",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}/get/responses/403",
+    "meaning": "The application is not allowed to use this policy.",
+    "product": "insurance",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-005",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}/get/responses/404",
+    "meaning": "No policy exists with that identifier.",
+    "product": "insurance",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-006",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/404",
+    "meaning": "The policy belongs to a different customer.",
+    "product": "insurance",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-007",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is quoted.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-008",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is lapsed.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-009",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is cancelled.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-010",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/409",
+    "meaning": "The policy is suspended.",
+    "product": "insurance",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-011",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the per-claim limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-012",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the annual limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-INS-013",
+    "document": "insurance-api-v2",
+    "location": "#/paths/~1v2~1insurance-policies~1{policyId}~1renew/post/responses/422",
+    "meaning": "The claim is above the lifetime limit.",
+    "product": "insurance",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-001",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications/get/responses/400",
+    "meaning": "The verification request is missing a required field.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-002",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/400",
+    "meaning": "The verification request has a field of the wrong type.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-003",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications/get/responses/403",
+    "meaning": "The customer is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-004",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}/get/responses/403",
+    "meaning": "The application is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-005",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}/get/responses/404",
+    "meaning": "No verification exists with that identifier.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-006",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/404",
+    "meaning": "The verification belongs to a different customer.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-007",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is pending.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-008",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is failed.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-009",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is expired.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-010",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is suspended.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-011",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is withdrawn.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-012",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/422",
+    "meaning": "The attempt is above the daily limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-013",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications/post/responses/422",
+    "meaning": "The attempt is above the lifetime limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-014",
+    "document": "kyc-api-v1",
+    "location": "#/paths/~1v1~1kyc-verifications~1{verificationId}~1retry/post/responses/422",
+    "meaning": "The attempt is above the per-document limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-KYC-001",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications/get/responses/400",
+    "meaning": "The verification request is missing a required field.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-002",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/400",
+    "meaning": "The verification request has a field of the wrong type.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-003",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications/get/responses/403",
+    "meaning": "The customer is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-004",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}/get/responses/403",
+    "meaning": "The application is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-005",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}/get/responses/404",
+    "meaning": "No verification exists with that identifier.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-006",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/404",
+    "meaning": "The verification belongs to a different customer.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-007",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is pending.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-008",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is failed.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-009",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is expired.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-010",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is suspended.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-011",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is withdrawn.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-012",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/422",
+    "meaning": "The attempt is above the daily limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-013",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications/post/responses/422",
+    "meaning": "The attempt is above the lifetime limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-014",
+    "document": "kyc-api-v2",
+    "location": "#/paths/~1v2~1kyc-verifications~1{verificationId}~1retry/post/responses/422",
+    "meaning": "The attempt is above the per-document limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-KYC-001",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications/get/responses/400",
+    "meaning": "The verification request is missing a required field.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-002",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/400",
+    "meaning": "The verification request has a field of the wrong type.",
+    "product": "kyc",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-003",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications/get/responses/403",
+    "meaning": "The customer is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-004",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}/get/responses/403",
+    "meaning": "The application is not allowed to use this verification.",
+    "product": "kyc",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-005",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}/get/responses/404",
+    "meaning": "No verification exists with that identifier.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-006",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/404",
+    "meaning": "The verification belongs to a different customer.",
+    "product": "kyc",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-007",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is pending.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-008",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is failed.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-009",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is expired.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-010",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications/post/responses/409",
+    "meaning": "The verification is suspended.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-011",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The verification is withdrawn.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-012",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications/post/responses/422",
+    "meaning": "The attempt is above the daily limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-013",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/409",
+    "meaning": "The attempt is above the lifetime limit.",
+    "product": "kyc",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-KYC-014",
+    "document": "kyc-api-v3",
+    "location": "#/paths/~1v3~1kyc-verifications~1{verificationId}~1retry/post/responses/422",
+    "meaning": "The attempt is above the per-document limit.",
+    "product": "kyc",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LIM-001",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits/get/responses/400",
+    "meaning": "The limit request is missing a required field.",
+    "product": "limits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-002",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/400",
+    "meaning": "The limit request has a field of the wrong type.",
+    "product": "limits",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-003",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits/get/responses/403",
+    "meaning": "The customer is not allowed to use this limit.",
+    "product": "limits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-004",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}/get/responses/403",
+    "meaning": "The application is not allowed to use this limit.",
+    "product": "limits",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-005",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}/get/responses/404",
+    "meaning": "No limit exists with that identifier.",
+    "product": "limits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-006",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/404",
+    "meaning": "The limit belongs to a different customer.",
+    "product": "limits",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-007",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/409",
+    "meaning": "The limit is pending.",
+    "product": "limits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-008",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits/post/responses/409",
+    "meaning": "The limit is revoked.",
+    "product": "limits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-009",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}/delete/responses/409",
+    "meaning": "The limit is expired.",
+    "product": "limits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-010",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/409",
+    "meaning": "The limit is frozen.",
+    "product": "limits",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-011",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/422",
+    "meaning": "The increase is above the daily limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-012",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits/post/responses/422",
+    "meaning": "The increase is above the monthly limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-013",
+    "document": "limits-api-v1",
+    "location": "#/paths/~1v1~1limits~1{limitId}~1raise/post/responses/422",
+    "meaning": "The increase is above the lifetime limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LIM-001",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits/get/responses/400",
+    "meaning": "The limit request is missing a required field.",
+    "product": "limits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-002",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/400",
+    "meaning": "The limit request has a field of the wrong type and the error is reported before any other check.",
+    "product": "limits",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-003",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits/get/responses/403",
+    "meaning": "The customer is not allowed to use this limit.",
+    "product": "limits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-004",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}/get/responses/403",
+    "meaning": "The application is not allowed to use this limit.",
+    "product": "limits",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-005",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}/get/responses/404",
+    "meaning": "No limit exists with that identifier.",
+    "product": "limits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-006",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/404",
+    "meaning": "The limit belongs to a different customer.",
+    "product": "limits",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-007",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/409",
+    "meaning": "The limit is pending.",
+    "product": "limits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-008",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits/post/responses/409",
+    "meaning": "The limit is revoked.",
+    "product": "limits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-009",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}/delete/responses/409",
+    "meaning": "The limit is expired.",
+    "product": "limits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-010",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/409",
+    "meaning": "The limit is frozen.",
+    "product": "limits",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-011",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/422",
+    "meaning": "The increase is above the daily limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-012",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits/post/responses/422",
+    "meaning": "The increase is above the monthly limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LIM-013",
+    "document": "limits-api-v2",
+    "location": "#/paths/~1v2~1limits~1{limitId}~1raise/post/responses/422",
+    "meaning": "The increase is above the lifetime limit.",
+    "product": "limits",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-001",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans/get/responses/400",
+    "meaning": "The loan request is missing a required field.",
+    "product": "loans",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-002",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/400",
+    "meaning": "The loan request has a field of the wrong type.",
+    "product": "loans",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-003",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans/get/responses/403",
+    "meaning": "The customer is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-004",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}/get/responses/403",
+    "meaning": "The application is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-005",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}/get/responses/404",
+    "meaning": "No loan exists with that identifier.",
+    "product": "loans",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-006",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/404",
+    "meaning": "The loan belongs to a different customer.",
+    "product": "loans",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-007",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is applied.",
+    "product": "loans",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-008",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans/post/responses/409",
+    "meaning": "The loan is under review.",
+    "product": "loans",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-009",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is settled.",
+    "product": "loans",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-010",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans/post/responses/409",
+    "meaning": "The loan is written off.",
+    "product": "loans",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-011",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the early limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-012",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans/post/responses/422",
+    "meaning": "The repayment is above the monthly limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-013",
+    "document": "loans-api-v1",
+    "location": "#/paths/~1v1~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the single limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-LON-001",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans/get/responses/400",
+    "meaning": "The loan request is missing a required field.",
+    "product": "loans",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-002",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/400",
+    "meaning": "The loan request has a field of the wrong type.",
+    "product": "loans",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-003",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans/get/responses/403",
+    "meaning": "The customer is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-004",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}/get/responses/403",
+    "meaning": "The application is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-005",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}/get/responses/404",
+    "meaning": "No loan exists with that identifier.",
+    "product": "loans",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-006",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/404",
+    "meaning": "The loan belongs to a different customer.",
+    "product": "loans",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-007",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is applied.",
+    "product": "loans",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-008",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans/post/responses/409",
+    "meaning": "The loan is under review.",
+    "product": "loans",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-009",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is settled.",
+    "product": "loans",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-010",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans/post/responses/409",
+    "meaning": "The loan is written off.",
+    "product": "loans",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-011",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the early limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-012",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans/post/responses/422",
+    "meaning": "The repayment is above the monthly limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-013",
+    "document": "loans-api-v2",
+    "location": "#/paths/~1v2~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the single limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-LON-001",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans/get/responses/400",
+    "meaning": "The loan request is missing a required field.",
+    "product": "loans",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-002",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/400",
+    "meaning": "The loan request has a field of the wrong type.",
+    "product": "loans",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-003",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans/get/responses/403",
+    "meaning": "The customer is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-004",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}/get/responses/403",
+    "meaning": "The application is not allowed to use this loan.",
+    "product": "loans",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-005",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}/get/responses/404",
+    "meaning": "No loan exists with that identifier.",
+    "product": "loans",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-006",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/404",
+    "meaning": "The loan belongs to a different customer.",
+    "product": "loans",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-007",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is applied.",
+    "product": "loans",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-008",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans/post/responses/409",
+    "meaning": "The loan is under review.",
+    "product": "loans",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-009",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/409",
+    "meaning": "The loan is settled.",
+    "product": "loans",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-010",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans/post/responses/409",
+    "meaning": "The loan is written off.",
+    "product": "loans",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-011",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the early limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-012",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans/post/responses/422",
+    "meaning": "The repayment is above the monthly limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-LON-013",
+    "document": "loans-api-v3",
+    "location": "#/paths/~1v3~1loans~1{loanId}~1repay/post/responses/422",
+    "meaning": "The repayment is above the single limit.",
+    "product": "loans",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MER-001",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants/get/responses/400",
+    "meaning": "The merchant request is missing a required field.",
+    "product": "merchants",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-002",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/400",
+    "meaning": "The merchant request has a field of the wrong type.",
+    "product": "merchants",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-003",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants/get/responses/403",
+    "meaning": "The customer is not allowed to use this merchant.",
+    "product": "merchants",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-004",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}/get/responses/403",
+    "meaning": "The application is not allowed to use this merchant.",
+    "product": "merchants",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-005",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}/get/responses/404",
+    "meaning": "No merchant exists with that identifier.",
+    "product": "merchants",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-006",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/404",
+    "meaning": "The merchant belongs to a different customer.",
+    "product": "merchants",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-007",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/409",
+    "meaning": "The merchant is onboarding.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-008",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants/post/responses/409",
+    "meaning": "The merchant is restricted.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-009",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/409",
+    "meaning": "The merchant is closed.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-010",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants/post/responses/409",
+    "meaning": "The merchant is terminated.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-011",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/422",
+    "meaning": "The processing volume is above the daily limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-012",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants/post/responses/422",
+    "meaning": "The processing volume is above the monthly limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-013",
+    "document": "merchants-api-v1",
+    "location": "#/paths/~1v1~1merchants~1{merchantId}~1restrict/post/responses/422",
+    "meaning": "The processing volume is above the per-sale limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MER-001",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants/get/responses/400",
+    "meaning": "The merchant request is missing a required field.",
+    "product": "merchants",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-002",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/400",
+    "meaning": "The merchant request has a field of the wrong type.",
+    "product": "merchants",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-003",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants/get/responses/403",
+    "meaning": "The customer is not allowed to use this merchant.",
+    "product": "merchants",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-004",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}/get/responses/403",
+    "meaning": "The application is not allowed to use this merchant.",
+    "product": "merchants",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-005",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}/get/responses/404",
+    "meaning": "No merchant exists with that identifier.",
+    "product": "merchants",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-006",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/404",
+    "meaning": "The merchant belongs to a different customer.",
+    "product": "merchants",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-007",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/409",
+    "meaning": "The merchant is onboarding.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-008",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants/post/responses/409",
+    "meaning": "The merchant is restricted.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-009",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/409",
+    "meaning": "The merchant is closed.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-010",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants/post/responses/409",
+    "meaning": "The merchant is terminated.",
+    "product": "merchants",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-011",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/422",
+    "meaning": "The processing volume is above the daily limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-012",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants/post/responses/422",
+    "meaning": "The processing volume is above the monthly limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MER-013",
+    "document": "merchants-api-v2",
+    "location": "#/paths/~1v2~1merchants~1{merchantId}~1restrict/post/responses/422",
+    "meaning": "The processing volume is above the per-sale limit.",
+    "product": "merchants",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-001",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages/get/responses/400",
+    "meaning": "The mortgage request is missing a required field.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-002",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/400",
+    "meaning": "The mortgage request has a field of the wrong type.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-003",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages/get/responses/403",
+    "meaning": "The customer is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-004",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}/get/responses/403",
+    "meaning": "The application is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-005",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}/get/responses/404",
+    "meaning": "No mortgage exists with that identifier.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-006",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/404",
+    "meaning": "The mortgage belongs to a different customer.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-007",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is offered.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-008",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages/post/responses/409",
+    "meaning": "The mortgage is redeemed.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-009",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}/delete/responses/409",
+    "meaning": "The mortgage is in arrears.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-010",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is frozen.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-011",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages/post/responses/409",
+    "meaning": "The mortgage is transferred.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-012",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the annual limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-013",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages/post/responses/422",
+    "meaning": "The overpayment is above the monthly limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-014",
+    "document": "mortgages-api-v1",
+    "location": "#/paths/~1v1~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the single limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-MTG-001",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages/get/responses/400",
+    "meaning": "The mortgage request is missing a required field.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-002",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/400",
+    "meaning": "The mortgage request has a field of the wrong type.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-003",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages/get/responses/403",
+    "meaning": "The customer is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-004",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}/get/responses/403",
+    "meaning": "The application is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-005",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}/get/responses/404",
+    "meaning": "No mortgage exists with that identifier.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-006",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/404",
+    "meaning": "The mortgage belongs to a different customer.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-007",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is offered.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-008",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages/post/responses/409",
+    "meaning": "The mortgage is redeemed and the change was made by the issuer.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-009",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}/delete/responses/409",
+    "meaning": "The mortgage is in arrears.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-010",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is frozen.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-011",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages/post/responses/409",
+    "meaning": "The mortgage is transferred.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-012",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the annual limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-013",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages/post/responses/422",
+    "meaning": "The overpayment is above the monthly limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-014",
+    "document": "mortgages-api-v2",
+    "location": "#/paths/~1v2~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the single limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-MTG-001",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages/get/responses/400",
+    "meaning": "The mortgage request is missing a required field.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-002",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/400",
+    "meaning": "The mortgage request has a field of the wrong type.",
+    "product": "mortgages",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-003",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages/get/responses/403",
+    "meaning": "The customer is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-004",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}/get/responses/403",
+    "meaning": "The application is not allowed to use this mortgage.",
+    "product": "mortgages",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-005",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}/get/responses/404",
+    "meaning": "No mortgage exists with that identifier.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-006",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/404",
+    "meaning": "The mortgage belongs to a different customer.",
+    "product": "mortgages",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-007",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is offered.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-008",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages/post/responses/409",
+    "meaning": "The mortgage is redeemed and the change was made by the issuer.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-009",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}/delete/responses/409",
+    "meaning": "The mortgage is in arrears.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-010",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/409",
+    "meaning": "The mortgage is frozen.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-011",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages/post/responses/409",
+    "meaning": "The mortgage is transferred.",
+    "product": "mortgages",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-012",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the annual limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-013",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages/post/responses/422",
+    "meaning": "The overpayment is above the monthly limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-MTG-014",
+    "document": "mortgages-api-v3",
+    "location": "#/paths/~1v3~1mortgages~1{mortgageId}~1overpay/post/responses/422",
+    "meaning": "The overpayment is above the single limit.",
+    "product": "mortgages",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-NTF-001",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications/get/responses/400",
+    "meaning": "The notification request is missing a required field.",
+    "product": "notifications",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-002",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}~1resend/post/responses/400",
+    "meaning": "The notification request has a field of the wrong type.",
+    "product": "notifications",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-003",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications/get/responses/403",
+    "meaning": "The customer is not allowed to use this notification.",
+    "product": "notifications",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-004",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}/get/responses/403",
+    "meaning": "The application is not allowed to use this notification.",
+    "product": "notifications",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-005",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}/get/responses/404",
+    "meaning": "No notification exists with that identifier.",
+    "product": "notifications",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-006",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}~1resend/post/responses/404",
+    "meaning": "The notification belongs to a different customer.",
+    "product": "notifications",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-007",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}~1resend/post/responses/409",
+    "meaning": "The notification is queued.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-008",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications/post/responses/409",
+    "meaning": "The notification is sent.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-009",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}/patch/responses/409",
+    "meaning": "The notification is delivered.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-010",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}~1resend/post/responses/409",
+    "meaning": "The notification is suppressed.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-011",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications/post/responses/409",
+    "meaning": "The notification is expired.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-012",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}~1resend/post/responses/422",
+    "meaning": "The send is above the hourly limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-013",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications/post/responses/422",
+    "meaning": "The send is above the daily limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-014",
+    "document": "notifications-api-v1",
+    "location": "#/paths/~1v1~1notifications~1{notificationId}/patch/responses/422",
+    "meaning": "The send is above the per-customer limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-NTF-001",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications/get/responses/400",
+    "meaning": "The notification request is missing a required field.",
+    "product": "notifications",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-002",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}~1resend/post/responses/400",
+    "meaning": "The notification request has a field of the wrong type.",
+    "product": "notifications",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-003",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications/get/responses/403",
+    "meaning": "The customer is not allowed to use this notification.",
+    "product": "notifications",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-004",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}/get/responses/403",
+    "meaning": "The application is not allowed to use this notification.",
+    "product": "notifications",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-005",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}/get/responses/404",
+    "meaning": "No notification exists with that identifier.",
+    "product": "notifications",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-006",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}~1resend/post/responses/404",
+    "meaning": "The notification belongs to a different customer.",
+    "product": "notifications",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-007",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}~1resend/post/responses/409",
+    "meaning": "The notification is queued.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-008",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications/post/responses/409",
+    "meaning": "The notification is sent.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-009",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}/patch/responses/409",
+    "meaning": "The notification is delivered.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-010",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}~1resend/post/responses/422",
+    "meaning": "The notification is suppressed.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-011",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications/post/responses/409",
+    "meaning": "The notification is expired.",
+    "product": "notifications",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-012",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}~1resend/post/responses/422",
+    "meaning": "The send is above the hourly limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-013",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications/post/responses/422",
+    "meaning": "The send is above the daily limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-NTF-014",
+    "document": "notifications-api-v2",
+    "location": "#/paths/~1v2~1notifications~1{notificationId}/patch/responses/422",
+    "meaning": "The send is above the per-customer limit.",
+    "product": "notifications",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-001",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports/get/responses/400",
+    "meaning": "The report request is missing a required field.",
+    "product": "reports",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-002",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/400",
+    "meaning": "The report request has a field of the wrong type.",
+    "product": "reports",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-003",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports/get/responses/403",
+    "meaning": "The customer is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-004",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}/get/responses/403",
+    "meaning": "The application is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-005",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}/get/responses/404",
+    "meaning": "No report exists with that identifier.",
+    "product": "reports",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-006",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/404",
+    "meaning": "The report belongs to a different customer.",
+    "product": "reports",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-007",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is queued.",
+    "product": "reports",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-008",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is running.",
+    "product": "reports",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-009",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is failed.",
+    "product": "reports",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-010",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is expired.",
+    "product": "reports",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-011",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the per-report limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-012",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the daily limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-013",
+    "document": "reports-api-v1",
+    "location": "#/paths/~1v1~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the monthly limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RPT-001",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports/get/responses/400",
+    "meaning": "The report request is missing a required field.",
+    "product": "reports",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-002",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/400",
+    "meaning": "The report request has a field of the wrong type.",
+    "product": "reports",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-003",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports/get/responses/403",
+    "meaning": "The customer is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-004",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}/get/responses/403",
+    "meaning": "The application is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-005",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}/get/responses/404",
+    "meaning": "No report exists with that identifier.",
+    "product": "reports",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-006",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/404",
+    "meaning": "The report belongs to a different customer.",
+    "product": "reports",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-007",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is queued.",
+    "product": "reports",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-008",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is running.",
+    "product": "reports",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-009",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is failed.",
+    "product": "reports",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-010",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is expired.",
+    "product": "reports",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-011",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the per-report limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-012",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the daily limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-013",
+    "document": "reports-api-v2",
+    "location": "#/paths/~1v2~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the monthly limit when pending items are counted as well.",
+    "product": "reports",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RPT-001",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports/get/responses/400",
+    "meaning": "The report request is missing a required field.",
+    "product": "reports",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-002",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/400",
+    "meaning": "The report request has a field of the wrong type.",
+    "product": "reports",
+    "status": 400,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-003",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports/get/responses/403",
+    "meaning": "The customer is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-004",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}/get/responses/403",
+    "meaning": "The application is not allowed to use this report.",
+    "product": "reports",
+    "status": 403,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-005",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}/get/responses/404",
+    "meaning": "No report exists with that identifier.",
+    "product": "reports",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-006",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/404",
+    "meaning": "The report belongs to a different customer.",
+    "product": "reports",
+    "status": 404,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-007",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is queued.",
+    "product": "reports",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-008",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The report is running.",
+    "product": "reports",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-009",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is failed.",
+    "product": "reports",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-010",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/409",
+    "meaning": "The report is expired.",
+    "product": "reports",
+    "status": 409,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-011",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the per-report limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-012",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the daily limit.",
+    "product": "reports",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RPT-013",
+    "document": "reports-api-v3",
+    "location": "#/paths/~1v3~1reports~1{reportId}~1regenerate/post/responses/422",
+    "meaning": "The row count is above the monthly limit when pending items are counted as well.",
+    "product": "reports",
+    "status": 422,
+    "version": "v3"
+  },
+  {
+    "code": "ERR-RWD-001",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts/get/responses/400",
+    "meaning": "The rewards account request is missing a required field.",
+    "product": "rewards",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-002",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/400",
+    "meaning": "The rewards account request has a field of the wrong type.",
+    "product": "rewards",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-003",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts/get/responses/403",
+    "meaning": "The customer is not allowed to use this rewards account.",
+    "product": "rewards",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-004",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}/get/responses/403",
+    "meaning": "The application is not allowed to use this rewards account.",
+    "product": "rewards",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-005",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}/get/responses/404",
+    "meaning": "No rewards account exists with that identifier.",
+    "product": "rewards",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-006",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/404",
+    "meaning": "The rewards account belongs to a different customer.",
+    "product": "rewards",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-007",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is dormant.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-008",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is suspended.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-009",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is closed.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-010",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is merged.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-011",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the daily limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-012",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the monthly limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-013",
+    "document": "rewards-api-v1",
+    "location": "#/paths/~1v1~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the per-order limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-RWD-001",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts/get/responses/400",
+    "meaning": "The rewards account request is missing a required field.",
+    "product": "rewards",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-002",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/400",
+    "meaning": "The rewards account request has a field of the wrong type.",
+    "product": "rewards",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-003",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts/get/responses/403",
+    "meaning": "The customer is not allowed to use this rewards account.",
+    "product": "rewards",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-004",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}/get/responses/403",
+    "meaning": "The application is not allowed to use this rewards account.",
+    "product": "rewards",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-005",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}/get/responses/404",
+    "meaning": "No rewards account exists with that identifier.",
+    "product": "rewards",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-006",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/404",
+    "meaning": "The rewards account belongs to a different customer.",
+    "product": "rewards",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-007",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is dormant.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-008",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is suspended.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-009",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is closed.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-010",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/409",
+    "meaning": "The rewards account is merged.",
+    "product": "rewards",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-011",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the daily limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-012",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the monthly limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-RWD-013",
+    "document": "rewards-api-v2",
+    "location": "#/paths/~1v2~1reward-accounts~1{rewardAccountId}~1redeem/post/responses/422",
+    "meaning": "The redemption is above the per-order limit.",
+    "product": "rewards",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-001",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals/get/responses/400",
+    "meaning": "The savings goal request is missing a required field.",
+    "product": "savings-goals",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-002",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/400",
+    "meaning": "The savings goal request has a field of the wrong type.",
+    "product": "savings-goals",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-003",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals/get/responses/403",
+    "meaning": "The customer is not allowed to use this savings goal.",
+    "product": "savings-goals",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-004",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}/get/responses/403",
+    "meaning": "The application is not allowed to use this savings goal.",
+    "product": "savings-goals",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-005",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}/get/responses/404",
+    "meaning": "No savings goal exists with that identifier.",
+    "product": "savings-goals",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-006",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/404",
+    "meaning": "The savings goal belongs to a different customer.",
+    "product": "savings-goals",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-007",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/409",
+    "meaning": "The savings goal is paused.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-008",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals/post/responses/409",
+    "meaning": "The savings goal is reached.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-009",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/409",
+    "meaning": "The savings goal is closed.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-010",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals/post/responses/409",
+    "meaning": "The savings goal is locked.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-011",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/422",
+    "meaning": "The top-up is above the daily limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-012",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals/post/responses/422",
+    "meaning": "The top-up is above the monthly limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-013",
+    "document": "savings-goals-api-v1",
+    "location": "#/paths/~1v1~1savings-goals~1{savingsGoalId}~1fund/post/responses/422",
+    "meaning": "The top-up is above the single limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-SVG-001",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals/get/responses/400",
+    "meaning": "The savings goal request is missing a required field.",
+    "product": "savings-goals",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-002",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/400",
+    "meaning": "The savings goal request has a field of the wrong type.",
+    "product": "savings-goals",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-003",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals/get/responses/403",
+    "meaning": "The customer is not allowed to use this savings goal.",
+    "product": "savings-goals",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-004",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}/get/responses/403",
+    "meaning": "The application is not allowed to use this savings goal.",
+    "product": "savings-goals",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-005",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}/get/responses/404",
+    "meaning": "No savings goal exists with that identifier.",
+    "product": "savings-goals",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-006",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/404",
+    "meaning": "The savings goal belongs to a different customer.",
+    "product": "savings-goals",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-007",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/409",
+    "meaning": "The savings goal is paused.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-008",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals/post/responses/409",
+    "meaning": "The savings goal is reached.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-009",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/409",
+    "meaning": "The savings goal is closed.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-010",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals/post/responses/409",
+    "meaning": "The savings goal is locked.",
+    "product": "savings-goals",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-011",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/422",
+    "meaning": "The top-up is above the daily limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-012",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals/post/responses/422",
+    "meaning": "The top-up is above the monthly limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-SVG-013",
+    "document": "savings-goals-api-v2",
+    "location": "#/paths/~1v2~1savings-goals~1{savingsGoalId}~1fund/post/responses/422",
+    "meaning": "The top-up is above the single limit.",
+    "product": "savings-goals",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-001",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders/get/responses/400",
+    "meaning": "The standing order request is missing a required field.",
+    "product": "standing-orders",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-002",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/400",
+    "meaning": "The standing order request has a field of the wrong type.",
+    "product": "standing-orders",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-003",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders/get/responses/403",
+    "meaning": "The customer is not allowed to use this standing order.",
+    "product": "standing-orders",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-004",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}/get/responses/403",
+    "meaning": "The application is not allowed to use this standing order.",
+    "product": "standing-orders",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-005",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}/get/responses/404",
+    "meaning": "No standing order exists with that identifier.",
+    "product": "standing-orders",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-006",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/404",
+    "meaning": "The standing order belongs to a different customer.",
+    "product": "standing-orders",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-007",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is paused.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-008",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is cancelled.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-009",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is completed.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-010",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is failed.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-011",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/422",
+    "meaning": "The payment is above the daily limit.",
+    "product": "standing-orders",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-012",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/422",
+    "meaning": "The payment is above the monthly limit.",
+    "product": "standing-orders",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-013",
+    "document": "standing-orders-api-v1",
+    "location": "#/paths/~1v1~1standing-orders~1{standingOrderId}~1pause/post/responses/422",
+    "meaning": "The payment is above the per-run limit.",
+    "product": "standing-orders",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-STO-001",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders/get/responses/400",
+    "meaning": "The standing order request is missing a required field.",
+    "product": "standing-orders",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-002",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/400",
+    "meaning": "The standing order request has a field of the wrong type.",
+    "product": "standing-orders",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-003",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders/get/responses/403",
+    "meaning": "The customer is not allowed to use this standing order.",
+    "product": "standing-orders",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-004",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}/get/responses/403",
+    "meaning": "The application is not allowed to use this standing order.",
+    "product": "standing-orders",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-005",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}/get/responses/404",
+    "meaning": "No standing order exists with that identifier.",
+    "product": "standing-orders",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-006",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/404",
+    "meaning": "The standing order belongs to a different customer.",
+    "product": "standing-orders",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-007",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is paused and the change was made by the issuer.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-008",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is cancelled.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-009",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is completed.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-010",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The standing order is failed.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-011",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/422",
+    "meaning": "The payment is above the daily limit.",
+    "product": "standing-orders",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-012",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/409",
+    "meaning": "The payment is above the monthly limit.",
+    "product": "standing-orders",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-STO-013",
+    "document": "standing-orders-api-v2",
+    "location": "#/paths/~1v2~1standing-orders~1{standingOrderId}~1pause/post/responses/422",
+    "meaning": "The payment is above the per-run limit.",
+    "product": "standing-orders",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-001",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms/get/responses/400",
+    "meaning": "The tax form request is missing a required field.",
+    "product": "tax-forms",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-002",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/400",
+    "meaning": "The tax form request has a field of the wrong type.",
+    "product": "tax-forms",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-003",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms/get/responses/403",
+    "meaning": "The customer is not allowed to use this tax form.",
+    "product": "tax-forms",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-004",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}/get/responses/403",
+    "meaning": "The application is not allowed to use this tax form.",
+    "product": "tax-forms",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-005",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}/get/responses/404",
+    "meaning": "No tax form exists with that identifier.",
+    "product": "tax-forms",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-006",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/404",
+    "meaning": "The tax form belongs to a different customer.",
+    "product": "tax-forms",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-007",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/409",
+    "meaning": "The tax form is draft.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-008",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms/post/responses/409",
+    "meaning": "The tax form is submitted.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-009",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/409",
+    "meaning": "The tax form is rejected.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-010",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms/post/responses/409",
+    "meaning": "The tax form is withdrawn.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-011",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/422",
+    "meaning": "The submission is above the daily limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-012",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms/post/responses/422",
+    "meaning": "The submission is above the per-year limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-013",
+    "document": "tax-forms-api-v1",
+    "location": "#/paths/~1v1~1tax-forms~1{taxFormId}~1submit/post/responses/422",
+    "meaning": "The submission is above the lifetime limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-TAX-001",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms/get/responses/400",
+    "meaning": "The tax form request is missing a required field.",
+    "product": "tax-forms",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-002",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/400",
+    "meaning": "The tax form request has a field of the wrong type.",
+    "product": "tax-forms",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-003",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms/get/responses/403",
+    "meaning": "The customer is not allowed to use this tax form.",
+    "product": "tax-forms",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-004",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}/get/responses/403",
+    "meaning": "The application is not allowed to use this tax form.",
+    "product": "tax-forms",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-005",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}/get/responses/404",
+    "meaning": "No tax form exists with that identifier.",
+    "product": "tax-forms",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-006",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/404",
+    "meaning": "The tax form belongs to a different customer.",
+    "product": "tax-forms",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-007",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/409",
+    "meaning": "The tax form is draft.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-008",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms/post/responses/409",
+    "meaning": "The tax form is submitted.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-009",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/409",
+    "meaning": "The tax form is rejected.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-010",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms/post/responses/409",
+    "meaning": "The tax form is withdrawn.",
+    "product": "tax-forms",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-011",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/422",
+    "meaning": "The submission is above the daily limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-012",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms/post/responses/422",
+    "meaning": "The submission is above the per-year limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-TAX-013",
+    "document": "tax-forms-api-v2",
+    "location": "#/paths/~1v2~1tax-forms~1{taxFormId}~1submit/post/responses/422",
+    "meaning": "The submission is above the lifetime limit.",
+    "product": "tax-forms",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-001",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks/get/responses/400",
+    "meaning": "The webhook request is missing a required field.",
+    "product": "webhooks",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-002",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}~1rotate-secret/post/responses/400",
+    "meaning": "The webhook request has a field of the wrong type.",
+    "product": "webhooks",
+    "status": 400,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-003",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks/get/responses/403",
+    "meaning": "The customer is not allowed to use this webhook.",
+    "product": "webhooks",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-004",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}/get/responses/403",
+    "meaning": "The application is not allowed to use this webhook.",
+    "product": "webhooks",
+    "status": 403,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-005",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}/get/responses/404",
+    "meaning": "No webhook exists with that identifier.",
+    "product": "webhooks",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-006",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}~1rotate-secret/post/responses/404",
+    "meaning": "The webhook belongs to a different customer.",
+    "product": "webhooks",
+    "status": 404,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-007",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}~1rotate-secret/post/responses/409",
+    "meaning": "The webhook is paused.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-008",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks/post/responses/409",
+    "meaning": "The webhook is failing.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-009",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}/patch/responses/409",
+    "meaning": "The webhook is deleted.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-010",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}~1rotate-secret/post/responses/409",
+    "meaning": "The webhook is disabled.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-011",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}~1rotate-secret/post/responses/422",
+    "meaning": "The delivery is above the per-minute limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-012",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks/post/responses/422",
+    "meaning": "The delivery is above the hourly limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-013",
+    "document": "webhooks-api-v1",
+    "location": "#/paths/~1v1~1webhooks~1{webhookId}/patch/responses/422",
+    "meaning": "The delivery is above the daily limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v1"
+  },
+  {
+    "code": "ERR-WHK-001",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks/get/responses/400",
+    "meaning": "The webhook request is missing a required field.",
+    "product": "webhooks",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-002",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}~1rotate-secret/post/responses/400",
+    "meaning": "The webhook request has a field of the wrong type.",
+    "product": "webhooks",
+    "status": 400,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-003",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks/get/responses/403",
+    "meaning": "The customer is not allowed to use this webhook.",
+    "product": "webhooks",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-004",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}/get/responses/403",
+    "meaning": "The application is not allowed to use this webhook.",
+    "product": "webhooks",
+    "status": 403,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-005",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}/get/responses/404",
+    "meaning": "No webhook exists with that identifier.",
+    "product": "webhooks",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-006",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}~1rotate-secret/post/responses/404",
+    "meaning": "The webhook belongs to a different customer.",
+    "product": "webhooks",
+    "status": 404,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-007",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}~1rotate-secret/post/responses/409",
+    "meaning": "The webhook is paused.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-008",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks/post/responses/409",
+    "meaning": "The webhook is failing.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-009",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}/patch/responses/409",
+    "meaning": "The webhook is deleted.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-010",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}~1rotate-secret/post/responses/409",
+    "meaning": "The webhook is disabled.",
+    "product": "webhooks",
+    "status": 409,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-011",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}~1rotate-secret/post/responses/422",
+    "meaning": "The delivery is above the per-minute limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-012",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks/post/responses/422",
+    "meaning": "The delivery is above the hourly limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v2"
+  },
+  {
+    "code": "ERR-WHK-013",
+    "document": "webhooks-api-v2",
+    "location": "#/paths/~1v2~1webhooks~1{webhookId}/patch/responses/422",
+    "meaning": "The delivery is above the daily limit.",
+    "product": "webhooks",
+    "status": 422,
+    "version": "v2"
+  }
+]

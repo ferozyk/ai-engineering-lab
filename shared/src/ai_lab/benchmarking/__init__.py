@@ -24,7 +24,7 @@ from ai_lab.benchmarking.pricing import (
     resolve_pricing,
     simulated_pricing,
 )
-from ai_lab.benchmarking.stats import percentile
+from ai_lab.benchmarking.stats import percentile, wilson_interval
 
 __all__ = [
     "BudgetExhaustedError",
@@ -43,4 +43,5 @@ __all__ = [
     "percentile",
     "resolve_pricing",
     "simulated_pricing",
+    "wilson_interval",
 ]

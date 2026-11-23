@@ -37,7 +37,12 @@
         "schema",
         "multi_endpoint",
         "comparison",
-        "unanswerable"
+        "unanswerable",
+        "exact_identifier_lookalike",
+        "version_lookalike",
+        "everyday_wording",
+        "multi_document",
+        "near_miss"
       ]
     },
     "expected_answer": {

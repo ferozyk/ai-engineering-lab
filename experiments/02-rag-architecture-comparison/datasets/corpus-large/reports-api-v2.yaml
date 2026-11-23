@@ -1,0 +1,390 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Reports API (v2)
+  version: 2.0.0
+  description: Generates downloadable reports about customer activity. This is version 2 of the Reports API. The scopes are reports:read and reports:write. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Reports
+  description: Operations on reports.
+paths:
+  /v2/reports:
+    get:
+      operationId: listReports
+      summary: List reports
+      description: Returns a page of reports, newest first. Use `pageSize` to choose how many come back, up to 100, and `pageToken` to fetch the next page.
+      tags:
+      - Reports
+      security:
+      - bearerAuth:
+        - reports:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of reports to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return reports in this state.
+        schema:
+          type: string
+          enum:
+          - queued
+          - running
+          - ready
+          - failed
+      responses:
+        '200':
+          description: A page of reports.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-RPT-001` when the report request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RPT-003` when the customer is not allowed to use this report.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/reports/{reportId}:
+    get:
+      operationId: getReport
+      summary: Get a report
+      description: Returns one report by its identifier, with its current state and every field described in the Report schema.
+      tags:
+      - Reports
+      security:
+      - bearerAuth:
+        - reports:read
+        apiKey: []
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        description: Identifier of the report.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RPT-004` when the application is not allowed to use this report.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The report was not found. The Problem `code` is `ERR-RPT-005` when no report exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/reports/{reportId}/regenerate:
+    post:
+      operationId: regenerateReport
+      summary: Regenerate a report
+      description: Builds the report again from current data, which replaces the previous file.
+      tags:
+      - Reports
+      security:
+      - bearerAuth:
+        - reports:write
+        apiKey: []
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        description: Identifier of the report.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to regenerate a report.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegenerateReportRequest'
+      responses:
+        '200':
+          description: The action was applied and the report is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-RPT-002` when the report request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RPT-003` when the customer is not allowed to use this report.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The report was not found. The Problem `code` is `ERR-RPT-006` when the report belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the report. The Problem `code` is `ERR-RPT-007` when the report is queued; `ERR-RPT-008` when the report is running; `ERR-RPT-009` when the report is failed; or `ERR-RPT-010` when the report is expired.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-RPT-011` when the row count is above the per-report limit; `ERR-RPT-012` when the row count is above the daily limit; or `ERR-RPT-013` when the row count is above the monthly limit when pending items are counted as well.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/reports/search:
+    post:
+      operationId: searchReports
+      summary: Search reports
+      description: Finds reports that match every filter in the request body. Use it instead of listing when you need to filter by more than one field.
+      tags:
+      - Reports
+      security:
+      - bearerAuth:
+        - reports:read
+        apiKey: []
+      requestBody:
+        required: true
+        description: Filters that every returned report must match.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportSearch'
+      responses:
+        '200':
+          description: A page of reports that match the search.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-RPT-001` when the report request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RPT-003` when the customer is not allowed to use this report.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Reports API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            reports:read: Read reports and their current state.
+            reports:write: Create, change and close reports.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    Report:
+      type: object
+      description: A report.
+      required:
+      - id
+      - status
+      - fileFormat
+      properties:
+        id:
+          type: string
+          description: Identifier of the report.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - ready
+          - failed
+          description: Generation state of the report.
+        fileFormat:
+          type: string
+          enum:
+          - csv
+          - json
+          - pdf
+          description: File format of the report.
+        reference:
+          type: string
+          description: Name the customer gave the report.
+        expiresOn:
+          type: string
+          format: date-time
+          description: Instant after which the download link stops working.
+        limit:
+          type: integer
+          minimum: 0
+          description: Maximum number of rows in the report.
+    ReportList:
+      type: object
+      description: A page of reports.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Report'
+          description: The reports on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    RegenerateReportRequest:
+      type: object
+      description: Details of the request to regenerate a report.
+      required:
+      - format
+      properties:
+        format:
+          type: string
+          enum:
+          - csv
+          - json
+          - pdf
+          description: File format of the new report.
+    ReportSearch:
+      type: object
+      description: Filters of a report search. Every filter that is given must match.
+      properties:
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - ready
+          - failed
+          description: Generation state of the report.
+        fileFormat:
+          type: string
+          enum:
+          - csv
+          - json
+          - pdf
+          description: File format of the report.
+        createdAfter:
+          type: string
+          format: date-time
+          description: Only reports created after this instant.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-RPT-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

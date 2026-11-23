@@ -1,0 +1,321 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Rewards API (v1)
+  version: 1.0.0
+  description: Tracks loyalty points that customers earn and spend. This is version 1 of the Rewards API. The scopes are rewards:read and rewards:write. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Rewards
+  description: Operations on rewards accounts.
+paths:
+  /v1/reward-accounts:
+    get:
+      operationId: listRewardsAccounts
+      summary: List rewards accounts
+      description: Returns a page of rewards accounts, newest first. Use `pageSize` to choose how many come back, up to 50, and `pageToken` to fetch the next page.
+      tags:
+      - Rewards
+      security:
+      - bearerAuth:
+        - rewards:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of rewards accounts to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return rewards accounts in this state.
+        schema:
+          type: string
+          enum:
+          - active
+          - dormant
+          - suspended
+          - closed
+      responses:
+        '200':
+          description: A page of rewards accounts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardAccountList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-RWD-001` when the rewards account request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RWD-003` when the customer is not allowed to use this rewards account.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/reward-accounts/{rewardAccountId}:
+    get:
+      operationId: getRewardAccount
+      summary: Get a rewards account
+      description: Returns one rewards account by its identifier, with its current state and every field described in the RewardAccount schema.
+      tags:
+      - Rewards
+      security:
+      - bearerAuth:
+        - rewards:read
+        apiKey: []
+      parameters:
+      - name: rewardAccountId
+        in: path
+        required: true
+        description: Identifier of the rewards account.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The rewards account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardAccount'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RWD-004` when the application is not allowed to use this rewards account.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The rewards account was not found. The Problem `code` is `ERR-RWD-005` when no rewards account exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/reward-accounts/{rewardAccountId}/redeem:
+    post:
+      operationId: redeemPoints
+      summary: Redeem points
+      description: Spends points from the balance on a reward from the catalogue.
+      tags:
+      - Rewards
+      security:
+      - bearerAuth:
+        - rewards:write
+        apiKey: []
+      parameters:
+      - name: rewardAccountId
+        in: path
+        required: true
+        description: Identifier of the rewards account.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to redeem points.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedeemPointsRequest'
+      responses:
+        '200':
+          description: The action was applied and the rewards account is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardAccount'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-RWD-002` when the rewards account request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-RWD-003` when the customer is not allowed to use this rewards account.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The rewards account was not found. The Problem `code` is `ERR-RWD-006` when the rewards account belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the rewards account. The Problem `code` is `ERR-RWD-007` when the rewards account is dormant; `ERR-RWD-008` when the rewards account is suspended; `ERR-RWD-009` when the rewards account is closed; or `ERR-RWD-010` when the rewards account is merged.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-RWD-011` when the redemption is above the daily limit; `ERR-RWD-012` when the redemption is above the monthly limit; or `ERR-RWD-013` when the redemption is above the per-order limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Rewards API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            rewards:read: Read rewards accounts and their current state.
+            rewards:write: Create, change and close rewards accounts.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    RewardAccount:
+      type: object
+      description: A rewards account.
+      required:
+      - id
+      - status
+      - pointsBalance
+      properties:
+        id:
+          type: string
+          description: Identifier of the rewards account.
+        status:
+          type: string
+          enum:
+          - active
+          - dormant
+          - suspended
+          - closed
+          description: State of the rewards account.
+        pointsBalance:
+          type: integer
+          minimum: 0
+          description: Points available to spend.
+        tier:
+          type: string
+          enum:
+          - bronze
+          - silver
+          - gold
+          description: Membership tier of the customer.
+        reference:
+          type: string
+          description: Membership reference.
+        expiresOn:
+          type: string
+          format: date
+          description: Date on which unspent points expire.
+    RewardAccountList:
+      type: object
+      description: A page of rewards accounts.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RewardAccount'
+          description: The rewards accounts on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    RedeemPointsRequest:
+      type: object
+      description: Details of the request to redeem points.
+      required:
+      - points
+      properties:
+        points:
+          type: integer
+          minimum: 0
+          description: Number of points to spend.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-RWD-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

@@ -1,7 +1,16 @@
-experiment_version: 0.1.0
+experiment_version: 0.2.0
+# The first three keys are the original names of the clean corpus and the dev and measured sets.
 corpus_dir: datasets/corpus
 questions_dev: datasets/evaluation/questions-dev.jsonl
 questions_measured: datasets/evaluation/questions-measured.jsonl
+# Named corpora, and the corpus every question set is bound to.
+corpora:
+  clean: datasets/corpus
+  large: datasets/corpus-large
+question_sets:
+  dev: {path: datasets/evaluation/questions-dev.jsonl, corpus: clean}
+  measured: {path: datasets/evaluation/questions-measured.jsonl, corpus: clean}
+  stress: {path: datasets/evaluation/questions-stress.jsonl, corpus: large}
 chunking:
   max_chunk_chars: 2400
 embedding:

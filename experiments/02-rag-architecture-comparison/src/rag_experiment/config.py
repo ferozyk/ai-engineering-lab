@@ -141,8 +141,27 @@ class PricingConfig(BaseModel):
     reference_completion_usd_per_million: float | None = Field(default=None, ge=0.0)
 
 
+class QuestionSetConfig(BaseModel):
+    """A question file and the name of the corpus its questions were written against."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: Path
+    corpus: str = Field(min_length=1)
+
+
+QUESTION_SET_NAMES = ("dev", "measured", "stress")
+
+
 class ExperimentConfig(BaseModel):
-    """Paths and settings shared by every command. Paths are resolved against ``root``."""
+    """Paths and settings shared by every command. Paths are resolved against ``root``.
+
+    ``corpus_dir``, ``questions_dev`` and ``questions_measured`` are the original keys and keep
+    working: they are the ``clean`` corpus and the ``dev`` and ``measured`` question sets. When
+    ``corpora`` and ``question_sets`` are not written in the file they are filled in from them.
+    ``corpus_dir`` is also the corpus the commands work on; :meth:`for_set` and
+    :meth:`for_corpus` return a copy that points it at another named corpus.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -150,6 +169,9 @@ class ExperimentConfig(BaseModel):
     corpus_dir: Path
     questions_dev: Path
     questions_measured: Path
+    corpora: dict[str, Path] = Field(default_factory=dict)
+    question_sets: dict[str, QuestionSetConfig] = Field(default_factory=dict)
+    corpus_name: str = "clean"  # which entry of ``corpora`` ``corpus_dir`` currently is
     chunking: ChunkingConfig
     embedding: EmbeddingConfig
     index: IndexConfig
@@ -161,6 +183,37 @@ class ExperimentConfig(BaseModel):
     run: RunConfig
     pricing: PricingConfig
     root: Path
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_named_entries(cls, data: object) -> object:
+        """Fill ``corpora`` and ``question_sets`` from the original keys when they are absent."""
+        if not isinstance(data, dict):
+            return data
+        filled = dict(data)
+        if not filled.get("corpora"):
+            filled["corpora"] = {"clean": filled.get("corpus_dir")}
+        if not filled.get("question_sets"):
+            filled["question_sets"] = {
+                "dev": {"path": filled.get("questions_dev"), "corpus": "clean"},
+                "measured": {"path": filled.get("questions_measured"), "corpus": "clean"},
+            }
+        return filled
+
+    @model_validator(mode="after")
+    def _named_entries_are_consistent(self) -> "ExperimentConfig":
+        if self.corpora.get("clean") != self.corpus_dir:
+            raise ValueError("corpora.clean must be the same folder as corpus_dir")
+        for name, original in (("dev", self.questions_dev), ("measured", self.questions_measured)):
+            entry = self.question_sets.get(name)
+            if entry is None or entry.path != original or entry.corpus != "clean":
+                raise ValueError(f"question_sets.{name} must match the original key and use clean")
+        for name, entry in self.question_sets.items():
+            if name not in QUESTION_SET_NAMES:
+                raise ValueError(f"unknown question set {name!r}; expected {QUESTION_SET_NAMES}")
+            if entry.corpus not in self.corpora:
+                raise ValueError(f"question_sets.{name} uses an unknown corpus {entry.corpus!r}")
+        return self
 
     @model_validator(mode="after")
     def _depth_covers_evaluation(self) -> "ExperimentConfig":
@@ -178,6 +231,42 @@ class ExperimentConfig(BaseModel):
             prompt_usd_per_million=self.pricing.reference_prompt_usd_per_million,
             completion_usd_per_million=self.pricing.reference_completion_usd_per_million,
         )
+
+    def question_set_path(self, name: str) -> Path:
+        """The question file of a set; raises ``ValueError`` for a set that is not configured."""
+        entry = self.question_sets.get(name)
+        if entry is None:
+            raise ValueError(
+                f"unknown question set {name!r}; configured: {sorted(self.question_sets)}"
+            )
+        return entry.path
+
+    def require_question_set(self, name: str) -> Path:
+        """The question file of a set that must already exist (the stress set is written later)."""
+        path = self.question_set_path(name)
+        if not path.is_file():
+            raise ConfigError(f"{name} question set not written yet ({path} does not exist)")
+        return path
+
+    def question_set_corpus(self, name: str) -> str:
+        """The name of the corpus a question set is bound to."""
+        entry = self.question_sets.get(name)
+        if entry is None:
+            raise ValueError(
+                f"unknown question set {name!r}; configured: {sorted(self.question_sets)}"
+            )
+        return entry.corpus
+
+    def for_corpus(self, name: str) -> "ExperimentConfig":
+        """A copy whose ``corpus_dir`` is the named corpus (the same folder when unchanged)."""
+        path = self.corpora.get(name)
+        if path is None:
+            raise ValueError(f"unknown corpus {name!r}; configured: {sorted(self.corpora)}")
+        return self.model_copy(update={"corpus_dir": path, "corpus_name": name})
+
+    def for_set(self, name: str) -> "ExperimentConfig":
+        """A copy bound to the corpus of a question set."""
+        return self.for_corpus(self.question_set_corpus(name))
 
     @property
     def index_dir(self) -> Path:
@@ -220,6 +309,16 @@ def load_config(path: Path) -> ExperimentConfig:
         value = raw.get(key)
         if isinstance(value, str):
             raw[key] = str((root / value).resolve())
+    corpora = raw.get("corpora")
+    if isinstance(corpora, dict):
+        raw["corpora"] = {
+            k: str((root / v).resolve()) if isinstance(v, str) else v for k, v in corpora.items()
+        }
+    question_sets = raw.get("question_sets")
+    if isinstance(question_sets, dict):
+        for entry in question_sets.values():
+            if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+                entry["path"] = str((root / entry["path"]).resolve())
     raw["root"] = str(root)
     index = raw.get("index")
     if isinstance(index, dict) and isinstance(index.get("dir"), str):

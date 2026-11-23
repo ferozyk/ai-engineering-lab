@@ -172,10 +172,9 @@ class AnswerRunMetadata(RetrievalRunMetadata):
     @model_serializer(mode="wrap")
     def _omit_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
-        if data.get("rerank") is None:
-            data.pop("rerank", None)
-        if data.get("agent") is None:
-            data.pop("agent", None)
+        for key in ("rerank", "corpus", "agent"):
+            if data.get(key) is None:
+                data.pop(key, None)
         return data
 
 

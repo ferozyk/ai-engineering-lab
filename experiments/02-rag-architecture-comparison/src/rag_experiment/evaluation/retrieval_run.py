@@ -19,8 +19,9 @@ from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model
 
 from ai_lab.benchmarking import collect_environment, git_state
 from rag_experiment.config import ExperimentConfig
-from rag_experiment.corpus import Corpus, load_manifest
-from rag_experiment.evaluation.dataset import Question
+from rag_experiment.corpus import Corpus, Manifest, load_manifest
+from rag_experiment.evaluation.dataset import ABSTAIN_CATEGORIES, Question
+from rag_experiment.evaluation.intervals import retrieval_interval_lines
 from rag_experiment.evaluation.relevance import relevant_chunk_ids
 from rag_experiment.evaluation.retrieval_metrics import (
     DIAGNOSTIC_TEXT,
@@ -102,12 +103,14 @@ class RetrievalRunMetadata(BaseModel):
     torch_threads: int | None
     deterministic: bool
     rerank: RerankMetadata | None = None  # omitted from the written file when not reranking
+    corpus: str | None = None  # name of the corpus (clean, large); runs before 02b omit it
 
     @model_serializer(mode="wrap")
     def _omit_rerank(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
-        if data.get("rerank") is None:
-            data.pop("rerank", None)
+        for key in ("rerank", "corpus"):
+            if data.get(key) is None:
+                data.pop(key, None)
         return data
 
 
@@ -132,7 +135,7 @@ def run_questions(
         second = retriever.retrieve(question.question, k)
         if [c.chunk.chunk_id for c in first.chunks] != [c.chunk.chunk_id for c in second.chunks]:
             differing.append(question.id)
-        excluded = question.category == "unanswerable"
+        excluded = question.category in ABSTAIN_CATEGORIES
         sources = question.sources
         records.append(
             score_question(
@@ -164,6 +167,14 @@ def _torch_threads() -> int | None:
         return int(torch.get_num_threads())
     except ImportError:
         return None
+
+
+def _question_set_version(manifest: Manifest, set_name: str) -> str:
+    if set_name == "stress":
+        if manifest.stress is None:
+            raise ValueError("the manifest has no stress question set entry")
+        return manifest.stress.version
+    return manifest.eval_measured_version if set_name == "measured" else manifest.eval_dev_version
 
 
 def build_metadata(
@@ -208,10 +219,9 @@ def build_metadata(
         package_versions=env.package_versions,
         corpus_version=corpus.version,
         corpus_checksum=corpus.checksum,
+        corpus=corpus.name,
         question_set=set_name,
-        question_set_version=(
-            manifest.eval_measured_version if set_name == "measured" else manifest.eval_dev_version
-        ),
+        question_set_version=_question_set_version(manifest, set_name),
         question_set_checksum=hashlib.sha256(question_path.read_bytes()).hexdigest(),
         embedding=EmbeddingMetadata(
             model_id=model_id,
@@ -391,7 +401,8 @@ def render_report(
     out += [
         "## Setup",
         "",
-        f"- Corpus: version {metadata.corpus_version}, checksum `{metadata.corpus_checksum}`",
+        f"- Corpus: {metadata.corpus + ', ' if metadata.corpus else ''}version "
+        f"{metadata.corpus_version}, checksum `{metadata.corpus_checksum}`",
         f"- Question set: {metadata.question_set}, version {metadata.question_set_version}, "
         f"checksum `{metadata.question_set_checksum}`",
         f"- Embedding model: `{emb.model_id}`, revision `{emb.revision}`, device {emb.device}, "
@@ -418,6 +429,7 @@ def render_report(
         "",
         *metrics_table(summary),
         "",
+        *retrieval_interval_lines(summary),
         *_pool_lines(metadata, summary),
         "## Hypothesis verdicts (frozen criteria, computed mechanically)",
         "",

@@ -1,0 +1,512 @@
+openapi: 3.1.0
+info:
+  title: Lab Bank Notifications API (v2)
+  version: 2.0.0
+  description: Sends alerts and messages to customers. This is version 2 of the Notifications API. The scopes are notifications:read, notifications:manage and notifications:admin. This is a synthetic specification for a fictional bank, written for a retrieval-augmented generation experiment. Nothing in it describes a real institution.
+servers:
+- url: https://api.labbank.example
+tags:
+- name: Notifications
+  description: Operations on notifications.
+paths:
+  /v2/notifications:
+    get:
+      operationId: listNotifications
+      summary: List notifications
+      description: Returns a page of notifications, newest first. Use `pageSize` to choose how many come back, up to 50, and `pageToken` to fetch the next page.
+      tags:
+      - Notifications
+      security:
+      - bearerAuth:
+        - notifications:read
+        apiKey: []
+      parameters:
+      - name: pageSize
+        in: query
+        required: false
+        description: Number of notifications to return on one page. The default is 20.
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+      - name: pageToken
+        in: query
+        required: false
+        description: Token from the previous page. Leave it out to start at the beginning.
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Only return notifications in this state.
+        schema:
+          type: string
+          enum:
+          - queued
+          - sent
+          - delivered
+          - failed
+      responses:
+        '200':
+          description: A page of notifications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationList'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-NTF-001` when the notification request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-NTF-003` when the customer is not allowed to use this notification.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createNotification
+      summary: Create a notification
+      description: Creates a notification for the authenticated customer. Send an `Idempotency-Key` header so that a retried request does not create a second notification.
+      tags:
+      - Notifications
+      security:
+      - bearerAuth:
+        - notifications:manage
+        apiKey: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the creation.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The notification to create.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationCreate'
+      responses:
+        '201':
+          description: The notification was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-NTF-001` when the notification request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-NTF-003` when the customer is not allowed to use this notification.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the notification. The Problem `code` is `ERR-NTF-008` when the notification is sent; or `ERR-NTF-011` when the notification is expired.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-NTF-013` when the send is above the daily limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/notifications/{notificationId}:
+    get:
+      operationId: getNotification
+      summary: Get a notification
+      description: Returns one notification by its identifier, with its current state and every field described in the Notification schema.
+      tags:
+      - Notifications
+      security:
+      - bearerAuth:
+        - notifications:read
+        apiKey: []
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        description: Identifier of the notification.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The notification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-NTF-004` when the application is not allowed to use this notification.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The notification was not found. The Problem `code` is `ERR-NTF-005` when no notification exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      operationId: updateNotification
+      summary: Update a notification
+      description: Changes the writable fields of a notification. Fields that are left out stay as they are.
+      tags:
+      - Notifications
+      security:
+      - bearerAuth:
+        - notifications:manage
+        apiKey: []
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        description: Identifier of the notification.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the change.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: The fields to change on the notification.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationUpdate'
+      responses:
+        '200':
+          description: The notification after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-NTF-001` when the notification request is missing a required field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-NTF-003` when the customer is not allowed to use this notification.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The notification was not found. The Problem `code` is `ERR-NTF-005` when no notification exists with that identifier.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the notification. The Problem `code` is `ERR-NTF-009` when the notification is delivered.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-NTF-014` when the send is above the per-customer limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v2/notifications/{notificationId}/resend:
+    post:
+      operationId: resendNotification
+      summary: Resend a notification
+      description: Queues another delivery attempt for a notification that failed or was not read.
+      tags:
+      - Notifications
+      security:
+      - bearerAuth:
+        - notifications:admin
+        apiKey: []
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        description: Identifier of the notification.
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Unique key of up to 64 characters. A retried request with the same key returns the original result instead of repeating the action.
+        schema:
+          type: string
+          maxLength: 64
+      requestBody:
+        required: true
+        description: Details of the request to resend a notification.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendNotificationRequest'
+      responses:
+        '200':
+          description: The action was applied and the notification is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '400':
+          description: The request is malformed or fails validation. The Problem `code` is `ERR-NTF-002` when the notification request has a field of the wrong type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: The access token is missing, invalid or expired. The Problem `code` is `AUTH-001`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The caller is not allowed to perform this action. The Problem `code` is `ERR-NTF-003` when the customer is not allowed to use this notification.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: The notification was not found. The Problem `code` is `ERR-NTF-006` when the notification belongs to a different customer.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The request conflicts with the current state of the notification. The Problem `code` is `ERR-NTF-007` when the notification is queued.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The request is well formed but breaks a business rule. The Problem `code` is `ERR-NTF-010` when the notification is suppressed; or `ERR-NTF-012` when the send is above the hourly limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many requests were sent and the call was refused. The Problem `code` is `RATE-001`. Wait for the number of seconds in the Retry-After header before trying again.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      description: 'Access token for the Notifications API, obtained from the token endpoint of the Authentication API with the client credentials grant and sent as `Authorization: Bearer <token>`. Each operation lists the scope it needs.'
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.labbank.example/oauth/token
+          scopes:
+            notifications:read: Read notifications and their current state.
+            notifications:manage: Create, change and close notifications.
+            notifications:admin: Run privileged actions such as resend a notification.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Application key issued to the client when it was registered. It identifies the calling application and is sent with every request in addition to the bearer token.
+  schemas:
+    Notification:
+      type: object
+      description: A notification.
+      required:
+      - id
+      - status
+      - medium
+      properties:
+        id:
+          type: string
+          description: Identifier of the notification.
+        status:
+          type: string
+          enum:
+          - queued
+          - sent
+          - delivered
+          - failed
+          description: Delivery state of the notification.
+        medium:
+          type: string
+          enum:
+          - email
+          - sms
+          - push
+          description: How the notification is delivered.
+        reference:
+          type: string
+          description: Correlation reference supplied by the sender.
+        sentAt:
+          type: string
+          format: date-time
+          description: Instant at which the notification was handed to the channel.
+        limit:
+          type: integer
+          minimum: 0
+          description: Maximum number of delivery attempts.
+    NotificationList:
+      type: object
+      description: A page of notifications.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+          description: The notifications on this page.
+        nextPageToken:
+          type: string
+          description: Token that fetches the next page. Absent on the last page.
+    NotificationCreate:
+      type: object
+      description: Fields of a new notification.
+      required:
+      - medium
+      - reference
+      properties:
+        medium:
+          type: string
+          enum:
+          - email
+          - sms
+          - push
+          description: How the notification is delivered.
+        reference:
+          type: string
+          description: Correlation reference supplied by the sender.
+        sentAt:
+          type: string
+          format: date-time
+          description: Instant at which the notification was handed to the channel.
+        limit:
+          type: integer
+          minimum: 0
+          description: Maximum number of delivery attempts.
+    NotificationUpdate:
+      type: object
+      description: Fields of a notification that can be changed.
+      properties:
+        reference:
+          type: string
+          description: Correlation reference supplied by the sender.
+        sentAt:
+          type: string
+          format: date-time
+          description: Instant at which the notification was handed to the channel.
+        limit:
+          type: integer
+          minimum: 0
+          description: Maximum number of delivery attempts.
+    ResendNotificationRequest:
+      type: object
+      description: Details of the request to resend a notification.
+      required:
+      - channel
+      properties:
+        channel:
+          type: string
+          enum:
+          - email
+          - sms
+          - push
+          description: Channel to use for the new attempt.
+    Problem:
+      type: object
+      description: Error body returned for every failed call, with the application/problem+json media type.
+      required:
+      - type
+      - title
+      - status
+      - code
+      - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI that identifies the kind of problem.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: HTTP status code of the response.
+        code:
+          type: string
+          description: Lab Bank error code, for example ERR-NTF-001.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence of the problem.
+        correlationId:
+          type: string
+          description: Correlation identifier of the failed call.

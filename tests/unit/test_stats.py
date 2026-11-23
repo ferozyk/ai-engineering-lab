@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from ai_lab.benchmarking import percentile
+from ai_lab.benchmarking import percentile, wilson_interval
 
 pytestmark = pytest.mark.unit
 
@@ -26,3 +26,23 @@ def test_errors() -> None:
         percentile([], 50)
     with pytest.raises(ValueError, match="between"):
         percentile([1.0], 101)
+
+
+def test_wilson_interval_known_values() -> None:
+    low, high = wilson_interval(8, 20)
+    assert low == pytest.approx(0.2188, abs=1e-3)
+    assert high == pytest.approx(0.6134, abs=1e-3)
+
+
+def test_wilson_interval_stays_inside_zero_and_one() -> None:
+    low, high = wilson_interval(0, 20)
+    assert low == 0.0 and 0.1 < high < 0.2
+    low, high = wilson_interval(20, 20)
+    assert high == 1.0 and 0.8 < low < 0.9
+
+
+def test_wilson_interval_rejects_bad_input() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        wilson_interval(0, 0)
+    with pytest.raises(ValueError, match="between 0 and n"):
+        wilson_interval(5, 4)

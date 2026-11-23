@@ -10,7 +10,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_shipped_config_resolves_paths(experiment_config: ExperimentConfig) -> None:
-    assert experiment_config.experiment_version == "0.1.0"
+    assert experiment_config.experiment_version == "0.2.0"
     assert experiment_config.chunking.max_chunk_chars == 2400
     assert experiment_config.corpus_dir.is_dir()
     assert experiment_config.questions_dev.is_file()
@@ -226,3 +226,60 @@ def test_missing_agent_section_is_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(ConfigError, match="agent"):
         load_config(_write(tmp_path, text))
+
+
+def test_shipped_config_names_two_corpora_and_three_question_sets(
+    experiment_config: ExperimentConfig,
+) -> None:
+    cfg = experiment_config
+    assert set(cfg.corpora) == {"clean", "large"}
+    assert cfg.corpora["clean"] == cfg.corpus_dir and cfg.corpora["large"].is_dir()
+    assert {n: cfg.question_set_corpus(n) for n in ("dev", "measured", "stress")} == {
+        "dev": "clean",
+        "measured": "clean",
+        "stress": "large",
+    }
+    assert cfg.question_set_path("dev") == cfg.questions_dev
+    assert cfg.question_set_path("measured") == cfg.questions_measured
+    assert cfg.question_set_path("stress").name == "questions-stress.jsonl"
+    assert cfg.corpus_name == "clean"
+
+
+def test_old_keys_alone_still_work(tmp_path: Path) -> None:
+    config = load_config(_write(tmp_path, _embedding_yaml()))
+    assert set(config.corpora) == {"clean"} and set(config.question_sets) == {"dev", "measured"}
+    assert config.question_set_corpus("measured") == "clean"
+    with pytest.raises(ValueError, match="unknown question set"):
+        config.question_set_path("stress")
+
+
+def test_for_set_and_for_corpus_return_bound_copies(experiment_config: ExperimentConfig) -> None:
+    stress = experiment_config.for_set("stress")
+    assert stress.corpus_name == "large" and stress.corpus_dir == experiment_config.corpora["large"]
+    assert stress.manifest_path == experiment_config.manifest_path
+    assert experiment_config.for_set("measured").corpus_dir == experiment_config.corpus_dir
+    assert experiment_config.corpus_name == "clean"  # the original is untouched
+    with pytest.raises(ValueError, match="unknown corpus"):
+        experiment_config.for_corpus("huge")
+
+
+def test_stress_set_that_is_not_written_fails_clearly(experiment_config: ExperimentConfig) -> None:
+    with pytest.raises(ConfigError, match="stress question set not written yet"):
+        experiment_config.require_question_set("stress")
+    assert experiment_config.require_question_set("measured").is_file()
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "corpora: {clean: other}\n",  # clean must be corpus_dir
+        "question_sets: {dev: {path: d, corpus: clean}}\n",  # measured missing
+        "corpora: {clean: c}\nquestion_sets: {dev: {path: d, corpus: clean}, "
+        "measured: {path: m, corpus: clean}, stress: {path: s, corpus: huge}}\n",
+        "corpora: {clean: c}\nquestion_sets: {dev: {path: d, corpus: clean}, "
+        "measured: {path: m, corpus: clean}, odd: {path: s, corpus: clean}}\n",
+    ],
+)
+def test_inconsistent_named_entries_are_rejected(tmp_path: Path, extra: str) -> None:
+    with pytest.raises(ConfigError):
+        load_config(_write(tmp_path, _embedding_yaml(extra)))

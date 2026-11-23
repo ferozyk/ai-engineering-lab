@@ -339,3 +339,36 @@ def test_load_baseline_b_detects_a_changed_record(tmp_path: Path) -> None:
         load_baseline_b(tmp_path)
     with pytest.raises(BaselineError, match="missing"):
         load_baseline_b(tmp_path / "nowhere")
+
+
+# ------------------------------------------------------------------- registry by question set
+
+
+@pytest.mark.parametrize("retriever", ["dense", "bm25", "hybrid", "rerank"])
+def test_stress_retrieval_has_one_not_preregistered_row(retriever: str) -> None:
+    verdicts = _verdicts(_records(8, 33), retriever, "stress")
+    assert [(v.hypothesis, v.verdict) for v in verdicts] == [("stress", "not pre-registered yet")]
+    assert not has_hypotheses(retriever, "stress")
+
+
+@pytest.mark.parametrize("retriever", ["dense", "bm25", "hybrid", "rerank", "agentic"])
+def test_stress_answers_have_one_not_preregistered_row(
+    make_record: RecordFactory, retriever: str
+) -> None:
+    summary = summarise_answers(
+        [make_record()],
+        _questions(),
+        question_set="stress",
+        pricing=simulated_pricing(),
+    )
+    result = apply_answer_verdicts(summary, retriever, RESULTS)
+    assert [(v.hypothesis, v.verdict) for v in result.verdicts] == [
+        ("stress", "not pre-registered yet")
+    ]
+
+
+def test_registry_for_the_measured_and_dev_sets_is_unchanged() -> None:
+    for question_set in ("measured", "dev"):
+        assert has_hypotheses("dense", question_set) and has_hypotheses("hybrid", question_set)
+        assert has_hypotheses("rerank", question_set) and not has_hypotheses("bm25", question_set)
+    assert has_hypotheses("hybrid")  # the default set is "measured"

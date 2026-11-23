@@ -2,9 +2,10 @@
 
 Questions used to evaluate every architecture. One JSON object per line in a `.jsonl` file, validated against [question.schema.json](question.schema.json).
 
-Two files:
+Three files (the third is not written yet):
 
 - `questions-dev.jsonl`: the 15 development questions (Q01 to Q15), used to build and debug the pipeline.
+- `questions-stress.jsonl`: the stress set of experiment 02b, bound to the large corpus. It does not exist yet; commands that use `--set stress` say so and stop.
 - `questions-measured.jsonl`: 40 questions (Q101 to Q140), disjoint from the development set, with 6 paraphrase pairs and 6 unanswerable questions. **Frozen** at version 1.0.0 (2026-11-11) after maintainer review. Its checksum is recorded in `../manifest.json` and a test fails if the file changes; any change needs a new version.
 
 ## How questions are written
@@ -33,3 +34,7 @@ Questions with `constraints.must_abstain: true` may have an empty `relevant_sour
 ## Validation
 
 `uv run rag-experiment validate-dataset` checks that every source resolves in the corpus, that each source has at least one relevant chunk, that every key fact appears in the relevant chunks, that `relevant_document_ids` match the sources, that abstention fields are consistent and that `paraphrase_of` points to a question in the same file.
+
+## Stress categories
+
+The category enum has five more values for the stress set (definitions and rules: [docs/evaluation-methodology.md](../../docs/evaluation-methodology.md) section 10): `exact_identifier_lookalike`, `version_lookalike`, `everyday_wording`, `multi_document` and `near_miss`. `near_miss` questions must be refused, like `unanswerable` ones.
